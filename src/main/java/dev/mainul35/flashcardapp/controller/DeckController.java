@@ -15,6 +15,7 @@ import java.util.List;
 @RequestMapping("/api/decks")
 @RequiredArgsConstructor
 @Slf4j
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"})
 public class DeckController {
     
     private final DeckService deckService;
@@ -129,5 +130,63 @@ public class DeckController {
         log.info("GET /api/decks/{}/card-count", id);
         long count = deckService.getFlashcardCount(id);
         return ResponseEntity.ok(count);
+    }
+
+    /**
+     * GET /api/courses/{courseId}/modules/{moduleId}/quizzes
+     * Get all quizzes for a specific module
+     */
+    @GetMapping("/courses/{courseId}/modules/{moduleId}/quizzes")
+    public ResponseEntity<List<Deck>> getQuizzesByModule(
+            @PathVariable Long courseId,
+            @PathVariable Long moduleId
+    ) {
+        log.info("GET /api/courses/{}/modules/{}/quizzes - Fetching quizzes", courseId, moduleId);
+        List<Deck> quizzes = deckService.getDecksByModuleId(moduleId);
+        return ResponseEntity.ok(quizzes);
+    }
+
+    /**
+     * POST /api/courses/{courseId}/modules/{moduleId}/quizzes
+     * Create a quiz for a specific module
+     */
+    @PostMapping("/courses/{courseId}/modules/{moduleId}/quizzes")
+    public ResponseEntity<Deck> createQuizForModule(
+            @PathVariable Long courseId,
+            @PathVariable Long moduleId,
+            @RequestBody Deck quiz
+    ) {
+        log.info("POST /api/courses/{}/modules/{}/quizzes - Creating quiz: {}", courseId, moduleId, quiz.getTitle());
+
+        try {
+            Deck createdQuiz = deckService.createDeckForModule(courseId, moduleId, quiz);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdQuiz);
+        } catch (IllegalArgumentException e) {
+            log.error("Validation error: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (RuntimeException e) {
+            log.error("Error creating quiz: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * PATCH /api/decks/{id}/order
+     * Update deck display order
+     */
+    @PatchMapping("/{id}/order")
+    public ResponseEntity<Deck> updateDeckOrder(
+            @PathVariable Long id,
+            @RequestBody Integer displayOrder
+    ) {
+        log.info("PATCH /api/decks/{}/order - Updating display order to {}", id, displayOrder);
+
+        try {
+            Deck updatedDeck = deckService.updateDeckOrder(id, displayOrder);
+            return ResponseEntity.ok(updatedDeck);
+        } catch (RuntimeException e) {
+            log.error("Error updating deck order: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        }
     }
 }

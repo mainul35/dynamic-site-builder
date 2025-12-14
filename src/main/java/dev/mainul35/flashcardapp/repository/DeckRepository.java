@@ -27,9 +27,19 @@ public interface DeckRepository extends JpaRepository<Deck, Long> {
     /**
      * Custom query to get decks with flashcard count
      * @Query allows you to write custom JPQL queries
-     * 
+     *
      * This is useful for the deck list view to show card counts
      */
     @Query("SELECT d FROM Deck d LEFT JOIN FETCH d.flashcards WHERE d.id = :id")
     Deck findByIdWithFlashcards(Long id);
+
+    /**
+     * Find all decks for a specific module, ordered by display order
+     */
+    List<Deck> findByModuleIdOrderByDisplayOrderAsc(Long moduleId);
+
+    /**
+     * Find all decks without a module (legacy decks), ordered by creation date
+     */
+    List<Deck> findByModuleIsNullOrderByCreatedAtDesc();
 }

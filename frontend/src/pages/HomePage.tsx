@@ -8,7 +8,7 @@ const HomePage: React.FC = () => {
         <p>Create decks, add flashcards, and study efficiently.</p>
         
         <div className="mt-20">
-          <a href="/decks" className="btn btn-primary">
+          <a href="/courses" className="btn btn-primary">
             Get Started
           </a>
         </div>

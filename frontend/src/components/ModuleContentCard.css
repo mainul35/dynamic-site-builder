@@ -1,0 +1,263 @@
+.module-content-card {
+  display: flex;
+  gap: 16px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 12px;
+  transition: all 0.2s ease;
+}
+
+.module-content-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.module-content-card.dragging {
+  opacity: 0.5;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.module-content-card.expanded {
+  background: #f9f9f9;
+}
+
+.content-order-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  min-width: 40px;
+}
+
+.order-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: #f0f0f0;
+  border-radius: 50%;
+  font-weight: 600;
+  font-size: 15px;
+  color: #333;
+}
+
+.drag-handle {
+  cursor: grab;
+  user-select: none;
+  padding: 8px 4px;
+  color: #999;
+  font-size: 24px;
+  line-height: 1;
+  transition: color 0.2s ease;
+  font-weight: bold;
+}
+
+.drag-handle:hover {
+  color: #333;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.content-body {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Common wrapper styles for both lesson and quiz */
+.lesson-content-wrapper,
+.quiz-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+/* Info section styles - identical for both */
+.lesson-info-section,
+.quiz-info-section {
+  flex: 1;
+  min-width: 0;
+}
+
+.lesson-type-badge,
+.quiz-type-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.lesson-type-badge {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.quiz-type-badge {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.lesson-info-section h3,
+.quiz-info-section h3 {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+}
+
+.lesson-description,
+.quiz-description {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Action buttons - identical styling for both */
+.lesson-actions,
+.quiz-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.view-lesson-btn,
+.view-quiz-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-block;
+}
+
+.view-lesson-btn {
+  background: #667eea;
+  color: white;
+}
+
+.view-lesson-btn:hover {
+  background: #5568d3;
+}
+
+.view-quiz-btn {
+  background: #48bb78;
+  color: white;
+}
+
+.view-quiz-btn:hover {
+  background: #38a169;
+}
+
+/* Lesson preview content */
+.lesson-preview-content {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.lesson-preview-content h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  color: #333;
+  font-weight: 600;
+}
+
+.lesson-content-html {
+  padding: 16px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+  line-height: 1.6;
+  color: #333;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.lesson-content-html h1,
+.lesson-content-html h2,
+.lesson-content-html h3 {
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.lesson-content-html h1:first-child,
+.lesson-content-html h2:first-child,
+.lesson-content-html h3:first-child {
+  margin-top: 0;
+}
+
+.lesson-content-html p {
+  margin-bottom: 12px;
+}
+
+.lesson-content-html ul,
+.lesson-content-html ol {
+  margin-left: 24px;
+  margin-bottom: 12px;
+}
+
+.lesson-content-html code {
+  background: #f4f4f4;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+}
+
+.lesson-content-html pre {
+  background: #f4f4f4;
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin-bottom: 12px;
+}
+
+.lesson-content-html pre code {
+  background: none;
+  padding: 0;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .module-content-card {
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .content-order-indicator {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+
+  .lesson-actions,
+  .quiz-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .lesson-actions button,
+  .quiz-actions button,
+  .lesson-actions a,
+  .quiz-actions a {
+    width: 100%;
+    text-align: center;
+  }
+
+  .lesson-content-html {
+    max-height: 300px;
+  }
+}

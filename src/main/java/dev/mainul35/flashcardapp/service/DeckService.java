@@ -6,8 +6,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import dev.mainul35.flashcardapp.entity.Deck;
+import dev.mainul35.flashcardapp.entity.Module;
 import dev.mainul35.flashcardapp.repository.DeckRepository;
 import dev.mainul35.flashcardapp.repository.FlashCardRepository;
+import dev.mainul35.flashcardapp.repository.ModuleRepository;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,9 +18,10 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @Slf4j
 public class DeckService {
-    
+
     private final DeckRepository deckRepository;
     private final FlashCardRepository flashcardRepository;
+    private final ModuleRepository moduleRepository;
     
     /**
      * Get all decks ordered by creation date (newest first)
@@ -112,5 +115,65 @@ public class DeckService {
     public long getFlashcardCount(Long deckId) {
         log.info("Counting flashcards for deck: {}", deckId);
         return flashcardRepository.countByDeckId(deckId);
+    }
+
+    /**
+     * Get all decks for a specific module, ordered by display order
+     */
+    @Transactional(readOnly = true)
+    public List<Deck> getDecksByModuleId(Long moduleId) {
+        log.info("Fetching decks for module: {}", moduleId);
+        return deckRepository.findByModuleIdOrderByDisplayOrderAsc(moduleId);
+    }
+
+    /**
+     * Get all decks without a module (legacy decks)
+     */
+    @Transactional(readOnly = true)
+    public List<Deck> getDecksWithoutModule() {
+        log.info("Fetching decks without module (legacy)");
+        return deckRepository.findByModuleIsNullOrderByCreatedAtDesc();
+    }
+
+    /**
+     * Create a deck for a specific module
+     */
+    @Transactional
+    public Deck createDeckForModule(Long courseId, Long moduleId, Deck deck) {
+        log.info("Creating deck for module: {}", moduleId);
+
+        // Validation
+        if (deck.getTitle() == null || deck.getTitle().trim().isEmpty()) {
+            throw new IllegalArgumentException("Deck title cannot be empty");
+        }
+
+        // Find the module
+        Module module = moduleRepository.findById(moduleId)
+                .orElseThrow(() -> new RuntimeException("Module not found with id: " + moduleId));
+
+        // Link deck to module
+        deck.setModule(module);
+
+        // Set default display order if not provided
+        if (deck.getDisplayOrder() == null) {
+            deck.setDisplayOrder(0);
+        }
+
+        return deckRepository.save(deck);
+    }
+
+    /**
+     * Update deck display order
+     */
+    @Transactional
+    public Deck updateDeckOrder(Long id, Integer newOrder) {
+        log.info("Updating display order for deck: {} to {}", id, newOrder);
+
+        return deckRepository.findById(id)
+                .map(deck -> {
+                    deck.setDisplayOrder(newOrder);
+                    return deckRepository.save(deck);
+                })
+                .orElseThrow(() -> new RuntimeException("Deck not found with id: " + id));
     }
 }

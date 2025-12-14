@@ -1,13 +1,16 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import './App.css';
 
-// Pages will be created in next steps
+// Pages
 import HomePage from './pages/HomePage';
 import DeckListPage from './pages/DeckListPage';
 import DeckDetailPage from './pages/DeckDetailPage';
 import StudyPage from './pages/StudyPage';
 import HistoryPage from './pages/HistoryPage';
+import CourseListPage from './pages/CourseListPage';
+import CourseDetailPage from './pages/CourseDetailPage';
+import ModuleDetailPage from './pages/ModuleDetailPage';
+import LessonDetailPage from './pages/LessonDetailPage';
 
 function App() {
   return (
@@ -28,10 +31,10 @@ function App() {
                 <Link to="/">Home</Link>
               </li>
               <li>
-                <Link to="/decks">My Decks</Link>
+                <Link to="/courses">Courses</Link>
               </li>
               <li>
-                <Link to="/history">Study History</Link>
+                <Link to="/history">Quiz History</Link>
               </li>
             </ul>
           </div>
@@ -42,6 +45,10 @@ function App() {
           <div className="container">
             <Routes>
               <Route path="/" element={<HomePage />} />
+              <Route path="/courses" element={<CourseListPage />} />
+              <Route path="/courses/:courseId" element={<CourseDetailPage />} />
+              <Route path="/courses/:courseId/modules/:moduleId" element={<ModuleDetailPage />} />
+              <Route path="/courses/:courseId/modules/:moduleId/lessons/:lessonId" element={<LessonDetailPage />} />
               <Route path="/decks" element={<DeckListPage />} />
               <Route path="/decks/:id" element={<DeckDetailPage />} />
               <Route path="/study/:id" element={<StudyPage />} />

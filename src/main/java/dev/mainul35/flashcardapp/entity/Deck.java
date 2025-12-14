@@ -1,5 +1,6 @@
 package dev.mainul35.flashcardapp.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -17,21 +18,29 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Deck {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "module_id")
+    @JsonIgnore
+    private Module module;
+
     @Column(nullable = false, length = 200)
     private String title;
-    
+
     @Column(length = 1000)
     private String description;
-    
+
+    @Column(name = "display_order")
+    private Integer displayOrder = 0;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-    
+
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;

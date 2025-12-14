@@ -1,0 +1,86 @@
+.quiz-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.quiz-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quiz-form label {
+  font-weight: 600;
+  font-size: 14px;
+  color: #2c3e50;
+}
+
+.quiz-form .form-control {
+  padding: 10px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+.quiz-form .form-control:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.quiz-form .form-control.error {
+  border-color: #e74c3c;
+}
+
+.quiz-form textarea.form-control {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.quiz-form .error-message {
+  color: #e74c3c;
+  font-size: 13px;
+  margin-top: -4px;
+}
+
+.quiz-form .form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.quiz-form .btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.quiz-form .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.quiz-form .btn-primary {
+  background: #667eea;
+  color: white;
+}
+
+.quiz-form .btn-primary:hover:not(:disabled) {
+  background: #5568d3;
+}
+
+.quiz-form .btn-secondary {
+  background: #f1f1f1;
+  color: #555;
+}
+
+.quiz-form .btn-secondary:hover:not(:disabled) {
+  background: #e0e0e0;
+}
