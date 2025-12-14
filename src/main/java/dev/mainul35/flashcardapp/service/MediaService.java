@@ -3,6 +3,7 @@ package dev.mainul35.flashcardapp.service;
 import dev.mainul35.flashcardapp.entity.Media;
 import dev.mainul35.flashcardapp.repository.LessonRepository;
 import dev.mainul35.flashcardapp.repository.MediaRepository;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,6 +33,7 @@ public class MediaService {
 
     private final MediaRepository mediaRepository;
     private final LessonRepository lessonRepository;
+    private final EntityManager entityManager;
 
     @Transactional
     public Media uploadFile(Long lessonId, MultipartFile file) {
@@ -42,13 +44,6 @@ public class MediaService {
         return lessonRepository.findById(lessonId)
             .map(lesson -> {
                 try {
-                    // Check if lesson already has media and delete it (one-to-one relationship)
-                    if (lesson.getMedia() != null) {
-                        log.info("Lesson already has media, deleting old media first");
-                        deleteMediaFile(lesson.getMedia());
-                        mediaRepository.delete(lesson.getMedia());
-                    }
-
                     String mediaType = determineMediaType(file.getContentType());
                     String uploadPath = uploadDir + "/" + mediaType + "s/";
 
@@ -60,8 +55,21 @@ public class MediaService {
                     Files.createDirectories(filePath.getParent());
                     Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
-                    Media media = new Media();
-                    media.setLesson(lesson);
+                    Media media;
+                    if (lesson.getMedia() != null) {
+                        // Update existing media (replace the file)
+                        log.info("Lesson already has media, updating existing media record");
+                        media = lesson.getMedia();
+                        // Delete old file from filesystem
+                        deleteMediaFile(media);
+                    } else {
+                        // Create new media
+                        log.info("Creating new media record for lesson");
+                        media = new Media();
+                        media.setLesson(lesson);
+                    }
+
+                    // Update/set all media properties
                     media.setFileName(uniqueFilename);
                     media.setOriginalFileName(originalFilename);
                     media.setMediaType(mediaType);
