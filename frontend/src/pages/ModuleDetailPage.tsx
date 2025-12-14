@@ -69,17 +69,16 @@ const SortableItem: React.FC<SortableItemProps> = ({
 
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
-      <div {...listeners}>
-        <ModuleContentCard
-          item={item}
-          courseId={courseId}
-          moduleId={moduleId}
-          isExpanded={expandedId === item.id}
-          onToggleExpand={onToggleExpand}
-          onDelete={onDelete}
-          isDragging={isDragging}
-        />
-      </div>
+      <ModuleContentCard
+        item={item}
+        courseId={courseId}
+        moduleId={moduleId}
+        isExpanded={expandedId === item.id}
+        onToggleExpand={onToggleExpand}
+        onDelete={onDelete}
+        isDragging={isDragging}
+        dragHandleProps={listeners}
+      />
     </div>
   );
 };
