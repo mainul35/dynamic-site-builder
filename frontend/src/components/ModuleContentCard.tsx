@@ -11,6 +11,7 @@ interface ModuleContentCardProps {
   onToggleExpand?: (id: string) => void;
   onDelete: (id: string) => void;
   isDragging?: boolean;
+  dragHandleProps?: any;
 }
 
 const ModuleContentCard: React.FC<ModuleContentCardProps> = ({
@@ -21,6 +22,7 @@ const ModuleContentCard: React.FC<ModuleContentCardProps> = ({
   onToggleExpand,
   onDelete,
   isDragging = false,
+  dragHandleProps,
 }) => {
   const handleDelete = () => {
     if (window.confirm(`Are you sure you want to delete this ${item.type}?`)) {
@@ -82,13 +84,13 @@ const ModuleContentCard: React.FC<ModuleContentCardProps> = ({
 
         <div className="quiz-actions">
           <Link
-            to={`/study/${quiz.id}`}
+            to={`/courses/${courseId}/modules/${moduleId}/study/${quiz.id}`}
             className="view-quiz-btn btn-success"
           >
             Start Quiz →
           </Link>
           <Link
-            to={`/decks/${quiz.id}`}
+            to={`/courses/${courseId}/modules/${moduleId}/quizzes/${quiz.id}`}
             className="btn btn-secondary btn-sm"
           >
             Manage Cards
@@ -108,7 +110,7 @@ const ModuleContentCard: React.FC<ModuleContentCardProps> = ({
     <div className={`module-content-card ${isDragging ? 'dragging' : ''} ${isExpanded ? 'expanded' : ''}`}>
       <div className="content-order-indicator">
         <span className="order-number">{item.displayOrder + 1}</span>
-        <div className="drag-handle" title="Drag to reorder">
+        <div className="drag-handle" title="Drag to reorder" {...dragHandleProps}>
           ⋮⋮
         </div>
       </div>
