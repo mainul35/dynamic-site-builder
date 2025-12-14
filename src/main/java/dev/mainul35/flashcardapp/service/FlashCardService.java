@@ -8,8 +8,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import dev.mainul35.flashcardapp.entity.Deck;
 import dev.mainul35.flashcardapp.entity.FlashCard;
+import dev.mainul35.flashcardapp.entity.Lesson;
 import dev.mainul35.flashcardapp.repository.DeckRepository;
 import dev.mainul35.flashcardapp.repository.FlashCardRepository;
+import dev.mainul35.flashcardapp.repository.LessonRepository;
 
 import java.util.List;
 import java.util.Optional;
@@ -18,9 +20,10 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @Slf4j
 public class FlashCardService {
-    
+
     private final FlashCardRepository FlashCardRepository;
     private final DeckRepository deckRepository;
+    private final LessonRepository lessonRepository;
     
     /**
      * Get all FlashCards for a specific deck
@@ -109,5 +112,63 @@ public class FlashCardService {
     public long countFlashCardsInDeck(Long deckId) {
         log.info("Counting FlashCards in deck: {}", deckId);
         return FlashCardRepository.countByDeckId(deckId);
+    }
+
+    // ========== NEW LESSON-BASED METHODS ==========
+
+    /**
+     * Get all FlashCards for a specific lesson
+     */
+    @Transactional(readOnly = true)
+    public List<FlashCard> getFlashCardsByLessonId(Long lessonId) {
+        log.info("Fetching FlashCards for lesson: {}", lessonId);
+        return FlashCardRepository.findByLessonIdOrderByCreatedAtDesc(lessonId);
+    }
+
+    /**
+     * Create a new FlashCard in a lesson
+     */
+    @Transactional
+    public FlashCard createFlashCardInLesson(Long lessonId, FlashCard flashCard) {
+        log.info("Creating FlashCard in lesson: {}", lessonId);
+
+        // Validation
+        if (flashCard.getFrontContent() == null || flashCard.getFrontContent().trim().isEmpty()) {
+            throw new IllegalArgumentException("Front content cannot be empty");
+        }
+        if (flashCard.getBackContent() == null || flashCard.getBackContent().trim().isEmpty()) {
+            throw new IllegalArgumentException("Back content cannot be empty");
+        }
+
+        // Find the lesson and associate the FlashCard
+        Lesson lesson = lessonRepository.findById(lessonId)
+                .orElseThrow(() -> new RuntimeException("Lesson not found with id: " + lessonId));
+
+        flashCard.setLesson(lesson);
+
+        // Set default content format if not provided
+        if (flashCard.getContentFormat() == null) {
+            flashCard.setContentFormat("html");
+        }
+
+        return FlashCardRepository.save(flashCard);
+    }
+
+    /**
+     * Search FlashCards within a lesson
+     */
+    @Transactional(readOnly = true)
+    public List<FlashCard> searchFlashCardsInLesson(Long lessonId, String keyword) {
+        log.info("Searching FlashCards in lesson: {} with keyword: {}", lessonId, keyword);
+        return FlashCardRepository.searchInLesson(lessonId, keyword);
+    }
+
+    /**
+     * Count FlashCards in a lesson
+     */
+    @Transactional(readOnly = true)
+    public long countFlashCardsInLesson(Long lessonId) {
+        log.info("Counting FlashCards in lesson: {}", lessonId);
+        return FlashCardRepository.countByLessonId(lessonId);
     }
 }

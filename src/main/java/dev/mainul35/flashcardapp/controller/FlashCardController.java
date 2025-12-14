@@ -128,4 +128,65 @@ public class FlashCardController {
         long count = flashCardService.countFlashCardsInDeck(deckId);
         return ResponseEntity.ok(count);
     }
+
+    // ========== NEW LESSON-BASED ENDPOINTS ==========
+
+    /**
+     * GET /api/lessons/{lessonId}/flashcards
+     * Get all FlashCards for a specific lesson
+     */
+    @GetMapping("/lessons/{lessonId}/flashcards")
+    public ResponseEntity<List<FlashCard>> getFlashCardsByLesson(@PathVariable Long lessonId) {
+        log.info("GET /api/lessons/{}/flashcards - Fetching FlashCards", lessonId);
+        List<FlashCard> flashCards = flashCardService.getFlashCardsByLessonId(lessonId);
+        return ResponseEntity.ok(flashCards);
+    }
+
+    /**
+     * POST /api/lessons/{lessonId}/flashcards
+     * Create a new FlashCard in a lesson
+     */
+    @PostMapping("/lessons/{lessonId}/flashcards")
+    public ResponseEntity<FlashCard> createFlashCardInLesson(
+            @PathVariable Long lessonId,
+            @RequestBody FlashCard flashCard) {
+
+        log.info("POST /api/lessons/{}/flashcards - Creating FlashCard", lessonId);
+
+        try {
+            FlashCard createdFlashCard = flashCardService.createFlashCardInLesson(lessonId, flashCard);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdFlashCard);
+        } catch (IllegalArgumentException e) {
+            log.error("Validation error: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (RuntimeException e) {
+            log.error("Error creating FlashCard: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * GET /api/lessons/{lessonId}/flashcards/search?keyword=java
+     * Search FlashCards within a lesson
+     */
+    @GetMapping("/lessons/{lessonId}/flashcards/search")
+    public ResponseEntity<List<FlashCard>> searchFlashCardsInLesson(
+            @PathVariable Long lessonId,
+            @RequestParam String keyword) {
+
+        log.info("GET /api/lessons/{}/flashcards/search?keyword={}", lessonId, keyword);
+        List<FlashCard> flashCards = flashCardService.searchFlashCardsInLesson(lessonId, keyword);
+        return ResponseEntity.ok(flashCards);
+    }
+
+    /**
+     * GET /api/lessons/{lessonId}/flashcards/count
+     * Get FlashCard count for a lesson
+     */
+    @GetMapping("/lessons/{lessonId}/flashcards/count")
+    public ResponseEntity<Long> getFlashCardCountByLesson(@PathVariable Long lessonId) {
+        log.info("GET /api/lessons/{}/flashcards/count", lessonId);
+        long count = flashCardService.countFlashCardsInLesson(lessonId);
+        return ResponseEntity.ok(count);
+    }
 }

@@ -40,10 +40,19 @@ public class StudySession {
     private Integer totalCards = 0;
     
     /**
-     * Many Study Sessions belong to One Deck
+     * Many Study Sessions belong to One Module (for module-level quizzes)
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "deck_id", nullable = false)
+    @JoinColumn(name = "module_id")
+    @JsonIgnore
+    private Module module;
+
+    /**
+     * Legacy: Many Study Sessions belong to One Deck (for migration compatibility)
+     * Will be removed after successful migration
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "deck_id")
     @JsonIgnore
     private Deck deck;
     

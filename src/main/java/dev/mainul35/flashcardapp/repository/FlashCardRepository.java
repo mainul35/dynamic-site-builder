@@ -43,4 +43,34 @@ public interface FlashCardRepository extends JpaRepository<FlashCard, Long> {
      * Alternative to cascade delete
      */
     void deleteByDeckId(Long deckId);
+
+    // ========== NEW LESSON-BASED METHODS ==========
+
+    /**
+     * Find all flashcards belonging to a specific lesson
+     */
+    List<FlashCard> findByLessonId(Long lessonId);
+
+    /**
+     * Count flashcards in a lesson
+     */
+    long countByLessonId(Long lessonId);
+
+    /**
+     * Find flashcards by lesson, ordered by creation date
+     */
+    List<FlashCard> findByLessonIdOrderByCreatedAtDesc(Long lessonId);
+
+    /**
+     * Search flashcards by content (front or back) within a lesson
+     */
+    @Query("SELECT f FROM FlashCard f WHERE f.lesson.id = :lessonId " +
+           "AND (LOWER(f.frontContent) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+           "OR LOWER(f.backContent) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    List<FlashCard> searchInLesson(Long lessonId, String keyword);
+
+    /**
+     * Delete all flashcards in a lesson
+     */
+    void deleteByLessonId(Long lessonId);
 }

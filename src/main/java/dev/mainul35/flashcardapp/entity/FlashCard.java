@@ -20,23 +20,37 @@ public class FlashCard {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(name = "front_content", nullable = false, length = 2000)
+    @Column(name = "front_content", nullable = false, columnDefinition = "TEXT")
     private String frontContent;
-    
-    @Column(name = "back_content", nullable = false, length = 2000)
+
+    @Column(name = "back_content", nullable = false, columnDefinition = "TEXT")
     private String backContent;
-    
+
+    /**
+     * Content format: "html" for rich text (Quill), "markdown" for legacy content
+     */
+    @Column(name = "content_format", length = 20)
+    private String contentFormat = "html";
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-    
+
     /**
-     * Many Flashcards belong to One Deck
+     * Many Flashcards belong to One Lesson
      * @JsonIgnore: Prevents infinite recursion when serializing to JSON
-     * Deck has flashcards → Flashcard has deck → Deck has flashcards → ...
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "deck_id", nullable = false)
+    @JoinColumn(name = "lesson_id")
+    @JsonIgnore
+    private Lesson lesson;
+
+    /**
+     * Legacy: Many Flashcards belong to One Deck (for migration compatibility)
+     * Will be removed after successful migration
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "deck_id")
     @JsonIgnore
     private Deck deck;
     
