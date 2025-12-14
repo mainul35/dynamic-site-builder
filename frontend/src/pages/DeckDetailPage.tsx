@@ -9,8 +9,15 @@ import FlashcardForm from '../components/FlashcardForm';
 import './DeckDetailPage.css';
 
 const DeckDetailPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id, courseId, moduleId } = useParams<{ id: string; courseId?: string; moduleId?: string }>();
   const deckId = parseInt(id || '0');
+
+  // Determine if we're in module context (coming from a module) or standalone
+  const isModuleContext = courseId && moduleId;
+  const backLink = isModuleContext
+    ? `/courses/${courseId}/modules/${moduleId}`
+    : '/decks';
+  const backText = isModuleContext ? 'Back to Module' : 'Back to Decks';
 
   const [deck, setDeck] = useState<Deck | null>(null);
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
@@ -90,8 +97,8 @@ const DeckDetailPage: React.FC = () => {
         <div className="error">
           Deck not found
         </div>
-        <Link to="/decks" className="btn btn-primary">
-          Back to Decks
+        <Link to={backLink} className="btn btn-primary">
+          {backText}
         </Link>
       </div>
     );
@@ -123,8 +130,8 @@ const DeckDetailPage: React.FC = () => {
           </div>
         </div>
         <div className="deck-actions">
-          <Link to="/decks" className="btn btn-secondary">
-            Back to Decks
+          <Link to={backLink} className="btn btn-secondary">
+            {backText}
           </Link>
           {flashcards.length > 0 && (
             <Link to={`/study/${deckId}`} className="btn btn-success">

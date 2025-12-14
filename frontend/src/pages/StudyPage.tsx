@@ -8,9 +8,16 @@ import FlipCard from '../components/FlipCard';
 import './StudyPage.css';
 
 const StudyPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id, courseId, moduleId } = useParams<{ id: string; courseId?: string; moduleId?: string }>();
   const navigate = useNavigate();
   const deckId = parseInt(id || '0');
+
+  // Determine if we're in module context (coming from a module)
+  const isModuleContext = courseId && moduleId;
+  const backLink = isModuleContext
+    ? `/courses/${courseId}/modules/${moduleId}`
+    : `/decks/${deckId}`;
+  const backText = isModuleContext ? 'Back to Module' : 'Back to Deck';
 
   const [deck, setDeck] = useState<Deck | null>(null);
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
@@ -96,7 +103,7 @@ const StudyPage: React.FC = () => {
   };
 
   const handleGoBack = () => {
-    navigate(`/decks/${deckId}`);
+    navigate(backLink);
   };
 
   if (loading) {
@@ -115,8 +122,8 @@ const StudyPage: React.FC = () => {
         <div className="error-container">
           <h2>⚠️ Unable to Start Study Session</h2>
           <p>{error || 'This deck has no flashcards.'}</p>
-          <Link to={`/decks/${deckId}`} className="btn btn-primary">
-            Back to Deck
+          <Link to={backLink} className="btn btn-primary">
+            {backText}
           </Link>
         </div>
       </div>
@@ -147,11 +154,8 @@ const StudyPage: React.FC = () => {
               Study Again
             </button>
             <button className="btn btn-secondary" onClick={handleGoBack}>
-              Back to Deck
+              {backText}
             </button>
-            <Link to="/decks" className="btn btn-secondary">
-              All Decks
-            </Link>
           </div>
         </div>
       </div>
@@ -192,7 +196,7 @@ const StudyPage: React.FC = () => {
 
       <div className="study-footer">
         <button className="btn btn-secondary" onClick={handleGoBack}>
-          Exit Study Mode
+          Exit Quiz
         </button>
       </div>
     </div>
