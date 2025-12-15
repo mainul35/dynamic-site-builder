@@ -1,19 +1,21 @@
 package dev.mainul35.flashcardapp.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import dev.mainul35.cms.sdk.entity.PluginEntity;
 import jakarta.persistence.*;
 import lombok.Data;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "modules")
+@Table(name = "plugin_course_modules")
 @Data
-public class Module {
+@EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
+public class Module extends PluginEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,14 +35,6 @@ public class Module {
     @Column(name = "display_order")
     private Integer displayOrder = 0;
 
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-
     @OneToMany(mappedBy = "module", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Lesson> lessons = new ArrayList<>();
 
@@ -49,4 +43,11 @@ public class Module {
 
     @OneToMany(mappedBy = "module", cascade = CascadeType.ALL)
     private List<StudySession> studySessions = new ArrayList<>();
+
+    /**
+     * Constructor for creating a module with plugin ID
+     */
+    public Module(String pluginId) {
+        super(pluginId);
+    }
 }

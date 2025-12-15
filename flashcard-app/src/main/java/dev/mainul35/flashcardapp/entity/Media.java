@@ -1,16 +1,21 @@
 package dev.mainul35.flashcardapp.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import dev.mainul35.cms.sdk.entity.PluginEntity;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "media")
+@Table(name = "plugin_media_files")
 @Data
-public class Media {
+@EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
+public class Media extends PluginEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -48,4 +53,11 @@ public class Media {
     @CreationTimestamp
     @Column(name = "uploaded_at", nullable = false, updatable = false)
     private LocalDateTime uploadedAt;
+
+    /**
+     * Constructor for creating media with plugin ID
+     */
+    public Media(String pluginId) {
+        super(pluginId);
+    }
 }

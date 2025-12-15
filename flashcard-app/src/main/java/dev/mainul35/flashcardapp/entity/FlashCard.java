@@ -1,25 +1,25 @@
 package dev.mainul35.flashcardapp.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import dev.mainul35.cms.sdk.entity.PluginEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-
-import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "flashcards")
+@Table(name = "plugin_flashcard_cards")
 @Data
+@EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
-public class FlashCard {
-    
+public class FlashCard extends PluginEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     @Column(name = "front_content", nullable = false, columnDefinition = "TEXT")
     private String frontContent;
 
@@ -61,10 +61,6 @@ public class FlashCard {
     @Column(name = "correct_answer_explanation", columnDefinition = "TEXT")
     private String correctAnswerExplanation;
 
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
     /**
      * Many Flashcards belong to One Lesson
      * @JsonIgnore: Prevents infinite recursion when serializing to JSON
@@ -82,7 +78,14 @@ public class FlashCard {
     @JoinColumn(name = "deck_id")
     @JsonIgnore
     private Deck deck;
-    
+
+    /**
+     * Constructor for creating a flashcard with plugin ID
+     */
+    public FlashCard(String pluginId) {
+        super(pluginId);
+    }
+
     /**
      * Constructor for easy creation without setting timestamps/id
      */

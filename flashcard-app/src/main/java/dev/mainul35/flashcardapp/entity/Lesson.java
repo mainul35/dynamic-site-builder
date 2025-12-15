@@ -1,19 +1,21 @@
 package dev.mainul35.flashcardapp.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import dev.mainul35.cms.sdk.entity.PluginEntity;
 import jakarta.persistence.*;
 import lombok.Data;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "lessons")
+@Table(name = "plugin_lesson_lessons")
 @Data
-public class Lesson {
+@EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
+public class Lesson extends PluginEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -39,17 +41,16 @@ public class Lesson {
     @Column(name = "display_order")
     private Integer displayOrder = 0;
 
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-
     @OneToMany(mappedBy = "lesson", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<FlashCard> flashcards = new ArrayList<>();
 
     @OneToOne(mappedBy = "lesson", cascade = CascadeType.ALL, orphanRemoval = true)
     private Media media;
+
+    /**
+     * Constructor for creating a lesson with plugin ID
+     */
+    public Lesson(String pluginId) {
+        super(pluginId);
+    }
 }
