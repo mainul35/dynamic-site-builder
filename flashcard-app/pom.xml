@@ -192,6 +192,27 @@
                             </resources>
                         </configuration>
                     </execution>
+
+                    <!-- Copy plugins to target directory -->
+                    <execution>
+                        <id>copy-plugins</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/plugins</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/plugins</directory>
+                                    <includes>
+                                        <include>**/*.jar</include>
+                                    </includes>
+                                    <filtering>false</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
         </plugins>

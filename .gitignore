@@ -112,6 +112,7 @@ replay_pid*
 coverage/
 *.lcov
 .nyc_output
+.claude
 
 # Build artifacts
 *.o
