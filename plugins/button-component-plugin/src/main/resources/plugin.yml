@@ -1,0 +1,29 @@
+plugin-id: button-component-plugin
+plugin-name: Button Component
+version: 1.0.0
+author: Mainul35
+description: A customizable button component for the visual site builder
+main-class: dev.mainul35.plugins.ui.ButtonComponentPlugin
+plugin-type: ui-component
+
+# UI Component Configuration
+ui-component:
+  component-id: button
+  display-name: Button
+  category: ui
+  icon: 🔘
+  description: Interactive button component with multiple variants and sizes
+
+  # Default dimensions
+  default-width: 150px
+  default-height: 40px
+
+  # Size constraints
+  resizable: true
+  min-width: 80px
+  max-width: 500px
+  min-height: 30px
+  max-height: 80px
+
+  # React component path (relative to plugin resources)
+  react-component-path: /components/Button.jsx
