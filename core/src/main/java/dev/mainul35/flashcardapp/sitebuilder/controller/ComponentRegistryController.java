@@ -1,6 +1,7 @@
 package dev.mainul35.flashcardapp.sitebuilder.controller;
 
 import dev.mainul35.cms.sdk.component.ComponentManifest;
+import dev.mainul35.flashcardapp.plugin.core.PluginManager;
 import dev.mainul35.flashcardapp.sitebuilder.entity.ComponentRegistryEntry;
 import dev.mainul35.flashcardapp.sitebuilder.service.ComponentRegistryService;
 import lombok.RequiredArgsConstructor;
@@ -9,7 +10,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.File;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * REST controller for component registry operations.
@@ -23,6 +27,10 @@ import java.util.List;
 public class ComponentRegistryController {
 
     private final ComponentRegistryService componentRegistryService;
+    private final PluginManager pluginManager;
+
+    @org.springframework.beans.factory.annotation.Value("${app.plugin.directory:plugins}")
+    private String pluginDirectory;
 
     /**
      * Get all registered components
@@ -185,5 +193,40 @@ public class ComponentRegistryController {
             log.error("Error fetching bundle for component: {} from plugin: {}", componentId, pluginId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    /**
+     * Debug endpoint to check plugin loading status
+     */
+    @GetMapping("/debug/status")
+    public ResponseEntity<Map<String, Object>> getDebugStatus() {
+        Map<String, Object> status = new HashMap<>();
+
+        // Check plugin directory
+        File pluginDir = new File(pluginDirectory);
+        status.put("pluginDirPath", pluginDir.getAbsolutePath());
+        status.put("pluginDirExists", pluginDir.exists());
+        status.put("pluginDirIsDirectory", pluginDir.isDirectory());
+
+        // List JAR files
+        if (pluginDir.exists() && pluginDir.isDirectory()) {
+            File[] jarFiles = pluginDir.listFiles((dir, name) -> name.endsWith(".jar"));
+            status.put("jarFilesCount", jarFiles != null ? jarFiles.length : 0);
+            if (jarFiles != null) {
+                status.put("jarFiles", java.util.Arrays.stream(jarFiles).map(File::getName).toList());
+            }
+        }
+
+        // Check loaded plugins
+        status.put("loadedPluginsCount", pluginManager.getAllPlugins().size());
+        status.put("activatedPluginsCount", pluginManager.getActivatedPlugins().size());
+        status.put("loadedPlugins", pluginManager.getAllPlugins().stream()
+                .map(p -> Map.of("id", p.getPluginId(), "name", p.getPluginName(), "status", p.getStatus()))
+                .toList());
+
+        // Check registered components
+        status.put("registeredComponentsCount", componentRegistryService.getAllComponents().size());
+
+        return ResponseEntity.ok(status);
     }
 }
