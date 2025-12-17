@@ -58,11 +58,11 @@ public class PluginManager {
         log.info("Plugin directory: {}", pluginDirectory);
         log.info("Hot reload enabled: {}", hotReloadEnabled);
 
-        // Create plugin directory if it doesn't exist
+        // Verify plugin directory exists (should be at project root level, not inside core)
         File pluginDir = new File(pluginDirectory);
         if (!pluginDir.exists()) {
-            pluginDir.mkdirs();
-            log.info("Created plugin directory: {}", pluginDirectory);
+            log.warn("Plugin directory does not exist: {}. Please ensure the plugins directory exists at the project root.",
+                    pluginDir.getAbsolutePath());
         }
 
         // Load and activate all bundled plugins
