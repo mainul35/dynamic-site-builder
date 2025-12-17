@@ -16,6 +16,8 @@
 .builder-canvas.preview-mode {
   cursor: default;
   pointer-events: auto !important;
+  background: white;
+  padding: 0;
 }
 
 .builder-canvas.drag-over {
@@ -155,7 +157,7 @@
 .component-placeholder {
   width: 100%;
   height: 100%;
-  min-height: 100%;
+  min-height: 40px;
   background: white;
   border: 1px solid #dee2e6;
   border-radius: 8px;
@@ -164,6 +166,7 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
 }
 
 .placeholder-header {
@@ -221,9 +224,9 @@
 .layout-placeholder {
   border: 2px solid #28a745;
   background: linear-gradient(135deg, #ffffff 0%, #f8fff9 100%);
-  min-height: 1200px;
-  height: auto !important;
-  overflow: visible !important;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
 }
 
 .layout-badge {
@@ -238,20 +241,34 @@
   text-transform: uppercase;
 }
 
+.layout-type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background: #6c757d;
+  color: white;
+  font-size: 10px;
+  font-weight: 500;
+  border-radius: 12px;
+  margin-left: 6px;
+}
+
 .children-container {
   margin-top: 12px;
   padding: 12px;
-  padding-left: 24px;
   background: rgba(40, 167, 69, 0.05);
   border: 1px dashed #28a745;
   border-radius: 6px;
-  min-height: 1100px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  min-height: 40px;
+  /* Layout styles (display, flex-direction, grid-template-columns) are applied inline based on layoutType prop */
   flex: 1;
   position: relative;
   overflow: visible;
+  /* Ensure grid/flex items align properly */
+  align-items: start;
+  align-content: start;
+  /* Prevent horizontal overflow */
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .children-container.drag-over {
@@ -295,6 +312,25 @@
   display: none;
 }
 
+.builder-canvas.preview-mode .grid-background {
+  display: none;
+}
+
+.preview-component-wrapper {
+  /* Clean wrapper for preview mode - no borders or special styling */
+  box-sizing: border-box;
+  /* Width defaults to 100% if not specified inline */
+  width: 100%;
+}
+
+.layout-preview {
+  /* Clean layout container in preview mode */
+  /* All styling (gap, padding, width, etc.) comes from inline styles */
+  background: transparent;
+  border: none;
+  box-sizing: border-box;
+}
+
 .component-preview {
   width: 100%;
   height: auto;
@@ -304,6 +340,19 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.layout-child-wrapper {
+  /* Allow children to size naturally within grid/flex layouts */
+  min-width: 0;
+  box-sizing: border-box;
+  /* Grid/flex will control width, height fits content unless explicitly set */
+}
+
+/* Nested layout-preview should fill their wrapper */
+.layout-child-wrapper > .layout-preview {
+  width: 100%;
+  height: 100%;
 }
 
 /* Responsive adjustments */

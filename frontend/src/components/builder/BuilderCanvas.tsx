@@ -4,6 +4,7 @@ import { useComponentStore } from '../../stores/componentStore';
 import { ComponentInstance, ComponentRegistryEntry } from '../../types/builder';
 import { DraggableComponent } from './DraggableComponent';
 import { ResizableComponent } from './ResizableComponent';
+import { ComponentRenderer } from './renderers';
 import './BuilderCanvas.css';
 
 interface BuilderCanvasProps {
@@ -233,47 +234,148 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect 
     }
   };
 
-  // Render a placeholder component (will be replaced with actual plugin components later)
+  // Get layout styles based on layoutType prop
+  const getLayoutStyles = (layoutType: string = 'flex-column'): React.CSSProperties => {
+    switch (layoutType) {
+      case 'flex-row':
+        return {
+          display: 'flex',
+          flexDirection: 'row',
+          flexWrap: 'nowrap',
+          alignItems: 'flex-start',
+          alignContent: 'flex-start',
+        };
+      case 'flex-wrap':
+        return {
+          display: 'flex',
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          alignItems: 'flex-start',
+          alignContent: 'flex-start',
+        };
+      case 'grid-2col':
+        return {
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          alignItems: 'start',
+          alignContent: 'start',
+        };
+      case 'grid-3col':
+        return {
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          alignItems: 'start',
+          alignContent: 'start',
+        };
+      case 'grid-4col':
+        return {
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          alignItems: 'start',
+          alignContent: 'start',
+        };
+      case 'grid-auto':
+        return {
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          alignItems: 'start',
+          alignContent: 'start',
+        };
+      case 'flex-column':
+      default:
+        return {
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'stretch',
+        };
+    }
+  };
+
+  // Render component using the ComponentRenderer system
   const renderComponent = (component: ComponentInstance) => {
     const isLayout = component.componentCategory?.toLowerCase() === 'layout';
     const hasChildren = component.children && component.children.length > 0;
     const isEditMode = viewMode === 'edit';
 
-    // In preview mode, render clean component without builder chrome
-    if (!isEditMode) {
-      return (
-        <div
-          className="component-preview"
-          style={component.styles}
-        >
-          {isLayout && hasChildren && (
-            <div className="children-preview">
-              {component.children!.map(child => (
-                <div key={child.instanceId}>
+    // For layout components, render container with children
+    if (isLayout) {
+      // Get layout type from component props
+      const layoutType = component.props?.layoutType || 'flex-column';
+      const layoutStyles = getLayoutStyles(layoutType);
+      // In preview mode, render clean layout without builder chrome
+      if (!isEditMode) {
+        // For height, only apply explicit pixel/percentage values, not 'auto'
+        const previewHeight = component.size.height && component.size.height !== 'auto'
+          ? component.size.height
+          : undefined;
+
+        // Check if this is a grid layout (children should fill grid cells)
+        const isGridLayout = layoutType.startsWith('grid-');
+
+        // Apply maxWidth and centering if specified in props
+        const maxWidth = component.props?.maxWidth;
+        const centerContent = component.props?.centerContent;
+
+        return (
+          <div
+            className="layout-preview"
+            style={{
+              ...component.styles,
+              ...layoutStyles,
+              height: previewHeight,
+              maxWidth: maxWidth || undefined,
+              marginLeft: centerContent ? 'auto' : undefined,
+              marginRight: centerContent ? 'auto' : undefined,
+            }}
+          >
+            {hasChildren && component.children!.map(child => {
+              // For child height, only apply explicit pixel/percentage values
+              const childHeight = child.size.height && child.size.height !== 'auto'
+                ? child.size.height
+                : undefined;
+
+              // For grid layouts, let grid control width; for flex, use stored width
+              // This ensures grid children fill their cells properly
+              const childWidth = isGridLayout
+                ? undefined  // Let grid control width
+                : (child.size.width && child.size.width !== 'auto' ? child.size.width : undefined);
+
+              return (
+                <div
+                  key={child.instanceId}
+                  className="layout-child-wrapper"
+                  style={{
+                    width: childWidth,
+                    height: childHeight,
+                  }}
+                >
                   {renderComponent(child)}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      );
-    }
+              );
+            })}
+          </div>
+        );
+      }
 
-    // Edit mode: Show builder chrome with labels and props
-    return (
-      <div
-        className={`component-placeholder ${isLayout ? 'layout-placeholder' : ''}`}
-        style={component.styles}
-      >
-        <div className="placeholder-header">
-          <span className="placeholder-id">{component.componentId}</span>
-          {isLayout && <span className="layout-badge">Layout</span>}
-        </div>
+      // Edit mode: Show builder chrome with labels and drop zones
+      return (
+        <div
+          className="component-placeholder layout-placeholder"
+          style={component.styles}
+        >
+          <div className="placeholder-header">
+            <span className="placeholder-id">{component.componentId}</span>
+            <span className="layout-badge">Layout</span>
+            <span className="layout-type-badge">{layoutType}</span>
+          </div>
 
-        {/* Render children for layout components */}
-        {isLayout && (
+          {/* Render children for layout components - apply layoutType styles */}
           <div
             className={`children-container ${dragOverContainerId === component.instanceId ? 'drag-over' : ''}`}
+            style={{
+              ...layoutStyles,
+              gap: component.styles?.gap || component.props?.gap || '8px',
+            }}
             onDrop={(e) => handleNestedDrop(e, component.instanceId)}
             onDragOver={(e) => {
               e.preventDefault();
@@ -309,9 +411,12 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect 
               </div>
             )}
           </div>
-        )}
-      </div>
-    );
+        </div>
+      );
+    }
+
+    // For non-layout components, use the ComponentRenderer to render actual component with props
+    return <ComponentRenderer component={component} isEditMode={isEditMode} />;
   };
 
   // Handle drop on nested container
@@ -453,22 +558,54 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect 
       {/* Components - Only render root-level components (no parent) */}
       {currentPage?.components
         .filter(component => !component.parentId)
-        .map(component => (
-          <DraggableComponent
-            key={component.instanceId}
-            component={component}
-            isSelected={selectedComponentId === component.instanceId}
-            onSelect={handleComponentSelect}
-            onDoubleClick={handleComponentDoubleClick}
-          >
-            <ResizableComponent
+        .map(component => {
+          // In preview mode, render without builder wrappers
+          if (viewMode === 'preview') {
+            // For height, only apply explicit pixel/percentage values, not 'auto'
+            const previewHeight = component.size.height && component.size.height !== 'auto'
+              ? component.size.height
+              : undefined;
+
+            // Apply maxWidth and centering if specified in props
+            const maxWidth = component.props?.maxWidth;
+            const centerContent = component.props?.centerContent;
+
+            return (
+              <div
+                key={component.instanceId}
+                className="preview-component-wrapper"
+                style={{
+                  gridColumn: `1 / -1`, // Span all columns in preview mode
+                  width: component.size.width,
+                  height: previewHeight,
+                  maxWidth: maxWidth || undefined,
+                  marginLeft: centerContent ? 'auto' : undefined,
+                  marginRight: centerContent ? 'auto' : undefined,
+                }}
+              >
+                {renderComponent(component)}
+              </div>
+            );
+          }
+
+          // In edit mode, wrap with drag/resize handlers
+          return (
+            <DraggableComponent
+              key={component.instanceId}
               component={component}
               isSelected={selectedComponentId === component.instanceId}
+              onSelect={handleComponentSelect}
+              onDoubleClick={handleComponentDoubleClick}
             >
-              {renderComponent(component)}
-            </ResizableComponent>
-          </DraggableComponent>
-        ))
+              <ResizableComponent
+                component={component}
+                isSelected={selectedComponentId === component.instanceId}
+              >
+                {renderComponent(component)}
+              </ResizableComponent>
+            </DraggableComponent>
+          );
+        })
       }
 
       {/* Drop Zone Indicator */}
