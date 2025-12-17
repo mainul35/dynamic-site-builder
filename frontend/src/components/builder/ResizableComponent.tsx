@@ -40,8 +40,10 @@ export const ResizableComponent: React.FC<ResizableComponentProps> = ({
 
   const { resizeComponent, viewMode } = useBuilderStore();
 
-  // Prevent resizing in preview mode
-  const canResize = viewMode === 'edit' && isSelected;
+  // Allow resizing in edit mode (show handles on hover or when selected)
+  const isEditMode = viewMode === 'edit';
+  // Show resize handles when in edit mode (they appear on hover via CSS)
+  const canResize = isEditMode;
 
   const parseSize = (size: string): number => {
     // Convert size string (e.g., "200px", "50%", "auto") to pixels
@@ -51,14 +53,22 @@ export const ResizableComponent: React.FC<ResizableComponentProps> = ({
   };
 
   const handleResizeStart = (e: React.MouseEvent, handle: ResizeHandle) => {
-    if (!canResize) return;
+    if (!canResize || !componentRef.current) return;
 
     e.stopPropagation();
     e.preventDefault();
 
+    // Get actual element dimensions (important when size is 'auto')
+    const actualWidth = componentRef.current.offsetWidth;
+    const actualHeight = componentRef.current.offsetHeight;
+
     setResizeHandle(handle);
     setStartPos({ x: e.clientX, y: e.clientY });
-    setStartSize({ ...component.size });
+    // Store actual pixel dimensions, not the stored size (which might be 'auto')
+    setStartSize({
+      width: `${actualWidth}px`,
+      height: `${actualHeight}px`
+    });
     setIsResizing(true);
   };
 
@@ -70,6 +80,7 @@ export const ResizableComponent: React.FC<ResizableComponentProps> = ({
     const deltaX = e.clientX - startPos.x;
     const deltaY = e.clientY - startPos.y;
 
+    // parseSize now works because startSize contains actual pixel values
     let newWidth = parseSize(startSize.width);
     let newHeight = parseSize(startSize.height);
 
@@ -171,13 +182,8 @@ export const ResizableComponent: React.FC<ResizableComponentProps> = ({
   const renderResizeHandles = () => {
     if (!canResize) return null;
 
-    // For layout components with auto-height, only allow horizontal resizing
-    const isLayoutComponent = component.componentCategory?.toLowerCase() === 'layout';
-    const shouldAutoHeight = isLayoutComponent && component.size.height === 'auto';
-
-    const handles: ResizeHandle[] = shouldAutoHeight
-      ? ['e', 'w'] // Only horizontal handles for auto-height layouts
-      : ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw']; // All handles for fixed-height components
+    // Show all resize handles for all components
+    const handles: ResizeHandle[] = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'];
 
     return (
       <div className="resize-handles">
@@ -193,20 +199,40 @@ export const ResizableComponent: React.FC<ResizableComponentProps> = ({
     );
   };
 
-  // Check if this is a layout component that should auto-resize
+  // Check if this is a layout component
   const isLayoutComponent = component.componentCategory?.toLowerCase() === 'layout';
-  const shouldAutoHeight = isLayoutComponent && component.size.height === 'auto';
+  // Layout components use auto height only if explicitly set to 'auto', otherwise use stored height
+  const hasExplicitHeight = component.size.height && component.size.height !== 'auto';
+  const shouldAutoHeight = isLayoutComponent && !hasExplicitHeight;
+
+  // Child components (with parentId) should size naturally within parent's grid/flex layout
+  const isChildComponent = !!component.parentId;
+
+  // Calculate styles based on whether this is a root or child component
+  const getContainerStyles = (): React.CSSProperties => {
+    if (isChildComponent) {
+      // Child components: apply their stored dimensions for resizing
+      return {
+        position: 'relative',
+        width: component.size.width,
+        height: component.size.height,
+      };
+    }
+
+    // Root-level components: apply explicit dimensions
+    return {
+      width: component.size.width,
+      height: shouldAutoHeight ? 'auto' : component.size.height,
+      minHeight: shouldAutoHeight ? '40px' : undefined,
+      position: 'relative',
+    };
+  };
 
   return (
     <div
       ref={componentRef}
-      className={`resizable-component ${isResizing ? 'resizing' : ''} ${canResize ? 'resizable' : ''} ${shouldAutoHeight ? 'auto-height-container' : ''}`}
-      style={{
-        width: component.size.width,
-        height: shouldAutoHeight ? 'auto' : component.size.height,
-        minHeight: shouldAutoHeight ? '1200px' : undefined,
-        position: 'relative'
-      }}
+      className={`resizable-component ${isResizing ? 'resizing' : ''} ${canResize ? 'resizable' : ''} ${shouldAutoHeight ? 'auto-height-container' : ''} ${isChildComponent ? 'child-component' : ''}`}
+      style={getContainerStyles()}
     >
       {/* Component Content */}
       <div
@@ -218,13 +244,13 @@ export const ResizableComponent: React.FC<ResizableComponentProps> = ({
         {children}
       </div>
 
-      {/* Resize Handles */}
+      {/* Resize Handles - show for all components in edit mode */}
       {renderResizeHandles()}
 
       {/* Size Indicator (shown while resizing) */}
       {isResizing && (
         <div className="size-indicator">
-          {Math.round(parseSize(component.size.width))} × {Math.round(parseSize(component.size.height))}
+          {componentRef.current ? `${componentRef.current.offsetWidth} × ${componentRef.current.offsetHeight}` : ''}
         </div>
       )}
     </div>
