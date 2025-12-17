@@ -134,3 +134,7 @@ export interface ModuleContentItem {
   displayOrder: number;
   data: Lesson | Deck; // Original data
 }
+
+// Re-export builder and site types
+export * from './builder';
+export * from './site';
