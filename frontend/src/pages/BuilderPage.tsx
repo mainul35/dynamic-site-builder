@@ -121,6 +121,20 @@ export const BuilderPage: React.FC = () => {
   };
 
   const initializeNewPage = () => {
+    // Try to load from localStorage first
+    const savedPages = JSON.parse(localStorage.getItem('builder_saved_pages') || '{}');
+    const lastSavedKey = Object.keys(savedPages).pop();
+
+    if (lastSavedKey && savedPages[lastSavedKey]) {
+      const savedPage = savedPages[lastSavedKey];
+      console.log('Loading saved page from localStorage:', lastSavedKey);
+      setCurrentPage(savedPage);
+      setSaveStatus('saved');
+      setLastSaved(savedPage.savedAt ? new Date(savedPage.savedAt) : null);
+      return;
+    }
+
+    // Create new page if nothing saved
     const newPage: PageDefinition = {
       version: '1.0',
       pageName: 'New Page',
@@ -142,8 +156,8 @@ export const BuilderPage: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!currentPage || !siteId || !pageId) {
-      alert('Cannot save: Page or site information is missing');
+    if (!currentPage) {
+      alert('Cannot save: No page data available');
       return;
     }
 
@@ -151,12 +165,25 @@ export const BuilderPage: React.FC = () => {
     setSaveStatus('saving');
 
     try {
-      await pageService.savePageVersion(
-        parseInt(siteId),
-        parseInt(pageId),
-        currentPage,
-        'Manual save'
-      );
+      // If we have siteId and pageId, save to backend
+      if (siteId && pageId) {
+        await pageService.savePageVersion(
+          parseInt(siteId),
+          parseInt(pageId),
+          currentPage,
+          'Manual save'
+        );
+      } else {
+        // Save to localStorage for demo/new pages
+        const savedPages = JSON.parse(localStorage.getItem('builder_saved_pages') || '{}');
+        const pageKey = currentPage.pageName.replace(/\s+/g, '-').toLowerCase() || 'untitled';
+        savedPages[pageKey] = {
+          ...currentPage,
+          savedAt: new Date().toISOString()
+        };
+        localStorage.setItem('builder_saved_pages', JSON.stringify(savedPages));
+        console.log('Page saved to localStorage:', pageKey);
+      }
 
       setSaveStatus('saved');
       setLastSaved(new Date());
