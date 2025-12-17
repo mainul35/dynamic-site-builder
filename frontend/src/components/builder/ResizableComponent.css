@@ -1,0 +1,213 @@
+.resizable-component {
+  position: relative;
+  box-sizing: border-box;
+}
+
+/* Auto-height containers for layouts */
+.resizable-component.auto-height-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.resizable-component.auto-height-container .resizable-content {
+  flex: 1;
+  min-height: 100%;
+}
+
+.resizable-content {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  position: relative;
+}
+
+.resize-handles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 15;
+}
+
+.resize-handle {
+  position: absolute;
+  background: #007bff;
+  border: 1px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  pointer-events: all;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 20;
+}
+
+.resizable-component.resizable:hover .resize-handle,
+.resizable-component.resizing .resize-handle {
+  opacity: 1;
+}
+
+.resize-handle:hover {
+  transform: scale(1.2);
+  background: #0056b3;
+}
+
+/* Corner handles */
+.resize-handle-nw,
+.resize-handle-ne,
+.resize-handle-sw,
+.resize-handle-se {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.resize-handle-nw {
+  top: -5px;
+  left: -5px;
+}
+
+.resize-handle-ne {
+  top: -5px;
+  right: -5px;
+}
+
+.resize-handle-sw {
+  bottom: -5px;
+  left: -5px;
+}
+
+.resize-handle-se {
+  bottom: -5px;
+  right: -5px;
+}
+
+/* Edge handles */
+.resize-handle-n,
+.resize-handle-s {
+  width: 40px;
+  height: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 3px;
+}
+
+.resize-handle-n {
+  top: -3px;
+}
+
+.resize-handle-s {
+  bottom: -3px;
+}
+
+.resize-handle-e,
+.resize-handle-w {
+  width: 6px;
+  height: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 3px;
+}
+
+.resize-handle-e {
+  right: -3px;
+}
+
+.resize-handle-w {
+  left: -3px;
+}
+
+/* Size indicator shown during resize */
+.size-indicator {
+  position: absolute;
+  bottom: -30px;
+  right: -5px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-family: monospace;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 25;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Visual feedback during resize */
+.resizable-component.resizing {
+  outline: 2px dashed #007bff;
+  outline-offset: 2px;
+}
+
+.resizable-component.resizing .resizable-content {
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Prevent text selection and interaction while resizing */
+.resizable-component.resizing * {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  pointer-events: none;
+}
+
+/* Animation when resize handles appear */
+@keyframes handleAppear {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.resizable-component.resizable:hover .resize-handle {
+  animation: handleAppear 0.2s ease-out;
+}
+
+/* Constrain cursor styles */
+.resize-handle-n,
+.resize-handle-s {
+  cursor: ns-resize;
+}
+
+.resize-handle-e,
+.resize-handle-w {
+  cursor: ew-resize;
+}
+
+.resize-handle-nw,
+.resize-handle-se {
+  cursor: nwse-resize;
+}
+
+.resize-handle-ne,
+.resize-handle-sw {
+  cursor: nesw-resize;
+}
+
+/* Accessibility - larger hit areas on touch devices */
+@media (pointer: coarse) {
+  .resize-handle-nw,
+  .resize-handle-ne,
+  .resize-handle-sw,
+  .resize-handle-se {
+    width: 16px;
+    height: 16px;
+  }
+
+  .resize-handle-n,
+  .resize-handle-s {
+    height: 12px;
+  }
+
+  .resize-handle-e,
+  .resize-handle-w {
+    width: 12px;
+  }
+}
