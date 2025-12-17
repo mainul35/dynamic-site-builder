@@ -108,7 +108,101 @@ Access H2 Console at: http://localhost:8080/h2-console
 
 ## Plugin Development
 
-### 1. Create Plugin Structure
+### Overview
+
+Plugins extend the Visual Site Builder with custom UI components. Each plugin is a self-contained JAR file that:
+- Implements the Plugin SDK interfaces
+- Provides React components for the builder
+- Defines component properties and styles
+- Handles lifecycle events (load, activate, deactivate, uninstall)
+
+### Plugin Architecture
+
+```mermaid
+graph TB
+    subgraph "Plugin JAR"
+        A[plugin.yml<br/>Metadata] --> B[Java Plugin Class<br/>UIComponentPlugin]
+        B --> C[Component Manifest<br/>Props, Styles, Constraints]
+        B --> D[React Component<br/>MyComponent.jsx]
+        B --> E[Resources<br/>Icons, Assets]
+    end
+
+    subgraph "Core Platform"
+        F[PluginManager<br/>Loads & Manages] --> G[ComponentRegistry<br/>Registers Components]
+        G --> H[Component API<br/>REST Endpoints]
+    end
+
+    subgraph "Frontend Builder"
+        I[Component Palette<br/>Browse] --> J[Canvas<br/>Drag & Drop]
+        J --> K[Properties Panel<br/>Customize]
+    end
+
+    B -.->|Loaded by| F
+    H -.->|Fetched by| I
+    D -.->|Rendered in| J
+```
+
+### Plugin Lifecycle
+
+```mermaid
+sequenceDiagram
+    participant PM as PluginManager
+    participant PL as Plugin (JAR)
+    participant CR as ComponentRegistry
+    participant DB as Database
+    participant UI as Frontend
+
+    Note over PM: Application Startup
+    PM->>PM: Scan plugins/ directory
+    PM->>PL: Load plugin.yml
+    PM->>PL: Create ClassLoader
+    PM->>PL: Instantiate plugin class
+
+    Note over PL: Plugin Initialization
+    PL->>PL: onLoad(context)
+    PL->>PL: Build ComponentManifest
+    PL-->>PM: Return manifest
+
+    PM->>CR: Register component
+    CR->>DB: Save to cms_component_registry
+
+    Note over PL: Plugin Activation
+    PM->>PL: onActivate(context)
+    PL-->>PM: Ready
+
+    Note over UI: User Opens Builder
+    UI->>CR: GET /api/components
+    CR-->>UI: Component list
+    UI->>UI: Display in palette
+
+    Note over UI: User Uses Component
+    UI->>CR: GET /manifest
+    CR-->>UI: Props, styles, constraints
+    UI->>UI: Render with React component
+```
+
+### Development Workflow
+
+```mermaid
+flowchart LR
+    A[1. Create<br/>Plugin Structure] --> B[2. Define<br/>plugin.yml]
+    B --> C[3. Implement<br/>Java Plugin Class]
+    C --> D[4. Create<br/>React Component]
+    D --> E[5. Build<br/>Maven Package]
+    E --> F[6. Deploy<br/>to plugins/]
+    F --> G{Test in<br/>Builder}
+    G -->|Issues Found| C
+    G -->|Success| H[7. Publish]
+
+    style A fill:#e1f5ff
+    style H fill:#d4edda
+```
+
+---
+
+### Step-by-Step Guide
+
+#### 1. Create Plugin Structure
 
 ```bash
 mkdir -p plugins/my-component-plugin/src/main/java/com/example/plugins
@@ -462,6 +556,551 @@ mvn clean package
 ```
 
 Output: `target/my-component-plugin-1.0.0.jar`
+
+---
+
+### Plugin Types and Categories
+
+The platform supports different plugin types and component categories:
+
+```mermaid
+graph LR
+    A[Plugin Types] --> B[UI Component<br/>Visual elements]
+    A --> C[Layout<br/>Container components]
+    A --> D[Feature<br/>Business logic]
+
+    B --> E[Button, Input<br/>Label, Image]
+    C --> F[Container, Grid<br/>Flexbox, Section]
+    D --> G[Auth Widget<br/>Search, Comments]
+
+    style B fill:#e3f2fd
+    style C fill:#f3e5f5
+    style D fill:#fff3e0
+```
+
+**Component Categories**:
+
+| Category | Purpose | Can Have Children | Examples |
+|----------|---------|-------------------|----------|
+| `ui` | Basic UI elements | No | Button, Label, Image, Icon |
+| `layout` | Container components | Yes | Container, Grid, Flexbox |
+| `form` | Input components | No | Input, Textarea, Select |
+| `feature` | Feature widgets | Maybe | Auth Widget, Search Bar |
+
+---
+
+### SDK API Reference
+
+#### Core Interfaces
+
+**1. UIComponentPlugin Interface**
+
+```java
+public interface UIComponentPlugin extends Plugin {
+    // Component metadata
+    ComponentManifest getComponentManifest();
+    String getReactComponentPath();
+    byte[] getComponentThumbnail();
+
+    // Validation
+    ValidationResult validateProps(Map<String, Object> props);
+}
+```
+
+**2. Plugin Interface**
+
+```java
+public interface Plugin {
+    // Lifecycle hooks
+    void onLoad(PluginContext context) throws Exception;
+    void onActivate(PluginContext context) throws Exception;
+    void onDeactivate(PluginContext context) throws Exception;
+    void onUninstall(PluginContext context) throws Exception;
+
+    // Metadata
+    String getPluginId();
+    String getName();
+    String getVersion();
+    String getDescription();
+}
+```
+
+**3. PluginContext**
+
+```java
+public interface PluginContext {
+    // Access to platform services
+    String getPluginId();
+    Path getPluginDirectory();
+    Path getDataDirectory();
+
+    // Configuration
+    Properties getConfiguration();
+    void saveConfiguration(Properties config);
+
+    // Logging
+    Logger getLogger();
+}
+```
+
+#### Component Manifest Builder
+
+```mermaid
+classDiagram
+    class ComponentManifest {
+        +String componentId
+        +String displayName
+        +String category
+        +String icon
+        +String description
+        +Map defaultProps
+        +Map defaultStyles
+        +List configurableProps
+        +List configurableStyles
+        +SizeConstraints sizeConstraints
+        +boolean canHaveChildren
+    }
+
+    class PropDefinition {
+        +String name
+        +PropType type
+        +String label
+        +Object defaultValue
+        +List options
+        +boolean required
+        +String helpText
+    }
+
+    class StyleDefinition {
+        +String property
+        +StyleType type
+        +String label
+        +String defaultValue
+        +List allowedUnits
+        +String category
+    }
+
+    class SizeConstraints {
+        +boolean resizable
+        +String defaultWidth
+        +String defaultHeight
+        +String minWidth
+        +String maxWidth
+        +String minHeight
+        +String maxHeight
+        +boolean maintainAspectRatio
+    }
+
+    ComponentManifest --> PropDefinition
+    ComponentManifest --> StyleDefinition
+    ComponentManifest --> SizeConstraints
+```
+
+**PropDefinition Types**:
+
+```java
+public enum PropType {
+    STRING,      // Text input
+    NUMBER,      // Numeric input
+    BOOLEAN,     // Checkbox
+    SELECT,      // Dropdown (requires options)
+    COLOR,       // Color picker
+    IMAGE,       // Image upload
+    RICH_TEXT,   // WYSIWYG editor
+    JSON         // JSON editor
+}
+```
+
+**StyleDefinition Types**:
+
+```java
+public enum StyleType {
+    SIZE,        // Width, height, margin, padding (with units)
+    COLOR,       // Color values
+    SELECT,      // Predefined options
+    NUMBER,      // Numeric values
+    TEXT         // Free text (font-family, etc.)
+}
+```
+
+---
+
+### Best Practices
+
+#### 1. **Plugin Structure**
+
+```
+my-component-plugin/
+├── pom.xml
+├── README.md
+├── LICENSE
+└── src/main/
+    ├── java/com/example/plugins/
+    │   └── MyComponentPlugin.java
+    └── resources/
+        ├── plugin.yml
+        ├── components/
+        │   └── MyComponent.jsx
+        └── assets/
+            ├── icon.png
+            └── thumbnail.png
+```
+
+#### 2. **Naming Conventions**
+
+| Element | Convention | Example |
+|---------|-----------|---------|
+| Plugin ID | kebab-case | `my-component-plugin` |
+| Component ID | kebab-case | `my-component` |
+| Java Class | PascalCase | `MyComponentPlugin` |
+| React Component | PascalCase | `MyComponent.jsx` |
+| Package | lowercase | `com.example.plugins` |
+
+#### 3. **Version Management**
+
+Follow Semantic Versioning (semver):
+
+```
+MAJOR.MINOR.PATCH
+
+1.0.0 - Initial release
+1.1.0 - Add new prop (backward compatible)
+1.1.1 - Bug fix
+2.0.0 - Breaking change (remove prop)
+```
+
+#### 4. **Error Handling**
+
+```java
+@Override
+public void onLoad(PluginContext context) throws Exception {
+    try {
+        this.context = context;
+        this.manifest = buildComponentManifest();
+        log.info("Plugin loaded: {}", getPluginId());
+    } catch (Exception e) {
+        log.error("Failed to load plugin: {}", getPluginId(), e);
+        throw new PluginLoadException("Load failed", e);
+    }
+}
+```
+
+#### 5. **Prop Validation**
+
+```java
+@Override
+public ValidationResult validateProps(Map<String, Object> props) {
+    List<String> errors = new ArrayList<>();
+
+    // Required field check
+    if (!props.containsKey("text") || props.get("text") == null) {
+        errors.add("'text' is required");
+    }
+
+    // Type validation
+    if (props.containsKey("count")) {
+        try {
+            Integer.parseInt(props.get("count").toString());
+        } catch (NumberFormatException e) {
+            errors.add("'count' must be a number");
+        }
+    }
+
+    // Range validation
+    if (props.containsKey("size")) {
+        String size = props.get("size").toString();
+        if (!List.of("small", "medium", "large").contains(size)) {
+            errors.add("'size' must be one of: small, medium, large");
+        }
+    }
+
+    return ValidationResult.builder()
+            .isValid(errors.isEmpty())
+            .errors(errors)
+            .build();
+}
+```
+
+#### 6. **React Component Best Practices**
+
+```jsx
+import React, { useState, useEffect, useCallback } from 'react';
+import PropTypes from 'prop-types';
+
+const MyComponent = ({
+  text,
+  color,
+  size,
+  onClick,
+  styles
+}) => {
+  // State management
+  const [isActive, setIsActive] = useState(false);
+
+  // Memoized callbacks
+  const handleClick = useCallback(() => {
+    setIsActive(prev => !prev);
+    onClick?.();
+  }, [onClick]);
+
+  // Cleanup
+  useEffect(() => {
+    return () => {
+      // Cleanup logic
+    };
+  }, []);
+
+  // Computed styles
+  const componentStyles = {
+    ...baseStyles,
+    ...colorStyles[color],
+    ...sizeStyles[size],
+    ...styles, // User custom styles override
+  };
+
+  return (
+    <div style={componentStyles} onClick={handleClick}>
+      {text}
+    </div>
+  );
+};
+
+// Prop validation
+MyComponent.propTypes = {
+  text: PropTypes.string.isRequired,
+  color: PropTypes.oneOf(['red', 'blue', 'green']),
+  size: PropTypes.oneOf(['small', 'medium', 'large']),
+  onClick: PropTypes.func,
+  styles: PropTypes.object,
+};
+
+// Default props
+MyComponent.defaultProps = {
+  color: 'blue',
+  size: 'medium',
+  styles: {},
+};
+
+export default MyComponent;
+```
+
+---
+
+### Advanced Topics
+
+#### 1. **Layout Components with Children**
+
+```java
+private ComponentManifest buildComponentManifest() {
+    return ComponentManifest.builder()
+            // ... other properties
+            .canHaveChildren(true)  // Allow child components
+            .acceptedChildTypes(List.of("ui", "layout"))  // Optional: restrict types
+            .maxChildren(10)  // Optional: limit children
+            .build();
+}
+```
+
+React component with children:
+
+```jsx
+const Container = ({ children, layout, spacing, styles }) => {
+  const layoutStyles = {
+    grid: { display: 'grid', gap: spacing },
+    flex: { display: 'flex', gap: spacing },
+    stack: { display: 'flex', flexDirection: 'column', gap: spacing },
+  };
+
+  return (
+    <div style={{ ...layoutStyles[layout], ...styles }}>
+      {children}
+    </div>
+  );
+};
+```
+
+#### 2. **Plugin Dependencies**
+
+Declare dependencies in `plugin.yml`:
+
+```yaml
+plugin-id: advanced-component-plugin
+version: 1.0.0
+dependencies:
+  - plugin-id: button-component-plugin
+    version: ">=1.0.0"
+  - plugin-id: container-layout-plugin
+    version: "^2.0.0"
+```
+
+#### 3. **Custom Configuration**
+
+```java
+@Override
+public void onLoad(PluginContext context) throws Exception {
+    // Load configuration
+    Properties config = context.getConfiguration();
+    String apiKey = config.getProperty("api.key", "default-key");
+
+    // Use configuration
+    initializeService(apiKey);
+}
+```
+
+Create `config/my-plugin.properties`:
+
+```properties
+api.key=your-api-key
+api.endpoint=https://api.example.com
+cache.enabled=true
+cache.ttl=3600
+```
+
+#### 4. **Database Integration**
+
+Use `@PluginEntity` for custom tables:
+
+```java
+@PluginEntity
+@Entity
+@Table(name = "my_plugin_data")
+public class MyPluginData {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String key;
+    private String value;
+
+    // Getters and setters
+}
+```
+
+#### 5. **Event System** (Planned Feature)
+
+```java
+@Override
+public void onActivate(PluginContext context) throws Exception {
+    // Subscribe to events
+    context.getEventBus().subscribe("component.added", event -> {
+        log.info("Component added: {}", event.getData());
+    });
+}
+```
+
+---
+
+### Testing Guide
+
+#### Unit Tests
+
+```java
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+
+class MyComponentPluginTest {
+
+    @Test
+    void testManifestGeneration() {
+        MyComponentPlugin plugin = new MyComponentPlugin();
+        ComponentManifest manifest = plugin.getComponentManifest();
+
+        assertNotNull(manifest);
+        assertEquals("my-component", manifest.getComponentId());
+        assertEquals("ui", manifest.getCategory());
+    }
+
+    @Test
+    void testPropValidation() {
+        MyComponentPlugin plugin = new MyComponentPlugin();
+
+        Map<String, Object> validProps = Map.of("text", "Hello");
+        ValidationResult result = plugin.validateProps(validProps);
+        assertTrue(result.isValid());
+
+        Map<String, Object> invalidProps = Map.of();
+        result = plugin.validateProps(invalidProps);
+        assertFalse(result.isValid());
+        assertTrue(result.getErrors().contains("'text' is required"));
+    }
+}
+```
+
+#### Integration Tests
+
+```bash
+# 1. Build plugin
+mvn clean package
+
+# 2. Copy to test environment
+cp target/my-component-plugin-1.0.0.jar test-env/plugins/
+
+# 3. Start test server
+cd test-env
+mvn spring-boot:run
+
+# 4. Test API endpoints
+curl http://localhost:8080/api/components/my-component-plugin/my-component
+
+# 5. Test in builder UI
+# Open http://localhost:5173/builder/new
+# Verify component appears in palette
+# Test drag-drop functionality
+# Test property editing
+```
+
+#### React Component Testing
+
+```jsx
+import { render, screen, fireEvent } from '@testing-library/react';
+import MyComponent from './MyComponent';
+
+describe('MyComponent', () => {
+  test('renders with text prop', () => {
+    render(<MyComponent text="Hello" />);
+    expect(screen.getByText('Hello')).toBeInTheDocument();
+  });
+
+  test('handles click events', () => {
+    const handleClick = jest.fn();
+    render(<MyComponent text="Click me" onClick={handleClick} />);
+
+    fireEvent.click(screen.getByText('Click me'));
+    expect(handleClick).toHaveBeenCalledTimes(1);
+  });
+
+  test('applies custom styles', () => {
+    const customStyles = { backgroundColor: 'red' };
+    const { container } = render(
+      <MyComponent text="Styled" styles={customStyles} />
+    );
+
+    const element = container.firstChild;
+    expect(element).toHaveStyle('background-color: red');
+  });
+});
+```
+
+---
+
+### Plugin Examples
+
+Check out these example plugins in the repository:
+
+1. **button-component-plugin** - Basic UI component
+   - Single interactive element
+   - Multiple variants and sizes
+   - Simple prop validation
+
+2. **container-layout-plugin** - Layout component
+   - Supports child components
+   - Flexible layout modes
+   - Dynamic sizing
+
+3. **course-plugin** - Feature plugin
+   - Custom entities and database tables
+   - REST API endpoints
+   - Complex business logic
 
 ---
 
