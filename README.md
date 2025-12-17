@@ -26,7 +26,7 @@ A plugin-based visual site builder platform with drag-and-drop components, live 
 
 ```bash
 # 1. Build and start backend (includes frontend build)
-cd flashcard-app
+cd core
 mvn spring-boot:run
 
 # Backend runs on: http://localhost:8080
@@ -58,12 +58,12 @@ You'll see the Visual Site Builder with:
 ### Backend Only
 
 ```bash
-cd flashcard-app
+cd core
 mvn clean install -DskipTests
 mvn spring-boot:run
 ```
 
-**Configuration** (`flashcard-app/src/main/resources/application.properties`):
+**Configuration** (`core/src/main/resources/application.properties`):
 ```properties
 # Server
 server.port=8080
@@ -88,11 +88,11 @@ npm run dev
 ### Production Build
 
 ```bash
-cd flashcard-app
+cd core
 mvn clean package -DskipTests
 
 # Run the JAR
-java -jar target/flashcard-app-1.0.0-SNAPSHOT.jar
+java -jar target/core-1.0.0-SNAPSHOT.jar
 ```
 
 ### Database Management
@@ -477,10 +477,10 @@ cd plugins/my-component-plugin
 mvn clean package
 
 # 2. Copy JAR to plugins directory
-cp target/my-component-plugin-1.0.0.jar ../../flashcard-app/plugins/
+cp target/my-component-plugin-1.0.0.jar ../../core/plugins/
 
 # 3. Restart application
-cd ../../flashcard-app
+cd ../../core
 mvn spring-boot:run
 ```
 
@@ -488,7 +488,7 @@ mvn spring-boot:run
 
 ```bash
 # Copy JAR to plugins directory
-cp target/my-component-plugin-1.0.0.jar ../flashcard-app/plugins/
+cp target/my-component-plugin-1.0.0.jar ../core/plugins/
 
 # Plugin will be auto-detected on next startup
 ```
@@ -536,13 +536,13 @@ curl http://localhost:8080/api/components/my-component-plugin/my-component/manif
 ```bash
 # 1. Stop application
 # 2. Delete plugin JAR
-rm flashcard-app/plugins/my-component-plugin-1.0.0.jar
+rm core/plugins/my-component-plugin-1.0.0.jar
 
 # 3. Clean database (optional - removes all plugin data)
-rm flashcard-app/data/flashcarddb.mv.db
+rm core/data/flashcarddb.mv.db
 
 # 4. Restart application
-cd flashcard-app
+cd core
 mvn spring-boot:run
 ```
 
@@ -825,7 +825,7 @@ logging.level.org.springframework.web=INFO
 **Check logs**:
 ```bash
 # Look for errors in backend logs
-tail -f flashcard-app/logs/application.log
+tail -f core/logs/application.log
 
 # Common issues:
 # - plugin.yml not found
@@ -868,7 +868,7 @@ mvn clean package
 
 ```bash
 # Reset database
-rm flashcard-app/data/flashcarddb.mv.db
+rm core/data/flashcarddb.mv.db
 mvn spring-boot:run
 ```
 

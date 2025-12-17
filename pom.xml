@@ -21,7 +21,7 @@
 
     <modules>
         <module>flashcard-cms-plugin-sdk</module>
-        <module>flashcard-app</module>
+        <module>core</module>
         <module>plugins/course-plugin</module>
         <module>plugins/lesson-plugin</module>
         <module>plugins/flashcard-plugin</module>

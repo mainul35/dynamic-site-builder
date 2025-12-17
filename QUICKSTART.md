@@ -4,7 +4,7 @@
 
 This is a plugin-based CMS platform for managing flashcards, courses, and lessons. The system consists of:
 
-- **Core Application** (`flashcard-app`) - Main Spring Boot application
+- **Core Application** (`core`) - Main Spring Boot application
 - **Plugin SDK** (`flashcard-cms-plugin-sdk`) - Framework for building plugins
 - **Bundled Plugins** (`plugins/`) - Course, Lesson, and Flashcard management plugins
 
@@ -19,7 +19,7 @@ This is a plugin-based CMS platform for managing flashcards, courses, and lesson
 ### 1. Start the Application
 
 ```bash
-cd flashcard-app
+cd core
 mvn spring-boot:run
 ```
 
@@ -87,7 +87,7 @@ curl http://localhost:8080/api/flashcards
 
 ## Configuration
 
-Located in `flashcard-app/src/main/resources/application.properties`:
+Located in `core/src/main/resources/application.properties`:
 
 ```properties
 # Server
@@ -132,7 +132,7 @@ server.port=8081
 **Solution**: Delete the database and restart:
 ```bash
 rm -rf data/flashcarddb.mv.db
-cd flashcard-app
+cd core
 mvn spring-boot:run
 ```
 
@@ -167,9 +167,9 @@ Spring Boot DevTools is enabled for automatic restart when code changes. The app
 ## Project Structure
 
 ```
-flashcard-app/
+core/
 ├── flashcard-cms-plugin-sdk/    # Plugin SDK library
-├── flashcard-app/                # Main Spring Boot application
+├── core/                # Main Spring Boot application
 ├── plugins/
 │   ├── course-plugin/            # Course management
 │   ├── lesson-plugin/            # Lesson management

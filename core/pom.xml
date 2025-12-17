@@ -11,10 +11,10 @@
         <version>1.0.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>flashcard-app</artifactId>
+    <artifactId>core</artifactId>
     <packaging>jar</packaging>
-    <name>Flashcard Application</name>
-    <description>Main Flashcard CMS Application</description>
+    <name>Core Application</name>
+    <description>Core CMS Application - Visual Site Builder Platform</description>
 
     <dependencies>
         <!-- Plugin SDK -->
