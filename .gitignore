@@ -58,6 +58,10 @@ frontend/.env.local
 frontend/.env.production.local
 frontend/.env.development.local
 frontend/.env.test.local
+flashcard-app/frontend/node_modules/
+flashcard-app/frontend/dist/
+flashcard-app/frontend/dist-ssr/
+flashcard-app/frontend/.vite/
 
 # Logs
 *.log
