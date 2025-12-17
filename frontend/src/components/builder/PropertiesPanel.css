@@ -104,7 +104,8 @@
 
 .props-section,
 .styles-section,
-.layout-section {
+.layout-section,
+.events-section {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -300,4 +301,121 @@
 
 .property-field.changed {
   animation: propertyHighlight 0.5s ease-out;
+}
+
+/* Events Tab Styles */
+.add-event-section {
+  margin-bottom: 8px;
+}
+
+.add-event-section select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+}
+
+.add-event-section select:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+  outline: none;
+}
+
+.configured-events {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.event-config-card {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.event-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.event-type-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #007bff;
+}
+
+.remove-event-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.remove-event-btn:hover {
+  color: #dc3545;
+}
+
+.action-config-fields {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #dee2e6;
+}
+
+.action-config-fields .property-field {
+  margin-bottom: 8px;
+}
+
+.code-editor {
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  background: #f8f9fa;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  padding: 10px;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.code-editor:focus {
+  border-color: #007bff;
+  background: white;
+}
+
+.event-options {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e9ecef;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.event-options .checkbox-label {
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+.event-options .checkbox-label span {
+  color: #495057;
+}
+
+.events-section .empty-section small {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #adb5bd;
 }

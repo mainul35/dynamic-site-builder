@@ -1,8 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { useBuilderStore } from '../../stores/builderStore';
 import { useComponentStore } from '../../stores/componentStore';
-import { ComponentManifest, PropDefinition, PropType } from '../../types/builder';
+import { ComponentManifest, PropDefinition, PropType, ComponentEventConfig, ActionType } from '../../types/builder';
 import './PropertiesPanel.css';
+
+/** Available UI event types */
+const UI_EVENT_TYPES = [
+  { value: 'onClick', label: 'On Click' },
+  { value: 'onDoubleClick', label: 'On Double Click' },
+  { value: 'onMouseEnter', label: 'On Mouse Enter' },
+  { value: 'onMouseLeave', label: 'On Mouse Leave' },
+  { value: 'onFocus', label: 'On Focus' },
+  { value: 'onBlur', label: 'On Blur' },
+  { value: 'onChange', label: 'On Change' },
+  { value: 'onSubmit', label: 'On Submit' },
+];
+
+/** Action type options with labels and required config fields */
+const ACTION_TYPE_OPTIONS: { value: ActionType; label: string; configFields: string[] }[] = [
+  { value: ActionType.NONE, label: 'No Action', configFields: [] },
+  { value: ActionType.NAVIGATE, label: 'Navigate to URL', configFields: ['url'] },
+  { value: ActionType.SHOW_MESSAGE, label: 'Show Message', configFields: ['message', 'type'] },
+  { value: ActionType.TOGGLE_VISIBILITY, label: 'Toggle Visibility', configFields: ['targetComponentId'] },
+  { value: ActionType.UPDATE_PROP, label: 'Update Property', configFields: ['targetComponentId', 'propName', 'value'] },
+  { value: ActionType.SUBMIT_FORM, label: 'Submit Form', configFields: ['formId'] },
+  { value: ActionType.OPEN_MODAL, label: 'Open Modal', configFields: ['modalId'] },
+  { value: ActionType.CLOSE_MODAL, label: 'Close Modal', configFields: ['modalId'] },
+  { value: ActionType.CALL_API, label: 'Call Backend API', configFields: ['endpoint', 'method'] },
+  { value: ActionType.EMIT_EVENT, label: 'Emit Custom Event', configFields: ['eventName', 'eventData'] },
+  { value: ActionType.CUSTOM_CODE, label: 'Custom Code', configFields: ['code'] },
+];
 
 interface PropertiesPanelProps {
   selectedComponentId: string | null;
@@ -12,11 +39,11 @@ interface PropertiesPanelProps {
  * PropertiesPanel - Right sidebar for editing component properties and styles
  */
 export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedComponentId }) => {
-  const [activeTab, setActiveTab] = useState<'props' | 'styles' | 'layout'>('props');
+  const [activeTab, setActiveTab] = useState<'props' | 'styles' | 'layout' | 'events'>('props');
   const [manifest, setManifest] = useState<ComponentManifest | null>(null);
 
   const {
-    currentPage,
+    updateComponent,
     updateComponentProps,
     updateComponentStyles,
     moveComponent,
@@ -107,6 +134,113 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedCompon
 
   const handleDuplicate = () => {
     duplicateComponent(selectedComponent.instanceId);
+  };
+
+  // Event handlers for Events tab
+  const handleAddEvent = (eventType: string) => {
+    const existingEvents = selectedComponent.events || [];
+    // Check if event type already exists
+    if (existingEvents.some(e => e.eventType === eventType)) {
+      return;
+    }
+    const newEvent: ComponentEventConfig = {
+      eventType,
+      action: { type: ActionType.NONE, config: {} },
+      preventDefault: false,
+      stopPropagation: false,
+      previewOnly: true,
+    };
+    updateComponent(selectedComponent.instanceId, {
+      events: [...existingEvents, newEvent]
+    });
+  };
+
+  const handleRemoveEvent = (eventType: string) => {
+    const existingEvents = selectedComponent.events || [];
+    updateComponent(selectedComponent.instanceId, {
+      events: existingEvents.filter(e => e.eventType !== eventType)
+    });
+  };
+
+  const handleEventConfigChange = (eventType: string, updates: Partial<ComponentEventConfig>) => {
+    const existingEvents = selectedComponent.events || [];
+    const updatedEvents = existingEvents.map(e =>
+      e.eventType === eventType ? { ...e, ...updates } : e
+    );
+    updateComponent(selectedComponent.instanceId, { events: updatedEvents });
+  };
+
+  const handleActionTypeChange = (eventType: string, actionType: ActionType) => {
+    handleEventConfigChange(eventType, {
+      action: { type: actionType, config: {} },
+      customCode: actionType === ActionType.CUSTOM_CODE ? '' : undefined,
+    });
+  };
+
+  const handleActionConfigChange = (eventType: string, configKey: string, value: any) => {
+    const existingEvents = selectedComponent.events || [];
+    const currentEvent = existingEvents.find(e => e.eventType === eventType);
+    if (!currentEvent?.action) return;
+
+    handleEventConfigChange(eventType, {
+      action: {
+        ...currentEvent.action,
+        config: { ...currentEvent.action.config, [configKey]: value }
+      }
+    });
+  };
+
+  const renderActionConfigFields = (event: ComponentEventConfig) => {
+    if (!event.action || event.action.type === ActionType.NONE) return null;
+
+    const actionOption = ACTION_TYPE_OPTIONS.find(a => a.value === event.action?.type);
+    if (!actionOption) return null;
+
+    return (
+      <div className="action-config-fields">
+        {actionOption.configFields.map(field => (
+          <div key={field} className="property-field">
+            <label className="property-label">{field}</label>
+            {field === 'code' ? (
+              <textarea
+                value={event.action?.config[field] || ''}
+                onChange={(e) => handleActionConfigChange(event.eventType, field, e.target.value)}
+                placeholder="Enter JavaScript code..."
+                rows={4}
+                className="code-editor"
+              />
+            ) : field === 'type' ? (
+              <select
+                value={event.action?.config[field] || 'info'}
+                onChange={(e) => handleActionConfigChange(event.eventType, field, e.target.value)}
+              >
+                <option value="info">Info</option>
+                <option value="success">Success</option>
+                <option value="warning">Warning</option>
+                <option value="error">Error</option>
+              </select>
+            ) : field === 'method' ? (
+              <select
+                value={event.action?.config[field] || 'GET'}
+                onChange={(e) => handleActionConfigChange(event.eventType, field, e.target.value)}
+              >
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="DELETE">DELETE</option>
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={event.action?.config[field] || ''}
+                onChange={(e) => handleActionConfigChange(event.eventType, field, e.target.value)}
+                placeholder={`Enter ${field}...`}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+    );
   };
 
   const renderPropInput = (propDef: PropDefinition) => {
@@ -250,6 +384,12 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedCompon
           onClick={() => setActiveTab('layout')}
         >
           Layout
+        </button>
+        <button
+          className={`tab ${activeTab === 'events' ? 'active' : ''}`}
+          onClick={() => setActiveTab('events')}
+        >
+          Events
         </button>
       </div>
 
@@ -432,6 +572,103 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedCompon
                 min={0}
               />
             </div>
+          </div>
+        )}
+
+        {/* Events Tab */}
+        {activeTab === 'events' && (
+          <div className="events-section">
+            {/* Add Event Dropdown */}
+            <div className="add-event-section">
+              <label className="property-label">Add Event Handler</label>
+              <select
+                onChange={(e) => {
+                  if (e.target.value) {
+                    handleAddEvent(e.target.value);
+                    e.target.value = '';
+                  }
+                }}
+                defaultValue=""
+              >
+                <option value="">Select event type...</option>
+                {UI_EVENT_TYPES.filter(
+                  evt => !(selectedComponent.events || []).some(e => e.eventType === evt.value)
+                ).map(evt => (
+                  <option key={evt.value} value={evt.value}>{evt.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Configured Events */}
+            {(selectedComponent.events || []).length === 0 ? (
+              <div className="empty-section">
+                <p>No event handlers configured</p>
+                <small>Add an event handler above to make this component interactive</small>
+              </div>
+            ) : (
+              <div className="configured-events">
+                {(selectedComponent.events || []).map(event => (
+                  <div key={event.eventType} className="event-config-card">
+                    <div className="event-header">
+                      <span className="event-type-label">
+                        {UI_EVENT_TYPES.find(e => e.value === event.eventType)?.label || event.eventType}
+                      </span>
+                      <button
+                        className="remove-event-btn"
+                        onClick={() => handleRemoveEvent(event.eventType)}
+                        title="Remove event"
+                      >
+                        ×
+                      </button>
+                    </div>
+
+                    {/* Action Type Selector */}
+                    <div className="property-field">
+                      <label className="property-label">Action</label>
+                      <select
+                        value={event.action?.type || ActionType.NONE}
+                        onChange={(e) => handleActionTypeChange(event.eventType, e.target.value as ActionType)}
+                      >
+                        {ACTION_TYPE_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Action-specific Config Fields */}
+                    {renderActionConfigFields(event)}
+
+                    {/* Event Options */}
+                    <div className="event-options">
+                      <label className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={event.preventDefault || false}
+                          onChange={(e) => handleEventConfigChange(event.eventType, { preventDefault: e.target.checked })}
+                        />
+                        <span>Prevent Default</span>
+                      </label>
+                      <label className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={event.stopPropagation || false}
+                          onChange={(e) => handleEventConfigChange(event.eventType, { stopPropagation: e.target.checked })}
+                        />
+                        <span>Stop Propagation</span>
+                      </label>
+                      <label className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={event.previewOnly !== false}
+                          onChange={(e) => handleEventConfigChange(event.eventType, { previewOnly: e.target.checked })}
+                        />
+                        <span>Preview Mode Only</span>
+                      </label>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
