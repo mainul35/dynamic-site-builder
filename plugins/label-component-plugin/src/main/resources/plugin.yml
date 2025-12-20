@@ -1,0 +1,29 @@
+plugin-id: label-component-plugin
+plugin-name: Label Component
+version: 1.0.0
+author: Mainul35
+description: A text label component for displaying static or dynamic text
+main-class: dev.mainul35.plugins.ui.LabelComponentPlugin
+plugin-type: ui-component
+
+# UI Component Configuration
+ui-component:
+  component-id: label
+  display-name: Label
+  category: ui
+  icon: T
+  description: Text label component for displaying headings, paragraphs, or any text content
+
+  # Default dimensions
+  default-width: 200px
+  default-height: auto
+
+  # Size constraints
+  resizable: true
+  min-width: 50px
+  max-width: 100%
+  min-height: 20px
+  max-height: 500px
+
+  # React component path (relative to plugin resources)
+  react-component-path: /components/Label.jsx
