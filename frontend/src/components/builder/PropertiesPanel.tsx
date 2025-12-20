@@ -1,8 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useBuilderStore } from '../../stores/builderStore';
 import { useComponentStore } from '../../stores/componentStore';
 import { ComponentManifest, PropDefinition, PropType, ComponentEventConfig, ActionType } from '../../types/builder';
 import './PropertiesPanel.css';
+
+/**
+ * NavItem interface for the navigation editor
+ */
+interface NavItem {
+  label: string;
+  href: string;
+  active?: boolean;
+  children?: NavItem[];
+}
 
 /** Available UI event types */
 const UI_EVENT_TYPES = [
@@ -36,6 +46,370 @@ interface PropertiesPanelProps {
 }
 
 /**
+ * Generic JSON Editor Component
+ */
+interface JsonEditorProps {
+  value: any;
+  onChange: (value: any) => void;
+  helpText?: string;
+}
+
+const JsonEditor: React.FC<JsonEditorProps> = ({ value, onChange, helpText }) => {
+  const [jsonText, setJsonText] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const text = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+      setJsonText(text);
+      setError(null);
+    } catch {
+      setJsonText('');
+    }
+  }, [value]);
+
+  const handleTextChange = (text: string) => {
+    setJsonText(text);
+    try {
+      const parsed = JSON.parse(text);
+      setError(null);
+      onChange(parsed);
+    } catch (e) {
+      setError('Invalid JSON');
+    }
+  };
+
+  return (
+    <div className="json-editor">
+      <textarea
+        value={jsonText}
+        onChange={(e) => handleTextChange(e.target.value)}
+        placeholder={helpText || 'Enter valid JSON...'}
+        rows={6}
+        className={error ? 'json-error' : ''}
+      />
+      {error && <span className="json-error-text">{error}</span>}
+    </div>
+  );
+};
+
+/**
+ * Navigation Item Editor - Visual editor for navbar navigation items
+ */
+interface NavigationEditorProps {
+  value: NavItem[] | string;
+  onChange: (value: NavItem[]) => void;
+}
+
+const NavigationEditor: React.FC<NavigationEditorProps> = ({ value, onChange }) => {
+  const [items, setItems] = useState<NavItem[]>([]);
+  const [editingItem, setEditingItem] = useState<{ path: number[]; item: NavItem } | null>(null);
+  const [showJsonMode, setShowJsonMode] = useState(false);
+
+  // Parse value into NavItem array
+  useEffect(() => {
+    let parsed: NavItem[] = [];
+    if (typeof value === 'string') {
+      try {
+        parsed = JSON.parse(value);
+      } catch {
+        parsed = [];
+      }
+    } else if (Array.isArray(value)) {
+      parsed = value;
+    }
+    setItems(parsed);
+  }, [value]);
+
+  // Helper to get item at path
+  const getItemAtPath = (items: NavItem[], path: number[]): NavItem | null => {
+    if (path.length === 0) return null;
+    let current: NavItem | undefined = items[path[0]];
+    for (let i = 1; i < path.length && current; i++) {
+      current = current.children?.[path[i]];
+    }
+    return current || null;
+  };
+
+  // Helper to update item at path
+  const updateItemAtPath = (items: NavItem[], path: number[], updater: (item: NavItem) => NavItem): NavItem[] => {
+    if (path.length === 0) return items;
+
+    const newItems = [...items];
+    if (path.length === 1) {
+      newItems[path[0]] = updater(newItems[path[0]]);
+    } else {
+      newItems[path[0]] = {
+        ...newItems[path[0]],
+        children: updateItemAtPath(newItems[path[0]].children || [], path.slice(1), updater)
+      };
+    }
+    return newItems;
+  };
+
+  // Helper to remove item at path
+  const removeItemAtPath = (items: NavItem[], path: number[]): NavItem[] => {
+    if (path.length === 0) return items;
+
+    if (path.length === 1) {
+      return items.filter((_, idx) => idx !== path[0]);
+    }
+
+    const newItems = [...items];
+    newItems[path[0]] = {
+      ...newItems[path[0]],
+      children: removeItemAtPath(newItems[path[0]].children || [], path.slice(1))
+    };
+    return newItems;
+  };
+
+  // Add new top-level item
+  const addItem = () => {
+    const newItem: NavItem = { label: 'New Item', href: '#' };
+    const newItems = [...items, newItem];
+    setItems(newItems);
+    onChange(newItems);
+  };
+
+  // Add child item
+  const addChildItem = (path: number[]) => {
+    const newChild: NavItem = { label: 'Sub Item', href: '#' };
+    const newItems = updateItemAtPath(items, path, (item) => ({
+      ...item,
+      children: [...(item.children || []), newChild]
+    }));
+    setItems(newItems);
+    onChange(newItems);
+  };
+
+  // Update item
+  const updateItem = (path: number[], updates: Partial<NavItem>) => {
+    const newItems = updateItemAtPath(items, path, (item) => ({ ...item, ...updates }));
+    setItems(newItems);
+    onChange(newItems);
+  };
+
+  // Remove item
+  const removeItem = (path: number[]) => {
+    const newItems = removeItemAtPath(items, path);
+    setItems(newItems);
+    onChange(newItems);
+  };
+
+  // Move item up/down
+  const moveItem = (path: number[], direction: 'up' | 'down') => {
+    if (path.length === 0) return;
+
+    const parentPath = path.slice(0, -1);
+    const index = path[path.length - 1];
+
+    const getParentArray = (items: NavItem[], pPath: number[]): NavItem[] => {
+      if (pPath.length === 0) return items;
+      let current = items;
+      for (const idx of pPath) {
+        current = current[idx].children || [];
+      }
+      return current;
+    };
+
+    const parentArray = getParentArray(items, parentPath);
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+
+    if (newIndex < 0 || newIndex >= parentArray.length) return;
+
+    // Swap items
+    const newParentArray = [...parentArray];
+    [newParentArray[index], newParentArray[newIndex]] = [newParentArray[newIndex], newParentArray[index]];
+
+    let newItems: NavItem[];
+    if (parentPath.length === 0) {
+      newItems = newParentArray;
+    } else {
+      newItems = updateItemAtPath(items, parentPath, (item) => ({
+        ...item,
+        children: newParentArray
+      }));
+    }
+
+    setItems(newItems);
+    onChange(newItems);
+  };
+
+  // Render a single nav item (recursive)
+  const renderNavItem = (item: NavItem, path: number[], level: number = 0) => {
+    const hasChildren = item.children && item.children.length > 0;
+    const isEditing = editingItem && editingItem.path.join(',') === path.join(',');
+
+    const parentPath = path.slice(0, -1);
+    const index = path[path.length - 1];
+    const getParentArray = (items: NavItem[], pPath: number[]): NavItem[] => {
+      if (pPath.length === 0) return items;
+      let current = items;
+      for (const idx of pPath) {
+        current = current[idx].children || [];
+      }
+      return current;
+    };
+    const siblings = getParentArray(items, parentPath);
+
+    return (
+      <div key={path.join('-')} className="nav-item-editor" style={{ marginLeft: level * 16 }}>
+        <div className="nav-item-row">
+          <div className="nav-item-controls">
+            <button
+              className="nav-btn move-btn"
+              onClick={() => moveItem(path, 'up')}
+              disabled={index === 0}
+              title="Move up"
+            >
+              ↑
+            </button>
+            <button
+              className="nav-btn move-btn"
+              onClick={() => moveItem(path, 'down')}
+              disabled={index >= siblings.length - 1}
+              title="Move down"
+            >
+              ↓
+            </button>
+          </div>
+
+          {isEditing ? (
+            <div className="nav-item-edit-form">
+              <input
+                type="text"
+                value={editingItem.item.label}
+                onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, label: e.target.value } })}
+                placeholder="Label"
+                className="nav-input label-input"
+              />
+              <input
+                type="text"
+                value={editingItem.item.href}
+                onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, href: e.target.value } })}
+                placeholder="URL"
+                className="nav-input href-input"
+              />
+              <label className="nav-checkbox">
+                <input
+                  type="checkbox"
+                  checked={editingItem.item.active || false}
+                  onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, active: e.target.checked } })}
+                />
+                Active
+              </label>
+              <button
+                className="nav-btn save-btn"
+                onClick={() => {
+                  updateItem(path, editingItem.item);
+                  setEditingItem(null);
+                }}
+              >
+                Save
+              </button>
+              <button
+                className="nav-btn cancel-btn"
+                onClick={() => setEditingItem(null)}
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div className="nav-item-display">
+              <span className={`nav-item-label ${item.active ? 'active' : ''}`}>
+                {item.label}
+              </span>
+              <span className="nav-item-href">{item.href}</span>
+              <div className="nav-item-actions">
+                <button
+                  className="nav-btn edit-btn"
+                  onClick={() => setEditingItem({ path, item: { ...item } })}
+                  title="Edit"
+                >
+                  Edit
+                </button>
+                <button
+                  className="nav-btn add-child-btn"
+                  onClick={() => addChildItem(path)}
+                  title="Add sub-item"
+                >
+                  + Sub
+                </button>
+                <button
+                  className="nav-btn delete-btn"
+                  onClick={() => removeItem(path)}
+                  title="Delete"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Render children */}
+        {hasChildren && (
+          <div className="nav-children">
+            {item.children!.map((child, childIndex) =>
+              renderNavItem(child, [...path, childIndex], level + 1)
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  if (showJsonMode) {
+    return (
+      <div className="navigation-editor">
+        <div className="nav-editor-header">
+          <button
+            className="nav-btn mode-btn"
+            onClick={() => setShowJsonMode(false)}
+          >
+            Visual Editor
+          </button>
+        </div>
+        <JsonEditor
+          value={items}
+          onChange={(newValue) => {
+            setItems(newValue);
+            onChange(newValue);
+          }}
+          helpText="Edit navigation items as JSON array"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="navigation-editor">
+      <div className="nav-editor-header">
+        <button className="nav-btn add-btn" onClick={addItem}>
+          + Add Item
+        </button>
+        <button
+          className="nav-btn mode-btn"
+          onClick={() => setShowJsonMode(true)}
+        >
+          JSON Mode
+        </button>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="nav-empty-state">
+          No navigation items. Click "Add Item" to create one.
+        </div>
+      ) : (
+        <div className="nav-items-list">
+          {items.map((item, index) => renderNavItem(item, [index], 0))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
  * PropertiesPanel - Right sidebar for editing component properties and styles
  */
 export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedComponentId }) => {
@@ -43,6 +417,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedCompon
   const [manifest, setManifest] = useState<ComponentManifest | null>(null);
 
   const {
+    currentPage,
     updateComponent,
     updateComponentProps,
     updateComponentStyles,
@@ -50,7 +425,8 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedCompon
     resizeComponent,
     removeComponent,
     duplicateComponent,
-    findComponent
+    findComponent,
+    reorderComponent
   } = useBuilderStore();
 
   const { getManifest } = useComponentStore();
@@ -135,6 +511,39 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedCompon
   const handleDuplicate = () => {
     duplicateComponent(selectedComponent.instanceId);
   };
+
+  // Get component's index and sibling count for reorder controls
+  const getComponentOrderInfo = () => {
+    if (!selectedComponent || !currentPage) return { index: 0, total: 0 };
+
+    const parentId = selectedComponent.parentId;
+    let siblings: typeof currentPage.components = [];
+
+    if (!parentId) {
+      // Root level components
+      siblings = currentPage.components.filter(c => !c.parentId);
+    } else {
+      // Find parent and get its children
+      const findParent = (components: typeof currentPage.components): typeof currentPage.components | null => {
+        for (const comp of components) {
+          if (comp.instanceId === parentId) {
+            return comp.children || [];
+          }
+          if (comp.children && comp.children.length > 0) {
+            const found = findParent(comp.children);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+      siblings = findParent(currentPage.components) || [];
+    }
+
+    const index = siblings.findIndex(c => c.instanceId === selectedComponent.instanceId);
+    return { index, total: siblings.length };
+  };
+
+  const { index: componentIndex, total: siblingCount } = getComponentOrderInfo();
 
   // Event handlers for Events tab
   const handleAddEvent = (eventType: string) => {
@@ -333,6 +742,25 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedCompon
           />
         );
 
+      case PropType.JSON:
+        // Special handling for navItems - show visual editor
+        if (propDef.name === 'navItems') {
+          return (
+            <NavigationEditor
+              value={value}
+              onChange={(newValue) => handlePropChange(propDef.name, newValue)}
+            />
+          );
+        }
+        // Generic JSON editor for other JSON props
+        return (
+          <JsonEditor
+            value={value}
+            onChange={(newValue) => handlePropChange(propDef.name, newValue)}
+            helpText={propDef.helpText}
+          />
+        );
+
       default:
         return (
           <input
@@ -502,6 +930,51 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedCompon
         {/* Layout Tab */}
         {activeTab === 'layout' && (
           <div className="layout-section">
+            {/* Component Order Controls */}
+            <div className="section-title">Component Order</div>
+            <div className="order-controls">
+              <div className="order-info">
+                Position: {componentIndex + 1} of {siblingCount}
+              </div>
+              <div className="order-buttons">
+                <button
+                  className="order-btn"
+                  onClick={() => reorderComponent(selectedComponent.instanceId, 'top')}
+                  disabled={componentIndex === 0}
+                  title="Move to Top"
+                >
+                  ⇈
+                </button>
+                <button
+                  className="order-btn"
+                  onClick={() => reorderComponent(selectedComponent.instanceId, 'up')}
+                  disabled={componentIndex === 0}
+                  title="Move Up"
+                >
+                  ↑
+                </button>
+                <button
+                  className="order-btn"
+                  onClick={() => reorderComponent(selectedComponent.instanceId, 'down')}
+                  disabled={componentIndex >= siblingCount - 1}
+                  title="Move Down"
+                >
+                  ↓
+                </button>
+                <button
+                  className="order-btn"
+                  onClick={() => reorderComponent(selectedComponent.instanceId, 'bottom')}
+                  disabled={componentIndex >= siblingCount - 1}
+                  title="Move to Bottom"
+                >
+                  ⇊
+                </button>
+              </div>
+              <small className="help-text">
+                Use these controls to change the stacking order of components on the page
+              </small>
+            </div>
+
             <div className="section-title">Position</div>
             <div className="layout-grid">
               <div className="property-field">
