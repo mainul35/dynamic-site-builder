@@ -38,7 +38,10 @@ export const ResizableComponent: React.FC<ResizableComponentProps> = ({
   const [startSize, setStartSize] = useState<ComponentSize | null>(null);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
 
-  const { resizeComponent, viewMode } = useBuilderStore();
+  const { resizeComponent, viewMode, hoveredComponentId } = useBuilderStore();
+
+  // Check if this component is the currently hovered one (global state)
+  const isHovered = hoveredComponentId === component.instanceId;
 
   // Allow resizing in edit mode (show handles on hover or when selected)
   const isEditMode = viewMode === 'edit';
@@ -231,7 +234,7 @@ export const ResizableComponent: React.FC<ResizableComponentProps> = ({
   return (
     <div
       ref={componentRef}
-      className={`resizable-component ${isResizing ? 'resizing' : ''} ${canResize ? 'resizable' : ''} ${shouldAutoHeight ? 'auto-height-container' : ''} ${isChildComponent ? 'child-component' : ''}`}
+      className={`resizable-component ${isResizing ? 'resizing' : ''} ${canResize ? 'resizable' : ''} ${shouldAutoHeight ? 'auto-height-container' : ''} ${isChildComponent ? 'child-component' : ''} ${isHovered || isSelected ? 'hovered' : ''}`}
       style={getContainerStyles()}
     >
       {/* Component Content */}

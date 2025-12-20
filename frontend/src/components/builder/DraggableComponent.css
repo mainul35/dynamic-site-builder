@@ -4,9 +4,15 @@
   transition: box-shadow 0.2s, transform 0.1s;
   min-height: 40px;
   min-width: 40px;
+  /* Use flex to allow content to expand and selection border to wrap properly */
+  display: flex;
+  flex-direction: column;
+  /* Ensure the element sizes to fit all its content including flex children */
+  align-items: stretch;
 }
 
-.draggable-component:hover {
+/* Only show hover effect when explicitly hovered (controlled by JS) */
+.draggable-component.hovered {
   box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.3);
 }
 
@@ -34,23 +40,13 @@
 
 .selection-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
   pointer-events: none;
   z-index: 10;
 }
 
 .selection-border {
-  position: absolute;
-  top: -2px;
-  left: -2px;
-  right: -2px;
-  bottom: -2px;
-  border: 2px solid #007bff;
-  border-radius: 4px;
-  pointer-events: none;
+  /* Selection border is now handled by box-shadow on .draggable-component.selected */
+  display: none;
 }
 
 .component-label {
@@ -71,10 +67,11 @@
 .component-content {
   position: relative;
   width: 100%;
-  height: 100%;
   overflow: visible;
   display: flex;
   flex-direction: column;
+  /* flex: 1 ensures this grows to fill parent, and parent grows to fit content */
+  flex: 1 1 auto;
 }
 
 .drag-handle {
@@ -93,7 +90,8 @@
   user-select: none;
 }
 
-.draggable-component:hover .drag-handle {
+/* Show drag handle only when this specific component is hovered (using .hovered class from JS) */
+.draggable-component.hovered > .drag-handle {
   opacity: 1;
 }
 

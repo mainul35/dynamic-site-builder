@@ -17,6 +17,9 @@ interface BuilderState {
   // Selected component for editing
   selectedComponentId: string | null;
 
+  // Hovered component (for hover highlighting - only one at a time)
+  hoveredComponentId: string | null;
+
   // Undo/redo stacks
   history: HistoryEntry[];
   historyIndex: number;
@@ -36,6 +39,7 @@ interface BuilderState {
   // Actions
   setCurrentPage: (page: PageDefinition) => void;
   selectComponent: (componentId: string | null) => void;
+  setHoveredComponent: (componentId: string | null) => void;
   addComponent: (component: ComponentInstance) => void;
   updateComponent: (componentId: string, updates: Partial<ComponentInstance>) => void;
   removeComponent: (componentId: string) => void;
@@ -56,6 +60,8 @@ interface BuilderState {
   duplicateComponent: (componentId: string) => void;
   findComponent: (componentId: string) => ComponentInstance | null;
   reparentComponent: (componentId: string, newParentId: string | null, insertIndex?: number) => void;
+  reorderComponent: (componentId: string, direction: 'up' | 'down' | 'top' | 'bottom') => void;
+  moveComponentToIndex: (componentId: string, newIndex: number) => void;
 }
 
 /**
@@ -74,6 +80,7 @@ const DEFAULT_GRID_CONFIG: GridConfig = {
 export const useBuilderStore = create<BuilderState>((set, get) => ({
   currentPage: null,
   selectedComponentId: null,
+  hoveredComponentId: null,
   history: [],
   historyIndex: -1,
   gridConfig: DEFAULT_GRID_CONFIG,
@@ -101,6 +108,13 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
    */
   selectComponent: (componentId: string | null) => {
     set({ selectedComponentId: componentId });
+  },
+
+  /**
+   * Set hovered component (global tracking - only one at a time)
+   */
+  setHoveredComponent: (componentId: string | null) => {
+    set({ hoveredComponentId: componentId });
   },
 
   /**
@@ -524,5 +538,143 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
     set({ currentPage: updatedPage });
     get().saveSnapshot(`Reparented component ${componentId}`);
+  },
+
+  /**
+   * Reorder a component within its parent (move up, down, to top, or to bottom)
+   * @param componentId - The component to reorder
+   * @param direction - 'up', 'down', 'top', or 'bottom'
+   */
+  reorderComponent: (componentId: string, direction: 'up' | 'down' | 'top' | 'bottom') => {
+    const { currentPage, findComponent } = get();
+    if (!currentPage) return;
+
+    const component = findComponent(componentId);
+    if (!component) return;
+
+    const parentId = component.parentId;
+
+    // Helper to reorder within an array
+    const reorderInArray = (components: ComponentInstance[]): ComponentInstance[] => {
+      const index = components.findIndex(c => c.instanceId === componentId);
+      if (index === -1) return components;
+
+      const newComponents = [...components];
+      const [removed] = newComponents.splice(index, 1);
+
+      let newIndex: number;
+      switch (direction) {
+        case 'up':
+          newIndex = Math.max(0, index - 1);
+          break;
+        case 'down':
+          newIndex = Math.min(newComponents.length, index + 1);
+          break;
+        case 'top':
+          newIndex = 0;
+          break;
+        case 'bottom':
+          newIndex = newComponents.length;
+          break;
+        default:
+          newIndex = index;
+      }
+
+      newComponents.splice(newIndex, 0, removed);
+      return newComponents;
+    };
+
+    // Recursively find and reorder in the correct parent
+    const reorderRecursive = (components: ComponentInstance[]): ComponentInstance[] => {
+      if (!parentId) {
+        // Component is at root level
+        return reorderInArray(components);
+      }
+
+      return components.map(comp => {
+        if (comp.instanceId === parentId) {
+          // Found the parent, reorder within its children
+          return {
+            ...comp,
+            children: reorderInArray(comp.children || [])
+          };
+        }
+        if (comp.children && comp.children.length > 0) {
+          return {
+            ...comp,
+            children: reorderRecursive(comp.children)
+          };
+        }
+        return comp;
+      });
+    };
+
+    const updatedPage: PageDefinition = {
+      ...currentPage,
+      components: reorderRecursive(currentPage.components)
+    };
+
+    set({ currentPage: updatedPage });
+    get().saveSnapshot(`Reordered component ${componentId} ${direction}`);
+  },
+
+  /**
+   * Move a component to a specific index within its parent
+   * @param componentId - The component to move
+   * @param newIndex - The target index
+   */
+  moveComponentToIndex: (componentId: string, newIndex: number) => {
+    const { currentPage, findComponent } = get();
+    if (!currentPage) return;
+
+    const component = findComponent(componentId);
+    if (!component) return;
+
+    const parentId = component.parentId;
+
+    // Helper to move to specific index within an array
+    const moveToIndex = (components: ComponentInstance[]): ComponentInstance[] => {
+      const currentIndex = components.findIndex(c => c.instanceId === componentId);
+      if (currentIndex === -1) return components;
+
+      const newComponents = [...components];
+      const [removed] = newComponents.splice(currentIndex, 1);
+      const targetIndex = Math.max(0, Math.min(newComponents.length, newIndex));
+      newComponents.splice(targetIndex, 0, removed);
+      return newComponents;
+    };
+
+    // Recursively find and reorder in the correct parent
+    const moveRecursive = (components: ComponentInstance[]): ComponentInstance[] => {
+      if (!parentId) {
+        // Component is at root level
+        return moveToIndex(components);
+      }
+
+      return components.map(comp => {
+        if (comp.instanceId === parentId) {
+          // Found the parent, move within its children
+          return {
+            ...comp,
+            children: moveToIndex(comp.children || [])
+          };
+        }
+        if (comp.children && comp.children.length > 0) {
+          return {
+            ...comp,
+            children: moveRecursive(comp.children)
+          };
+        }
+        return comp;
+      });
+    };
+
+    const updatedPage: PageDefinition = {
+      ...currentPage,
+      components: moveRecursive(currentPage.components)
+    };
+
+    set({ currentPage: updatedPage });
+    get().saveSnapshot(`Moved component ${componentId} to index ${newIndex}`);
   }
 }));

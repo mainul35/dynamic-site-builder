@@ -1,6 +1,9 @@
 .resizable-component {
   position: relative;
   box-sizing: border-box;
+  /* Ensure component sizes to fit its content */
+  display: flex;
+  flex-direction: column;
 }
 
 /* Auto-height containers for layouts */
@@ -15,9 +18,10 @@
 
 .resizable-content {
   width: 100%;
-  height: 100%;
   overflow: visible;
   position: relative;
+  /* Use flex: 1 to fill parent, allowing natural content sizing */
+  flex: 1 1 auto;
 }
 
 /* Child components - allow resizing */
@@ -57,8 +61,10 @@
   z-index: 20;
 }
 
-.resizable-component.resizable:hover .resize-handle,
-.resizable-component.resizing .resize-handle {
+/* Show resize handles when component is hovered (controlled by JS global state) or resizing */
+/* Use > to only target direct children, not nested components */
+.resizable-component.resizable.hovered > .resize-handles > .resize-handle,
+.resizable-component.resizing > .resize-handles > .resize-handle {
   opacity: 1;
 }
 
@@ -187,7 +193,9 @@
   }
 }
 
-.resizable-component.resizable:hover .resize-handle {
+/* Animation when resize handles appear (controlled by JS global state) */
+/* Use > to only target direct children, not nested components */
+.resizable-component.resizable.hovered > .resize-handles > .resize-handle {
   animation: handleAppear 0.2s ease-out;
 }
 

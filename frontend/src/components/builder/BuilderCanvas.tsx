@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useBuilderStore } from '../../stores/builderStore';
 import { useComponentStore } from '../../stores/componentStore';
 import { ComponentInstance, ComponentRegistryEntry } from '../../types/builder';
@@ -23,15 +23,53 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect 
   const {
     currentPage,
     selectedComponentId,
+    hoveredComponentId,
     gridConfig,
     viewMode,
     addComponent,
     selectComponent,
     removeComponent,
-    reparentComponent
+    reparentComponent,
+    setHoveredComponent
   } = useBuilderStore();
 
   const { getManifest } = useComponentStore();
+
+  // Global hover tracking - single listener for entire canvas
+  // This finds the innermost (closest) draggable component under the mouse
+  useEffect(() => {
+    if (viewMode !== 'edit') return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+
+      // Find the closest (innermost) draggable-component from the mouse target
+      const closestDraggable = target.closest('.draggable-component') as HTMLElement | null;
+
+      if (closestDraggable) {
+        const componentId = closestDraggable.getAttribute('data-component-id');
+        if (componentId && componentId !== hoveredComponentId) {
+          setHoveredComponent(componentId);
+        }
+      } else {
+        // Mouse is not over any draggable component
+        if (hoveredComponentId) {
+          setHoveredComponent(null);
+        }
+      }
+    };
+
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.addEventListener('mousemove', handleMouseMove);
+    }
+
+    return () => {
+      if (canvas) {
+        canvas.removeEventListener('mousemove', handleMouseMove);
+      }
+    };
+  }, [viewMode, hoveredComponentId, setHoveredComponent]);
 
   // Helper function to find component recursively
   const findComponentRecursive = (component: ComponentInstance, targetId: string): ComponentInstance | null => {
@@ -362,23 +400,66 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect 
       }
 
       // Edit mode: Show builder chrome with labels and drop zones
+      // Check if this is a scrollable container
+      const isScrollable = component.componentId === 'scrollable-container';
+      const scrollDirection = component.props?.scrollDirection || 'vertical';
+      // Use component.size.height (from resize) first, then fall back to props.height
+      const containerHeight = component.size?.height || component.props?.height || '400px';
+      const containerPadding = component.props?.padding || '16px';
+      const containerGap = component.props?.gap || component.styles?.gap || '8px';
+
+      // Get overflow styles for scrollable containers
+      const getScrollOverflow = () => {
+        if (!isScrollable) return { overflow: 'visible' };
+        switch (scrollDirection) {
+          case 'horizontal':
+            return { overflowX: 'auto' as const, overflowY: 'hidden' as const };
+          case 'both':
+            return { overflowX: 'auto' as const, overflowY: 'auto' as const };
+          case 'vertical':
+          default:
+            return { overflowX: 'hidden' as const, overflowY: 'auto' as const };
+        }
+      };
+
       return (
         <div
-          className="component-placeholder layout-placeholder"
-          style={component.styles}
+          className={`component-placeholder layout-placeholder ${isScrollable ? 'scrollable-layout' : ''}`}
+          style={{
+            ...component.styles,
+            height: isScrollable ? containerHeight : undefined,
+          }}
         >
           <div className="placeholder-header">
             <span className="placeholder-id">{component.componentId}</span>
             <span className="layout-badge">Layout</span>
             <span className="layout-type-badge">{layoutType}</span>
+            {isScrollable && (
+              <span className="scroll-direction-badge">
+                {scrollDirection === 'horizontal' ? '↔' : scrollDirection === 'both' ? '↔↕' : '↕'}
+              </span>
+            )}
           </div>
 
           {/* Render children for layout components - apply layoutType styles */}
           <div
-            className={`children-container ${dragOverContainerId === component.instanceId ? 'drag-over' : ''}`}
+            className={`children-container ${dragOverContainerId === component.instanceId ? 'drag-over' : ''} ${isScrollable ? 'scrollable-children' : ''}`}
             style={{
               ...layoutStyles,
-              gap: component.styles?.gap || component.props?.gap || '8px',
+              ...getScrollOverflow(),
+              gap: containerGap,
+              padding: isScrollable ? containerPadding : undefined,
+              // For scrollable containers, use flex: 1 to fill available space instead of fixed maxHeight
+              flex: isScrollable ? 1 : undefined,
+              minHeight: isScrollable ? 0 : undefined, // Allow flex shrinking
+              scrollBehavior: component.props?.smoothScroll ? 'smooth' : 'auto',
+            }}
+            onClick={(e) => {
+              // Only stop propagation if clicking directly on children-container (not on children)
+              // This allows the parent DraggableComponent to handle selection
+              if (e.target === e.currentTarget) {
+                e.stopPropagation();
+              }
             }}
             onDrop={(e) => handleNestedDrop(e, component.instanceId)}
             onDragOver={(e) => {
@@ -411,7 +492,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect 
               ))
             ) : (
               <div className="no-children-placeholder">
-                Drop UI components here
+                {isScrollable ? 'Drop components here to make them scrollable' : 'Drop UI components here'}
               </div>
             )}
           </div>

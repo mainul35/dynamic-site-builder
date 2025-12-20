@@ -28,7 +28,10 @@ export const DraggableComponent: React.FC<DraggableComponentProps> = ({
   const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
   const [hasMoved, setHasMoved] = useState(false);
 
-  const { moveComponent, viewMode } = useBuilderStore();
+  const { moveComponent, viewMode, hoveredComponentId, setHoveredComponent } = useBuilderStore();
+
+  // Check if this component is the currently hovered one (global state)
+  const isHovered = hoveredComponentId === component.instanceId;
 
   // Prevent dragging in preview mode
   const canDrag = viewMode === 'edit';
@@ -250,7 +253,7 @@ export const DraggableComponent: React.FC<DraggableComponentProps> = ({
   return (
     <div
       ref={componentRef}
-      className={`draggable-component ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''} ${!canDrag ? 'view-mode' : ''} ${isChildComponent ? 'child-component' : ''}`}
+      className={`draggable-component ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''} ${!canDrag ? 'view-mode' : ''} ${isChildComponent ? 'child-component' : ''} ${isHovered && !isSelected ? 'hovered' : ''}`}
       style={getComponentStyles()}
       onMouseDown={handleMouseDown}
       onClick={handleClick}
