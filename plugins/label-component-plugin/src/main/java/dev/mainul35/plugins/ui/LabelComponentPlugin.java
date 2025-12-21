@@ -144,6 +144,11 @@ public class LabelComponentPlugin implements UIComponentPlugin {
         props.put("textAlign", "left");
         props.put("truncate", false);
         props.put("maxLines", 0); // 0 means no limit
+        // Data source props for dynamic content
+        props.put("dataSourceUrl", "");
+        props.put("dataSourceField", "");
+        props.put("loadingText", "Loading...");
+        props.put("errorText", "");
         return props;
     }
 
@@ -212,6 +217,46 @@ public class LabelComponentPlugin implements UIComponentPlugin {
                 .label("Max Lines")
                 .defaultValue(0)
                 .helpText("Maximum number of lines to display (0 for unlimited)")
+                .build());
+
+        // Data Source URL property
+        props.add(PropDefinition.builder()
+                .name("dataSourceUrl")
+                .type(PropDefinition.PropType.STRING)
+                .label("Data Source URL")
+                .defaultValue("")
+                .required(false)
+                .helpText("API endpoint to fetch content from. If empty, uses static text.")
+                .build());
+
+        // Data Source Field property
+        props.add(PropDefinition.builder()
+                .name("dataSourceField")
+                .type(PropDefinition.PropType.STRING)
+                .label("Data Field")
+                .defaultValue("")
+                .required(false)
+                .helpText("JSON field path to extract from API response (e.g., 'data.content' or 'message')")
+                .build());
+
+        // Loading Text property
+        props.add(PropDefinition.builder()
+                .name("loadingText")
+                .type(PropDefinition.PropType.STRING)
+                .label("Loading Text")
+                .defaultValue("Loading...")
+                .required(false)
+                .helpText("Text to display while loading data from API")
+                .build());
+
+        // Error Text property
+        props.add(PropDefinition.builder()
+                .name("errorText")
+                .type(PropDefinition.PropType.STRING)
+                .label("Error Text")
+                .defaultValue("")
+                .required(false)
+                .helpText("Text to display if API call fails. If empty, falls back to static text.")
                 .build());
 
         return props;

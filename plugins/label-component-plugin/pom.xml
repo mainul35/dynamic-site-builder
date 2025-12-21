@@ -20,11 +20,27 @@
     </properties>
 
     <dependencies>
-        <!-- Plugin SDK -->
+        <!-- Plugin SDK (includes Spring Web, Spring Data JPA, Hibernate) -->
         <dependency>
             <groupId>com.flashcard</groupId>
             <artifactId>flashcard-cms-plugin-sdk</artifactId>
             <version>1.0.0-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Spring Boot Starter Web (provided by core at runtime) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <version>3.4.1</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Spring Boot Starter Data JPA (provided by core at runtime) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <version>3.4.1</version>
             <scope>provided</scope>
         </dependency>
 
@@ -55,6 +71,7 @@
                 <configuration>
                     <source>21</source>
                     <target>21</target>
+                    <parameters>true</parameters>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>

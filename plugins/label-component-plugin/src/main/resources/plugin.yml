@@ -6,6 +6,19 @@ description: A text label component for displaying static or dynamic text
 main-class: dev.mainul35.plugins.ui.LabelComponentPlugin
 plugin-type: ui-component
 
+# Spring configuration for API and database
+spring:
+  component-scan:
+    - dev.mainul35.plugins.ui
+    - dev.mainul35.plugins.ui.controller
+    - dev.mainul35.plugins.ui.service
+    - dev.mainul35.plugins.label.repository
+  entities:
+    - dev.mainul35.plugins.entities.label
+
+# API configuration
+api: /api/labels
+
 # UI Component Configuration
 ui-component:
   component-id: label
