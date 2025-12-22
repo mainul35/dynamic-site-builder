@@ -1,65 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { RendererProps } from './RendererRegistry';
-
-/**
- * API base URL for relative paths
- * Matches the configuration in services/api.ts
- */
-const API_BASE_URL = '/api';
-
-/**
- * Helper function to resolve the full URL from a data source path
- * - If URL starts with 'http://' or 'https://', use as-is (full URL)
- * - If URL starts with '/api/', use as-is (already includes base path)
- * - If URL starts with '/', prepend API_BASE_URL
- * - Otherwise, prepend API_BASE_URL + '/'
- */
-const resolveDataSourceUrl = (url: string): string => {
-  if (!url) return '';
-
-  // Full URL - use as-is
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return url;
-  }
-
-  // Already has /api prefix - use as-is
-  if (url.startsWith('/api/') || url.startsWith('/api')) {
-    return url;
-  }
-
-  // Relative path starting with / - prepend base URL
-  if (url.startsWith('/')) {
-    return `${API_BASE_URL}${url}`;
-  }
-
-  // Relative path without / - prepend base URL with /
-  return `${API_BASE_URL}/${url}`;
-};
-
-/**
- * Helper function to extract a value from an object using a dot-notation path
- * e.g., getNestedValue({ data: { content: 'Hello' } }, 'data.content') returns 'Hello'
- */
-const getNestedValue = (obj: any, path: string): any => {
-  if (!path) return obj;
-  const keys = path.split('.');
-  let result = obj;
-  for (const key of keys) {
-    if (result === null || result === undefined) return undefined;
-    result = result[key];
-  }
-  return result;
-};
+import { eventService } from '../../../services/eventService';
 
 /**
  * LabelRenderer - Renders a text label component
  * Supports various HTML element types (h1-h6, p, span, caption)
- * Can fetch content from an API with fallback to static text
+ * Fires an onLoad event when the component mounts, which can be
+ * configured to call backend APIs through the event system.
  *
  * File naming convention: {ComponentName}Renderer.tsx
  * The component name "Label" is derived from filename "LabelRenderer.tsx"
  */
 const LabelRenderer: React.FC<RendererProps> = ({ component, isEditMode }) => {
+  // Track if onLoad has been fired to prevent duplicate calls
+  const hasLoadedRef = useRef(false);
+
   // Extract props with defaults
   const {
     text = 'Label Text',
@@ -67,71 +22,33 @@ const LabelRenderer: React.FC<RendererProps> = ({ component, isEditMode }) => {
     textAlign = 'left',
     truncate = false,
     maxLines = 0,
-    dataSourceUrl = '',
-    dataSourceField = '',
-    loadingText = 'Loading...',
-    errorText = '',
   } = component.props;
 
-  // State for dynamic content
-  const [displayText, setDisplayText] = useState<string>(text);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [hasError, setHasError] = useState<boolean>(false);
-
-  // Fetch data from API if dataSourceUrl is provided
+  // Fire onLoad event when component mounts (only in non-edit mode)
   useEffect(() => {
-    // If no data source URL, use static text
-    if (!dataSourceUrl) {
-      setDisplayText(text);
-      setIsLoading(false);
-      setHasError(false);
-      return;
-    }
+    if (!isEditMode && !hasLoadedRef.current) {
+      hasLoadedRef.current = true;
 
-    // In edit mode, show placeholder instead of fetching
-    if (isEditMode) {
-      setDisplayText(`[API: ${dataSourceUrl}]`);
-      return;
-    }
-
-    // Fetch from API
-    const fetchData = async () => {
-      setIsLoading(true);
-      setHasError(false);
-
-      try {
-        const resolvedUrl = resolveDataSourceUrl(dataSourceUrl);
-        const response = await fetch(resolvedUrl);
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+      // Invoke backend event handler for onLoad event
+      // The backend can respond with propUpdates to change the text content
+      eventService.invokeBackendHandler(component, 'onLoad', {
+        initialText: text,
+      }).then((response) => {
+        if (response.status === 'success') {
+          // Process any commands or updates from backend
+          eventService.processCommands(response, {
+            updateProps: (props) => {
+              // Props updates would need to be handled by parent component
+              // This is typically done through a state management solution
+              console.log('[LabelRenderer] Backend requested prop updates:', props);
+            },
+          });
         }
-
-        const data = await response.json();
-
-        // Extract the value using the field path, or use the whole response if no field specified
-        const extractedValue = dataSourceField
-          ? getNestedValue(data, dataSourceField)
-          : (typeof data === 'string' ? data : JSON.stringify(data));
-
-        if (extractedValue !== undefined && extractedValue !== null) {
-          setDisplayText(String(extractedValue));
-        } else {
-          // Field not found in response, use fallback
-          throw new Error('Field not found in response');
-        }
-      } catch (error) {
-        console.error('LabelRenderer: Failed to fetch data:', error);
-        setHasError(true);
-        // Use errorText if provided, otherwise fall back to static text
-        setDisplayText(errorText || text);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [dataSourceUrl, dataSourceField, text, errorText, isEditMode]);
+      }).catch((error) => {
+        console.error('[LabelRenderer] onLoad event failed:', error);
+      });
+    }
+  }, [component, isEditMode, text]);
 
   // Get styles from component
   const customStyles = component.styles || {};
@@ -178,24 +95,12 @@ const LabelRenderer: React.FC<RendererProps> = ({ component, isEditMode }) => {
     labelStyles.overflow = 'hidden';
   }
 
-  // Add loading/error visual feedback
-  if (isLoading) {
-    labelStyles.opacity = 0.7;
-    labelStyles.fontStyle = 'italic';
-  }
-  if (hasError && !errorText) {
-    labelStyles.opacity = 0.8;
-  }
-
   // Create the element based on variant
   const Element = variant as keyof JSX.IntrinsicElements;
 
-  // Determine what text to show
-  const textToShow = isLoading ? loadingText : displayText;
-
   return (
     <Element style={labelStyles} className="label-renderer">
-      {textToShow}
+      {text}
     </Element>
   );
 };
