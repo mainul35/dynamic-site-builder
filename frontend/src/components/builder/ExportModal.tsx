@@ -63,7 +63,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           throw new Error('No page to export. Please create a page first.');
         }
 
-        const html = exportSinglePage(currentPage, {
+        // exportSinglePage is now async to handle image embedding
+        const html = await exportSinglePage(currentPage, {
           includeCss: false,
           includeJs: false,
         });
