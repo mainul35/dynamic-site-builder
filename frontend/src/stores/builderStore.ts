@@ -119,10 +119,15 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
   /**
    * Add a new component to the page (recursively searches for parent)
+   * Navigation components (Navbar*) are inserted at the beginning
    */
   addComponent: (component: ComponentInstance) => {
     const { currentPage } = get();
     if (!currentPage) return;
+
+    // Check if this is a navigation component (should be at the top)
+    const isNavigation = component.componentId.toLowerCase().includes('navbar') ||
+                         component.componentCategory === 'navigation';
 
     let updatedComponents = [...currentPage.components];
 
@@ -131,10 +136,14 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       const addToParent = (components: ComponentInstance[]): ComponentInstance[] => {
         return components.map(comp => {
           if (comp.instanceId === component.parentId) {
-            // Found the parent, add component to its children
+            // Found the parent - insert navigation at beginning, others at end
+            const existingChildren = comp.children || [];
+            const newChildren = isNavigation
+              ? [component, ...existingChildren]
+              : [...existingChildren, component];
             return {
               ...comp,
-              children: [...(comp.children || []), component]
+              children: newChildren
             };
           }
           // Not the parent, but check if parent is in this component's children
@@ -150,8 +159,12 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
       updatedComponents = addToParent(updatedComponents);
     } else {
-      // Root level component, add to components array
-      updatedComponents.push(component);
+      // Root level component - insert navigation at beginning, others at end
+      if (isNavigation) {
+        updatedComponents.unshift(component);
+      } else {
+        updatedComponents.push(component);
+      }
     }
 
     const updatedPage: PageDefinition = {
