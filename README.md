@@ -16,6 +16,7 @@ A plugin-based visual site builder platform with drag-and-drop components, live 
 - [Chapter 3: Builder Features](#chapter-3-builder-features)
 - [Chapter 3.1: Content Repository](#chapter-31-content-repository)
 - [Chapter 3.2: UI Templates](#chapter-32-ui-templates)
+- [Chapter 3.3: Multi-Page Sites](#chapter-33-multi-page-sites)
 
 **Plugin Development**
 
@@ -521,6 +522,185 @@ Template JSON structure:
     // ... more components
   ]
 }
+```
+
+---
+
+## Chapter 3.3: Multi-Page Sites
+
+The Visual Site Builder supports creating multi-page websites with navigation between pages. This chapter covers page management, inter-page linking, and multi-page preview.
+
+### Page Management
+
+#### Accessing the Page Manager
+
+1. In the builder, click the **"Pages"** tab in the left sidebar
+2. The Page Manager displays all pages in your site
+3. Current page is highlighted with a blue border
+
+#### Creating Pages
+
+**From the Page Manager:**
+
+1. Click **"+ New"** button in the Page Manager header
+2. Enter a **Page Name** (e.g., "About Us")
+3. Enter a **URL Slug** (auto-generated from name, e.g., "about-us")
+4. Click **"Create Page"**
+
+The new page opens in the editor with an empty canvas.
+
+#### Page Operations
+
+Right-click on any page or click the **⋮** menu button to access:
+
+| Action | Description |
+|--------|-------------|
+| **Rename** | Change the page name |
+| **Duplicate** | Create a copy of the page with all components |
+| **Set as Homepage** | Make this page the site's root (/) page |
+| **Delete** | Permanently remove the page |
+
+#### Page Types
+
+| Type | Icon | Description |
+|------|------|-------------|
+| **Homepage** | 🏠 | The main landing page, accessible at `/` |
+| **Standard** | 📄 | Regular content pages |
+| **Template** | 📐 | Reusable page layouts |
+
+### Linking to Pages
+
+#### Using the Navigation Editor
+
+When editing a **Navbar** component's navigation items:
+
+1. Select the Navbar component
+2. In Properties panel, find **"Navigation Items"**
+3. Click **"Edit"** on a navigation item
+4. In the **"Link"** field, use the **Page Link Selector**:
+   - **Internal Page** tab: Select from your site's pages
+   - **External URL** tab: Enter any external URL
+
+#### Link Selector Features
+
+The Page Link Selector provides:
+
+- **Section Links**: Link to current page (#) or top of page (#top)
+- **Site Pages**: All pages with their paths (e.g., /about, /contact)
+- **External URLs**: Full URLs for external sites
+
+#### Button Navigation
+
+To make a button navigate to a page:
+
+1. Select the Button component
+2. Go to **Events** tab in Properties panel
+3. Add **"On Click"** event
+4. Set Action to **"Navigate to URL"**
+5. Use the Page Link Selector to choose a page
+
+### Multi-Page Preview
+
+#### Entering Preview Mode
+
+1. Click **"👁 Preview"** in the toolbar
+2. The Multi-Page Preview opens with a browser-like interface
+
+#### Preview Toolbar Features
+
+| Feature | Description |
+|---------|-------------|
+| **← →** Navigation | Go back/forward through visited pages |
+| **Address Bar** | Shows current page path (preview://path) |
+| **Page Selector** | Dropdown to jump to any page |
+| **Exit Preview** | Return to edit mode |
+
+#### Navigating in Preview
+
+- **Click navbar links** to navigate between pages
+- **Click buttons** with navigation actions
+- **Use the dropdown** to jump to any page directly
+- **Back/Forward buttons** work like a browser
+
+#### How Navigation Works
+
+Internal links (starting with `/`) are intercepted:
+- Page is loaded from cache or fetched
+- Canvas re-renders with new page content
+- Navigation history is updated
+
+External links (https://) open in a new browser tab.
+
+### Page URL Structure
+
+Pages have the following URL patterns:
+
+| Page | Route Path | Access URL |
+|------|------------|------------|
+| Home | `/` | `https://yoursite.com/` |
+| About | `/about` | `https://yoursite.com/about` |
+| Contact | `/contact` | `https://yoursite.com/contact` |
+| Services | `/services` | `https://yoursite.com/services` |
+
+### Best Practices
+
+#### Page Organization
+
+1. **Use clear, descriptive page names** - "About Us" not "Page 2"
+2. **Keep URLs short and meaningful** - `/about` not `/about-our-company-and-team`
+3. **Set your homepage first** - It's the entry point for visitors
+
+#### Navigation Design
+
+1. **Include all important pages in navbar** - Users expect main navigation
+2. **Use consistent navigation** - Same navbar on all pages
+3. **Add breadcrumbs for deep pages** - Help users understand location
+
+#### Multi-Page Preview Tips
+
+1. **Test all navigation paths** - Click through all links
+2. **Check mobile responsiveness** - Navbar may collapse on mobile
+3. **Verify external links** - They should open in new tabs
+
+### Demo Mode (No Backend)
+
+When running without a backend (demo mode):
+
+- Pages are stored in **localStorage**
+- Each page saves automatically with its slug as key
+- Multi-page preview loads pages from localStorage
+- Perfect for prototyping and testing
+
+### API Reference
+
+#### Page Endpoints
+
+```http
+# List all pages
+GET /api/sites/{siteId}/pages
+
+# Get single page
+GET /api/sites/{siteId}/pages/{pageId}
+
+# Create page
+POST /api/sites/{siteId}/pages
+Content-Type: application/json
+{
+  "pageName": "About Us",
+  "pageSlug": "about",
+  "pageType": "standard",
+  "routePath": "/about"
+}
+
+# Update page
+PUT /api/sites/{siteId}/pages/{pageId}
+
+# Delete page
+DELETE /api/sites/{siteId}/pages/{pageId}
+
+# Set as homepage
+PUT /api/sites/{siteId}/pages/{pageId}
+{ "routePath": "/" }
 ```
 
 ---
