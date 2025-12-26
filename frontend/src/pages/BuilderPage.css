@@ -15,7 +15,8 @@
   background: white;
   border-bottom: 2px solid #dee2e6;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  z-index: 100;
+  z-index: 500;
+  position: relative;
 }
 
 .toolbar-left,
@@ -70,6 +71,12 @@
   border-color: #007bff;
 }
 
+.toolbar-button.active:hover:not(:disabled) {
+  background: #0056b3;
+  color: white;
+  border-color: #0056b3;
+}
+
 .toolbar-button.primary-button {
   background: #007bff;
   color: white;
@@ -105,6 +112,68 @@
 
 .action-group:last-child {
   border-right: none;
+}
+
+/* Content Menu Dropdown */
+.content-menu-container {
+  position: relative;
+}
+
+.content-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  min-width: 180px;
+  z-index: 1000;
+  animation: dropdownSlide 0.15s ease-out;
+}
+
+@keyframes dropdownSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  font-size: 14px;
+  color: #495057;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.dropdown-item:first-child {
+  border-radius: 8px 8px 0 0;
+}
+
+.dropdown-item:last-child {
+  border-radius: 0 0 8px 8px;
+}
+
+.dropdown-item:only-child {
+  border-radius: 8px;
+}
+
+.dropdown-item:hover {
+  background: #f8f9fa;
+  color: #007bff;
 }
 
 /* Page Title */
@@ -251,6 +320,14 @@
   overflow: hidden;
   position: relative;
 }
+
+/* Canvas area with rulers - add padding for ruler space (edit mode only) */
+.builder-main:not(.preview-mode) .builder-canvas-area {
+  /* Reserve space for horizontal ruler (top) and vertical ruler (left) */
+  padding-top: 24px;
+  padding-left: 24px;
+}
+
 
 /* Loading State */
 .builder-loading {
@@ -589,8 +666,10 @@
 }
 
 .builder-main.preview-mode .builder-canvas-area {
-  /* Canvas takes full width in preview mode */
+  /* Canvas takes full width in preview mode, no ruler padding */
   width: 100%;
+  padding-top: 0;
+  padding-left: 0;
 }
 
 /* ========== Print Styles ========== */

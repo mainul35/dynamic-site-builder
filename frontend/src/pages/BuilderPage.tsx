@@ -1,10 +1,12 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useBuilderStore } from '../stores/builderStore';
-import { ComponentPalette } from '../components/builder/ComponentPalette';
+import { LeftSidebar } from '../components/builder/LeftSidebar';
 import { BuilderCanvas } from '../components/builder/BuilderCanvas';
 import { PropertiesPanel } from '../components/builder/PropertiesPanel';
 import { CSSEditor } from '../components/editor/CSSEditor';
+import { CanvasRuler } from '../components/builder/CanvasRuler';
+import { ImageRepositoryModal } from '../components/builder/ImageRepositoryModal';
 import { pageService } from '../services/pageService';
 import { PageDefinition } from '../types/builder';
 import './BuilderPage.css';
@@ -28,6 +30,9 @@ export const BuilderPage: React.FC = () => {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  const [showContentMenu, setShowContentMenu] = useState(false);
+  const [showImageRepository, setShowImageRepository] = useState(false);
+  const contentMenuRef = useRef<HTMLDivElement>(null);
 
   const {
     currentPage,
@@ -103,6 +108,20 @@ export const BuilderPage: React.FC = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [canUndo, canRedo, showCSSEditor]);
+
+  // Close content menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (contentMenuRef.current && !contentMenuRef.current.contains(e.target as Node)) {
+        setShowContentMenu(false);
+      }
+    };
+
+    if (showContentMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showContentMenu]);
 
   const loadPage = async (siteId: number, pageId: number) => {
     setLoading(true);
@@ -368,6 +387,30 @@ export const BuilderPage: React.FC = () => {
                 {} CSS
               </button>
             </div>
+
+            {/* Content Menu */}
+            <div className="action-group content-menu-container" ref={contentMenuRef}>
+              <button
+                className={`toolbar-button ${showContentMenu ? 'active' : ''}`}
+                onClick={() => setShowContentMenu(!showContentMenu)}
+                title="Content Repository"
+              >
+                📁 Content ▾
+              </button>
+              {showContentMenu && (
+                <div className="content-dropdown-menu">
+                  <button
+                    className="dropdown-item"
+                    onClick={() => {
+                      setShowImageRepository(true);
+                      setShowContentMenu(false);
+                    }}
+                  >
+                    🖼️ Image Repository
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="toolbar-right">
@@ -411,12 +454,15 @@ export const BuilderPage: React.FC = () => {
             >
               {leftPanelCollapsed ? '▶' : '◀'}
             </button>
-            {!leftPanelCollapsed && <ComponentPalette />}
+            {!leftPanelCollapsed && <LeftSidebar />}
           </div>
         )}
 
         {/* Center - Canvas */}
         <div className="builder-canvas-area">
+          {/* Canvas Ruler - only show in edit mode */}
+          {viewMode === 'edit' && <CanvasRuler />}
+
           {isLoading ? (
             <div className="builder-loading">
               <div className="loading-spinner"></div>
@@ -508,6 +554,12 @@ export const BuilderPage: React.FC = () => {
           </small>
         </div>
       )}
+
+      {/* Image Repository Modal */}
+      <ImageRepositoryModal
+        isOpen={showImageRepository}
+        onClose={() => setShowImageRepository(false)}
+      />
     </div>
   );
 };
