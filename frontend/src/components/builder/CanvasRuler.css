@@ -1,0 +1,172 @@
+/* Canvas Ruler Styles */
+
+/* All ruler elements are positioned relative to the .builder-canvas-area parent */
+.ruler-corner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 24px;
+  height: 24px;
+  background: #2c3e50;
+  border-right: 1px solid #34495e;
+  border-bottom: 1px solid #34495e;
+  z-index: 102;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.corner-label {
+  font-size: 8px;
+  color: #95a5a6;
+  font-weight: 500;
+}
+
+/* Base Ruler Styles */
+.ruler {
+  position: absolute;
+  background: #2c3e50;
+  color: #ecf0f1;
+  font-size: 9px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  z-index: 101;
+  user-select: none;
+  overflow: hidden;
+}
+
+/* Horizontal Ruler (Top) */
+.horizontal-ruler {
+  top: 0;
+  left: 24px;
+  right: 0;
+  height: 24px;
+  border-bottom: 1px solid #34495e;
+}
+
+.horizontal-ruler .ruler-track {
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
+.horizontal-ruler .ruler-tick {
+  position: absolute;
+  bottom: 0;
+  width: 1px;
+  background: #7f8c8d;
+}
+
+.horizontal-ruler .ruler-tick.major {
+  height: 12px;
+  background: #bdc3c7;
+}
+
+.horizontal-ruler .ruler-tick.mid {
+  height: 8px;
+  background: #95a5a6;
+}
+
+.horizontal-ruler .ruler-tick.minor {
+  height: 4px;
+  background: #7f8c8d;
+}
+
+.horizontal-ruler .tick-label {
+  position: absolute;
+  bottom: 12px;
+  left: 3px;
+  font-size: 9px;
+  color: #bdc3c7;
+  white-space: nowrap;
+}
+
+.horizontal-ruler .ruler-dimension {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: #3498db;
+  font-weight: 600;
+  background: #2c3e50;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid #3498db;
+}
+
+/* Vertical Ruler (Left) */
+.vertical-ruler {
+  top: 24px;
+  left: 0;
+  bottom: 0;
+  width: 24px;
+  border-right: 1px solid #34495e;
+}
+
+.vertical-ruler .ruler-track {
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
+.vertical-ruler .ruler-tick {
+  position: absolute;
+  right: 0;
+  height: 1px;
+  background: #7f8c8d;
+}
+
+.vertical-ruler .ruler-tick.major {
+  width: 12px;
+  background: #bdc3c7;
+}
+
+.vertical-ruler .ruler-tick.mid {
+  width: 8px;
+  background: #95a5a6;
+}
+
+.vertical-ruler .ruler-tick.minor {
+  width: 4px;
+  background: #7f8c8d;
+}
+
+.vertical-ruler .tick-label {
+  position: absolute;
+  right: 14px;
+  top: 2px;
+  font-size: 9px;
+  color: #bdc3c7;
+  white-space: nowrap;
+  transform: rotate(-90deg);
+  transform-origin: right center;
+}
+
+.vertical-ruler .ruler-dimension {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-90deg);
+  font-size: 10px;
+  color: #3498db;
+  font-weight: 600;
+  background: #2c3e50;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid #3498db;
+  white-space: nowrap;
+}
+
+/* Hover effects for better visibility */
+.ruler-tick:hover {
+  background: #e74c3c !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .ruler-corner,
+  .horizontal-ruler,
+  .vertical-ruler {
+    display: none;
+  }
+}
