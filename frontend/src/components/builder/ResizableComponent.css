@@ -30,6 +30,10 @@
   min-width: 40px;
   box-sizing: border-box;
   position: relative;
+  /* Prevent flex from overriding explicit dimensions */
+  flex-shrink: 0;
+  flex-grow: 0;
+  flex-basis: auto;
   /* Width and height are controlled by inline styles from component.size */
 }
 

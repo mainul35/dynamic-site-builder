@@ -1,6 +1,7 @@
 .draggable-component {
   position: relative;
-  cursor: grab;
+  /* Dark grab cursor for visibility on light backgrounds */
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%23222' d='M9 5a2 2 0 0 1 4 0v4h1V6a2 2 0 1 1 4 0v5h1V8a2 2 0 1 1 4 0v8a8 8 0 0 1-8 8h-2a8 8 0 0 1-8-8v-4a2 2 0 0 1 4 0v1h1V5z'/%3E%3C/svg%3E") 12 0, grab;
   transition: box-shadow 0.2s, transform 0.1s;
   min-height: 40px;
   min-width: 40px;
@@ -17,7 +18,8 @@
 }
 
 .draggable-component.dragging {
-  cursor: grabbing;
+  /* Dark grabbing cursor for visibility */
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%23222' d='M9 8a2 2 0 0 1 4 0v4h1V9a2 2 0 1 1 4 0v5h1V11a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2a8 8 0 0 1-8-8v-4a2 2 0 0 1 4 0v1h1V8z'/%3E%3C/svg%3E") 12 0, grabbing;
   opacity: 0.7;
   z-index: 1000 !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -83,7 +85,8 @@
   padding: 4px 6px;
   border-radius: 4px;
   font-size: 12px;
-  cursor: grab;
+  /* Dark grab cursor for visibility */
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%23222' d='M9 5a2 2 0 0 1 4 0v4h1V6a2 2 0 1 1 4 0v5h1V8a2 2 0 1 1 4 0v8a8 8 0 0 1-8 8h-2a8 8 0 0 1-8-8v-4a2 2 0 0 1 4 0v1h1V5z'/%3E%3C/svg%3E") 12 0, grab;
   opacity: 0;
   transition: opacity 0.2s;
   z-index: 5;
@@ -96,7 +99,8 @@
 }
 
 .drag-handle:active {
-  cursor: grabbing;
+  /* Dark grabbing cursor for visibility */
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%23222' d='M9 8a2 2 0 0 1 4 0v4h1V9a2 2 0 1 1 4 0v5h1V11a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2a8 8 0 0 1-8-8v-4a2 2 0 0 1 4 0v1h1V8z'/%3E%3C/svg%3E") 12 0, grabbing;
   background: rgba(0, 0, 0, 0.8);
 }
 
@@ -116,7 +120,8 @@
   border-radius: 6px 0 0 6px;
   font-size: 20px;
   font-weight: bold;
-  cursor: move;
+  /* Dark move cursor for visibility */
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%23222' d='M12 2l3 3h-2v5h5V8l3 3-3 3v-2h-5v5h2l-3 3-3-3h2v-5H6v2l-3-3 3-3v2h5V5h-2l3-3z'/%3E%3C/svg%3E") 12 12, move;
   z-index: 1000;
   user-select: none;
   box-shadow: -3px 0 6px rgba(0, 0, 0, 0.3);
@@ -132,7 +137,8 @@
 }
 
 .move-handle:active {
-  cursor: grabbing;
+  /* Dark grabbing cursor for visibility */
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%23222' d='M9 8a2 2 0 0 1 4 0v4h1V9a2 2 0 1 1 4 0v5h1V11a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2a8 8 0 0 1-8-8v-4a2 2 0 0 1 4 0v1h1V8z'/%3E%3C/svg%3E") 12 0, grabbing;
   background: #1e7e34;
 }
 
@@ -181,8 +187,11 @@
   box-sizing: border-box;
   /* Ensure child components don't have absolute positioning that breaks flex layout */
   position: relative;
-  /* Prevent flex shrinking so items maintain their size in flex-row */
+  /* Prevent flex shrinking/growing so items maintain their resized size */
   flex-shrink: 0;
+  flex-grow: 0;
+  /* Flex-basis auto ensures the element uses its width/height from inline styles */
+  flex-basis: auto;
   /* Width and height are controlled by inline styles from component.size */
 }
 

@@ -85,6 +85,66 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect 
     return null;
   };
 
+  // Handle template drop - adds all template components to canvas
+  const handleTemplateDrop = (e: React.DragEvent, templateData: string) => {
+    try {
+      const template = JSON.parse(templateData);
+      const { components, suggestedSize } = template;
+
+      if (!components || !Array.isArray(components) || components.length === 0) {
+        console.warn('Template has no components');
+        return;
+      }
+
+      // Calculate drop position
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return;
+
+      const y = e.clientY - rect.top;
+      const baseRow = Math.max(1, Math.floor(y / 100) + 1);
+
+      // Add each component from the template
+      // Templates typically have a root container with children
+      components.forEach((component: ComponentInstance, index: number) => {
+        // Update position for the root component
+        const updatedComponent: ComponentInstance = {
+          ...component,
+          instanceId: `${component.componentId}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+          position: {
+            ...component.position,
+            row: baseRow + index,
+            column: 1,
+            columnSpan: suggestedSize?.columnSpan || 12,
+            rowSpan: suggestedSize?.rowSpan || 1,
+          },
+          // Recursively update instanceIds for children
+          children: component.children ? updateChildInstanceIds(component.children) : [],
+        };
+
+        addComponent(updatedComponent);
+
+        // Select the first component
+        if (index === 0) {
+          selectComponent(updatedComponent.instanceId);
+          onComponentSelect?.(updatedComponent.instanceId);
+        }
+      });
+
+      console.log(`[BuilderCanvas] Added template: ${template.templateName}`);
+    } catch (error) {
+      console.error('Failed to add template:', error);
+    }
+  };
+
+  // Helper to recursively update instance IDs for template children
+  const updateChildInstanceIds = (children: ComponentInstance[]): ComponentInstance[] => {
+    return children.map(child => ({
+      ...child,
+      instanceId: `${child.componentId}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+      children: child.children ? updateChildInstanceIds(child.children) : [],
+    }));
+  };
+
   // Handle drop from component palette or existing component
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -126,6 +186,13 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect 
           onComponentSelect?.(dragData.instanceId);
           return;
         }
+      }
+
+      // Check if this is a template drop
+      const templateData = e.dataTransfer.getData('application/template');
+      if (templateData) {
+        handleTemplateDrop(e, templateData);
+        return;
       }
 
       // Otherwise, this is a new component from the palette
@@ -337,18 +404,16 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect 
 
     // For layout components, render container with children
     if (isLayout) {
-      // Get layout type from component props
-      const layoutType = component.props?.layoutType || 'flex-column';
+      // Get layout type from component props - support both layoutType and layoutMode
+      const layoutType = component.props?.layoutType || component.props?.layoutMode || 'flex-column';
       const layoutStyles = getLayoutStyles(layoutType);
+
       // In preview mode, render clean layout without builder chrome
       if (!isEditMode) {
         // For height, only apply explicit pixel/percentage values, not 'auto'
         const previewHeight = component.size.height && component.size.height !== 'auto'
           ? component.size.height
           : undefined;
-
-        // Check if this is a grid layout (children should fill grid cells)
-        const isGridLayout = layoutType.startsWith('grid-');
 
         // Apply maxWidth and centering if specified in props
         const maxWidth = component.props?.maxWidth;
@@ -357,18 +422,35 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect 
         // Get gap from props or styles (important for preview mode)
         const previewGap = component.props?.gap || component.styles?.gap;
 
-        // Get padding - use explicit padding from props, or fall back to gap value for consistent edge spacing
-        const previewPadding = component.props?.padding || previewGap;
+        // Get padding from styles first (templates set it there), then props
+        const previewPadding = component.styles?.padding || component.props?.padding;
 
         // Get minimum height for empty containers (so they're visible in preview)
         const minHeight = hasChildren ? undefined : '50px';
+
+        // For flex-row layouts, calculate flex values based on stored widths
+        // so children fill 100% of container proportionally
+        const isFlexRow = layoutType === 'flex-row' || layoutType === 'flex-wrap';
+
+        // Get flex alignment props from component props (templates set these)
+        const alignItems = component.props?.alignItems;
+        const justifyContent = component.props?.justifyContent;
+        const flexWrap = component.styles?.flexWrap as React.CSSProperties['flexWrap'];
+
+        // Extract styles excluding width - width should be controlled by CSS/flex, not stored value
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { width: _ignoredWidth, ...stylesWithoutWidth } = component.styles || {};
 
         return (
           <div
             className="layout-preview"
             style={{
-              ...component.styles,
+              ...stylesWithoutWidth,
               ...layoutStyles,
+              // Override with explicit flex props from template
+              alignItems: alignItems || layoutStyles.alignItems,
+              justifyContent: justifyContent || layoutStyles.justifyContent,
+              flexWrap: flexWrap || layoutStyles.flexWrap,
               height: previewHeight,
               minHeight: minHeight,
               maxWidth: maxWidth || undefined,
@@ -379,24 +461,31 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect 
             }}
           >
             {hasChildren && component.children!.map(child => {
-              // For child height, only apply explicit pixel/percentage values
+              // Check if child is also a layout component
+              const childIsLayout = child.componentCategory?.toLowerCase() === 'layout';
+
+              // For non-layout children, just render them directly without wrapper
+              if (!childIsLayout) {
+                return (
+                  <React.Fragment key={child.instanceId}>
+                    {renderComponent(child)}
+                  </React.Fragment>
+                );
+              }
+
+              // For layout children, apply sizing based on parent layout type
               const childHeight = child.size.height && child.size.height !== 'auto'
                 ? child.size.height
                 : undefined;
-
-              // For grid layouts, let grid control width; for flex, use stored width
-              // This ensures grid children fill their cells properly
-              const childWidth = isGridLayout
-                ? undefined  // Let grid control width
-                : (child.size.width && child.size.width !== 'auto' ? child.size.width : undefined);
 
               return (
                 <div
                   key={child.instanceId}
                   className="layout-child-wrapper"
                   style={{
-                    width: childWidth,
+                    width: isFlexRow ? undefined : '100%',
                     height: childHeight,
+                    flex: isFlexRow ? '1' : undefined,
                   }}
                 >
                   {renderComponent(child)}
@@ -417,6 +506,8 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect 
       const containerGap = component.props?.gap || component.styles?.gap || '8px';
       // Check if this is a grid layout - grid children should fill their cells
       const isGridLayout = layoutType.startsWith('grid-');
+      // Check if this is a flex-row layout - children should use their stored widths
+      const isFlexRowLayout = layoutType === 'flex-row' || layoutType === 'flex-wrap';
 
       // Get overflow styles for scrollable containers
       const getScrollOverflow = () => {
@@ -464,7 +555,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect 
 
           {/* Render children for layout components - apply layoutType styles */}
           <div
-            className={`children-container ${dragOverContainerId === component.instanceId ? 'drag-over' : ''} ${isScrollable ? 'scrollable-children' : ''} ${isGridLayout ? 'grid-layout' : ''}`}
+            className={`children-container ${dragOverContainerId === component.instanceId ? 'drag-over' : ''} ${isScrollable ? 'scrollable-children' : ''} ${isGridLayout ? 'grid-layout' : ''} ${isFlexRowLayout ? 'flex-row-layout' : ''}`}
             style={{
               ...layoutStyles,
               ...getScrollOverflow(),
@@ -677,17 +768,21 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect 
             const maxWidth = component.props?.maxWidth;
             const centerContent = component.props?.centerContent;
 
+            // For centering to work, we need maxWidth to be set
+            // If centerContent is true but no maxWidth, use a default
+            const effectiveMaxWidth = centerContent && !maxWidth ? '1200px' : maxWidth;
+
+            // Root-level containers should always be 100% width in preview mode
+            // They fill the viewport, with optional maxWidth for inner content
             return (
               <div
                 key={component.instanceId}
                 className="preview-component-wrapper"
                 style={{
                   gridColumn: `1 / -1`, // Span all columns in preview mode
-                  width: component.size.width,
+                  width: '100%', // Root containers always full width in preview
                   height: previewHeight,
-                  maxWidth: maxWidth || undefined,
-                  marginLeft: centerContent ? 'auto' : undefined,
-                  marginRight: centerContent ? 'auto' : undefined,
+                  // maxWidth is handled by inner layout-preview via props
                 }}
               >
                 {renderComponent(component)}

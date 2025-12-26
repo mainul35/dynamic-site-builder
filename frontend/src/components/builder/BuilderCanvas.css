@@ -309,6 +309,22 @@
   max-width: 100% !important;
 }
 
+/* For flex-row layouts, children should use their stored widths as flex-basis */
+.children-container.flex-row-layout {
+  flex-wrap: nowrap;
+}
+
+/* In flex-row, children should not be forced to 100% width */
+.children-container.flex-row-layout > .draggable-component {
+  flex-shrink: 0; /* Don't shrink below their width */
+}
+
+/* Allow flex-row children to have custom widths */
+.children-container.flex-row-layout > .draggable-component.child-component {
+  /* Width is controlled by inline styles from component.size */
+  flex-shrink: 0;
+}
+
 .children-container.drag-over {
   background: rgba(40, 167, 69, 0.15);
   border-color: #28a745;
@@ -422,10 +438,29 @@
 
 .layout-preview {
   /* Clean layout container in preview mode */
-  /* All styling (gap, padding, width, etc.) comes from inline styles */
-  background: transparent;
+  /* All styling (gap, padding, width, background, etc.) comes from inline styles */
   border: none;
   box-sizing: border-box;
+}
+
+/* Root-level layout containers in preview mode */
+/* These are the outermost containers - they should fill the viewport */
+.builder-canvas.preview-mode > .preview-component-wrapper {
+  width: 100% !important;
+  max-width: none !important;
+  border-radius: 0 !important; /* Root containers should not have rounded corners */
+}
+
+.builder-canvas.preview-mode > .preview-component-wrapper > .layout-preview {
+  width: 100%;
+  border-radius: 0 !important; /* Root containers should not have rounded corners */
+  /* Allow maxWidth to be controlled by component props for inner content centering */
+}
+
+/* Also handle direct layout-preview if not wrapped */
+.builder-canvas.preview-mode > .layout-preview {
+  width: 100%;
+  border-radius: 0 !important;
 }
 
 .component-preview {
@@ -444,12 +479,16 @@
   min-width: 0;
   box-sizing: border-box;
   /* Grid/flex will control width, height fits content unless explicitly set */
+  /* For flex-row parents, this wrapper receives the flex property */
+  display: flex;
+  flex-direction: column;
 }
 
 /* Nested layout-preview should fill their wrapper */
 .layout-child-wrapper > .layout-preview {
   width: 100%;
   height: 100%;
+  flex: 1;
 }
 
 /* Responsive adjustments */
