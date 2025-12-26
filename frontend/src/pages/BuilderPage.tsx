@@ -7,8 +7,10 @@ import { PropertiesPanel } from '../components/builder/PropertiesPanel';
 import { CSSEditor } from '../components/editor/CSSEditor';
 import { CanvasRuler } from '../components/builder/CanvasRuler';
 import { ImageRepositoryModal } from '../components/builder/ImageRepositoryModal';
+import { MultiPagePreview } from '../components/builder/MultiPagePreview';
 import { pageService } from '../services/pageService';
 import { PageDefinition } from '../types/builder';
+import { Page } from '../types/site';
 import './BuilderPage.css';
 
 interface BuilderPageParams {
@@ -32,6 +34,9 @@ export const BuilderPage: React.FC = () => {
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const [showContentMenu, setShowContentMenu] = useState(false);
   const [showImageRepository, setShowImageRepository] = useState(false);
+  const [currentPageMeta, setCurrentPageMeta] = useState<Page | null>(null);
+  const [sitePages, setSitePages] = useState<Page[]>([]);
+  const [isMultiPagePreview, setIsMultiPagePreview] = useState(false);
   const contentMenuRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -150,6 +155,22 @@ export const BuilderPage: React.FC = () => {
       setCurrentPage(savedPage);
       setSaveStatus('saved');
       setLastSaved(savedPage.savedAt ? new Date(savedPage.savedAt) : null);
+
+      // Set page metadata for multi-page preview
+      const pageKeys = Object.keys(savedPages);
+      const pageIndex = pageKeys.indexOf(lastSavedKey);
+      setCurrentPageMeta({
+        id: pageIndex + 1,
+        siteId: 0,
+        pageName: savedPage.pageName || lastSavedKey,
+        pageSlug: lastSavedKey,
+        pageType: savedPage.pageType || 'standard',
+        routePath: `/${lastSavedKey}`,
+        displayOrder: pageIndex,
+        isPublished: false,
+        createdAt: savedPage.savedAt || new Date().toISOString(),
+        updatedAt: savedPage.savedAt || new Date().toISOString(),
+      });
       return;
     }
 
@@ -172,6 +193,7 @@ export const BuilderPage: React.FC = () => {
 
     setCurrentPage(newPage);
     setSaveStatus('unsaved');
+    setCurrentPageMeta(null);
   };
 
   const handleSave = async () => {
@@ -195,13 +217,32 @@ export const BuilderPage: React.FC = () => {
       } else {
         // Save to localStorage for demo/new pages
         const savedPages = JSON.parse(localStorage.getItem('builder_saved_pages') || '{}');
-        const pageKey = currentPage.pageName.replace(/\s+/g, '-').toLowerCase() || 'untitled';
+        // Use currentPageMeta slug if available, otherwise derive from page name
+        const pageKey = currentPageMeta?.pageSlug || currentPage.pageName.replace(/\s+/g, '-').toLowerCase() || 'untitled';
         savedPages[pageKey] = {
           ...currentPage,
           savedAt: new Date().toISOString()
         };
         localStorage.setItem('builder_saved_pages', JSON.stringify(savedPages));
         console.log('Page saved to localStorage:', pageKey);
+
+        // Update currentPageMeta if not already set
+        if (!currentPageMeta) {
+          const pageKeys = Object.keys(savedPages);
+          const pageIndex = pageKeys.indexOf(pageKey);
+          setCurrentPageMeta({
+            id: Date.now(),
+            siteId: 0,
+            pageName: currentPage.pageName,
+            pageSlug: pageKey,
+            pageType: 'standard',
+            routePath: `/${pageKey}`,
+            displayOrder: pageIndex,
+            isPublished: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+        }
       }
 
       setSaveStatus('saved');
@@ -236,7 +277,49 @@ export const BuilderPage: React.FC = () => {
   };
 
   const handlePreview = () => {
-    setViewMode(viewMode === 'edit' ? 'preview' : 'edit');
+    if (viewMode === 'edit') {
+      // Enter multi-page preview mode
+      setViewMode('preview');
+      setIsMultiPagePreview(true);
+      // Load pages for preview navigation
+      loadPagesForPreview();
+    } else {
+      // Exit preview mode
+      setViewMode('edit');
+      setIsMultiPagePreview(false);
+    }
+  };
+
+  const loadPagesForPreview = async () => {
+    if (siteId) {
+      try {
+        const pages = await pageService.getAllPages(Number.parseInt(siteId));
+        setSitePages(pages);
+      } catch (err) {
+        console.error('Failed to load pages for preview:', err);
+      }
+    } else {
+      // Demo mode - load from localStorage
+      const savedPages = JSON.parse(localStorage.getItem('builder_saved_pages') || '{}');
+      const demoPages: Page[] = Object.entries(savedPages).map(([key, val]: [string, any], index) => ({
+        id: index + 1,
+        siteId: 0,
+        pageName: val.pageName || key,
+        pageSlug: key,
+        pageType: val.pageType || 'standard',
+        routePath: key === 'home' ? '/' : `/${key}`,
+        displayOrder: index,
+        isPublished: false,
+        createdAt: val.savedAt || new Date().toISOString(),
+        updatedAt: val.savedAt || new Date().toISOString(),
+      }));
+      setSitePages(demoPages);
+    }
+  };
+
+  const handleExitMultiPagePreview = () => {
+    setViewMode('edit');
+    setIsMultiPagePreview(false);
   };
 
   const handleExport = () => {
@@ -290,6 +373,83 @@ export const BuilderPage: React.FC = () => {
     if (hours < 24) return `${hours}h ago`;
     return lastSaved.toLocaleDateString();
   };
+
+  // Handle page selection from PageManager
+  const handlePageSelect = async (page: Page) => {
+    // Save current page first if there are unsaved changes
+    if (saveStatus === 'unsaved' && currentPage) {
+      const shouldSave = window.confirm('You have unsaved changes. Save before switching pages?');
+      if (shouldSave) {
+        await handleSave();
+      }
+    }
+
+    // Update current page metadata
+    setCurrentPageMeta(page);
+
+    // Load the selected page
+    if (siteId) {
+      // Load from backend
+      navigate(`/builder/sites/${siteId}/pages/${page.id}`);
+    } else {
+      // Demo mode - load from localStorage
+      const savedPages = JSON.parse(localStorage.getItem('builder_saved_pages') || '{}');
+      const pageData = savedPages[page.pageSlug];
+
+      if (pageData) {
+        setCurrentPage(pageData);
+        setSaveStatus('saved');
+        setLastSaved(pageData.savedAt ? new Date(pageData.savedAt) : null);
+      } else {
+        // Create empty page
+        const newPage: PageDefinition = {
+          version: '1.0',
+          pageName: page.pageName,
+          grid: {
+            columns: 12,
+            rows: 'auto',
+            gap: '20px',
+            minRowHeight: '50px'
+          },
+          components: [],
+          globalStyles: {
+            cssVariables: {},
+            customCSS: ''
+          }
+        };
+        setCurrentPage(newPage);
+        setSaveStatus('unsaved');
+      }
+    }
+  };
+
+  // Handle page creation
+  const handlePageCreate = (page: Page) => {
+    console.log('Page created:', page);
+    // Optionally navigate to the new page
+    handlePageSelect(page);
+  };
+
+  // Handle page deletion
+  const handlePageDelete = (pageId: number) => {
+    // If we deleted the current page, load another page or create a new one
+    if (currentPageMeta?.id === pageId) {
+      initializeNewPage();
+      setCurrentPageMeta(null);
+    }
+  };
+
+  // Render multi-page preview mode
+  if (viewMode === 'preview' && isMultiPagePreview) {
+    return (
+      <MultiPagePreview
+        siteId={siteId ? Number.parseInt(siteId) : null}
+        initialPages={sitePages}
+        currentEditingPage={currentPageMeta}
+        onExitPreview={handleExitMultiPagePreview}
+      />
+    );
+  }
 
   return (
     <div className={`builder-page ${viewMode === 'preview' ? 'preview-mode' : ''}`}>
@@ -454,7 +614,15 @@ export const BuilderPage: React.FC = () => {
             >
               {leftPanelCollapsed ? '▶' : '◀'}
             </button>
-            {!leftPanelCollapsed && <LeftSidebar />}
+            {!leftPanelCollapsed && (
+              <LeftSidebar
+                siteId={siteId ? parseInt(siteId) : null}
+                currentPageId={currentPageMeta?.id ?? (pageId ? parseInt(pageId) : null)}
+                onPageSelect={handlePageSelect}
+                onPageCreate={handlePageCreate}
+                onPageDelete={handlePageDelete}
+              />
+            )}
           </div>
         )}
 
