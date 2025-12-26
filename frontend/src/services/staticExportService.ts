@@ -4,6 +4,7 @@ import JSZip from 'jszip';
 
 /**
  * StaticExportService - Exports site pages as deployable static HTML/CSS/JS files
+ * Preserves layout styles (flex, grid) and component styling from the builder
  */
 
 interface ExportOptions {
@@ -11,12 +12,6 @@ interface ExportOptions {
   includeJs: boolean;
   minify: boolean;
   singlePage: boolean;
-}
-
-interface ExportedFile {
-  name: string;
-  content: string;
-  type: 'html' | 'css' | 'js' | 'json';
 }
 
 interface SiteExportData {
@@ -28,81 +23,116 @@ interface SiteExportData {
 }
 
 /**
- * Generate CSS for a component based on its styles
+ * Convert camelCase to kebab-case for CSS properties
  */
-function generateComponentCSS(component: ComponentInstance, selector: string): string {
-  const styles = component.styles || {};
-  const cssProperties: string[] = [];
-
-  for (const [key, value] of Object.entries(styles)) {
-    if (value !== undefined && value !== null && value !== '') {
-      // Convert camelCase to kebab-case
-      const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase();
-      cssProperties.push(`  ${cssKey}: ${value};`);
-    }
-  }
-
-  if (cssProperties.length === 0) return '';
-
-  return `${selector} {\n${cssProperties.join('\n')}\n}`;
+function camelToKebab(str: string): string {
+  return str.replace(/([A-Z])/g, '-$1').toLowerCase();
 }
 
 /**
- * Generate HTML for a component
+ * Generate inline style string from styles object
  */
-function generateComponentHTML(component: ComponentInstance, isPreview: boolean = false): string {
+function generateInlineStyle(styles: Record<string, any>): string {
+  if (!styles || Object.keys(styles).length === 0) return '';
+
+  const cssProperties: string[] = [];
+  for (const [key, value] of Object.entries(styles)) {
+    if (value !== undefined && value !== null && value !== '') {
+      const cssKey = camelToKebab(key);
+      cssProperties.push(`${cssKey}: ${value}`);
+    }
+  }
+
+  return cssProperties.join('; ');
+}
+
+/**
+ * Get container layout styles based on layoutType prop
+ */
+function getContainerLayoutStyles(props: Record<string, any>): Record<string, string> {
+  const layoutType = props.layoutType || 'flex-column';
+  const styles: Record<string, string> = {};
+
+  switch (layoutType) {
+    case 'flex-row':
+      styles.display = 'flex';
+      styles.flexDirection = 'row';
+      styles.flexWrap = 'nowrap';
+      break;
+    case 'flex-wrap':
+      styles.display = 'flex';
+      styles.flexDirection = 'row';
+      styles.flexWrap = 'wrap';
+      break;
+    case 'grid-2col':
+      styles.display = 'grid';
+      styles.gridTemplateColumns = 'repeat(2, 1fr)';
+      break;
+    case 'grid-3col':
+      styles.display = 'grid';
+      styles.gridTemplateColumns = 'repeat(3, 1fr)';
+      break;
+    case 'grid-4col':
+      styles.display = 'grid';
+      styles.gridTemplateColumns = 'repeat(4, 1fr)';
+      break;
+    case 'grid-auto':
+      styles.display = 'grid';
+      styles.gridTemplateColumns = 'repeat(auto-fit, minmax(200px, 1fr))';
+      break;
+    case 'flex-column':
+    default:
+      styles.display = 'flex';
+      styles.flexDirection = 'column';
+      break;
+  }
+
+  // Add container-specific styles from props
+  if (props.padding) styles.padding = props.padding;
+  if (props.maxWidth && props.maxWidth !== 'none') styles.maxWidth = props.maxWidth;
+  if (props.centerContent) styles.margin = '0 auto';
+
+  return styles;
+}
+
+/**
+ * Merge component styles with layout styles
+ */
+function mergeStyles(...styleObjects: Record<string, any>[]): Record<string, any> {
+  const merged: Record<string, any> = {};
+  for (const obj of styleObjects) {
+    if (obj) {
+      Object.assign(merged, obj);
+    }
+  }
+  return merged;
+}
+
+/**
+ * Generate HTML for a component with proper layout preservation
+ */
+function generateComponentHTML(component: ComponentInstance, depth: number = 0): string {
   const { componentId, props, styles, instanceId, children } = component;
+  const indent = '  '.repeat(depth);
   const id = `component-${instanceId}`;
-  const className = `component component-${componentId.toLowerCase()}`;
 
-  // Generate inline styles if not using external CSS
-  const inlineStyle = Object.entries(styles || {})
-    .map(([key, value]) => {
-      const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase();
-      return `${cssKey}: ${value}`;
-    })
-    .join('; ');
-
-  const styleAttr = inlineStyle ? ` style="${inlineStyle}"` : '';
-
+  // Handle different component types
   switch (componentId) {
     case 'Label':
-      const labelTag = props.variant === 'h1' ? 'h1' :
-                       props.variant === 'h2' ? 'h2' :
-                       props.variant === 'h3' ? 'h3' :
-                       props.variant === 'h4' ? 'h4' :
-                       props.variant === 'h5' ? 'h5' :
-                       props.variant === 'h6' ? 'h6' :
-                       props.variant === 'paragraph' ? 'p' : 'span';
-      return `<${labelTag} id="${id}" class="${className}"${styleAttr}>${escapeHtml(props.text || '')}</${labelTag}>`;
+      return generateLabelHTML(component, id, indent);
 
     case 'Button':
-      const btnVariant = props.variant || 'primary';
-      const btnSize = props.size || 'medium';
-      const btnClass = `${className} btn btn-${btnVariant} btn-${btnSize}`;
-      const disabled = props.disabled ? ' disabled' : '';
-      const onClick = props.events?.onClick?.action?.config?.url
-        ? ` onclick="window.location.href='${props.events.onClick.action.config.url}'"`
-        : '';
-      return `<button id="${id}" class="${btnClass}"${styleAttr}${disabled}${onClick}>${escapeHtml(props.text || 'Click Me')}</button>`;
+      return generateButtonHTML(component, id, indent);
 
     case 'Image':
-      const imgSrc = props.src || props.url || 'https://via.placeholder.com/300x200';
-      const imgAlt = props.alt || '';
-      return `<img id="${id}" class="${className}" src="${imgSrc}" alt="${escapeHtml(imgAlt)}"${styleAttr} />`;
+      return generateImageHTML(component, id, indent);
 
     case 'Textbox':
-      return `<div id="${id}" class="${className} textbox"${styleAttr}>${props.content || props.text || ''}</div>`;
+      return generateTextboxHTML(component, id, indent);
 
     case 'Container':
     case 'ScrollableContainer':
-      const childrenHtml = (children || [])
-        .map(child => generateComponentHTML(child, isPreview))
-        .join('\n');
-      const containerClass = componentId === 'ScrollableContainer'
-        ? `${className} scrollable-container`
-        : className;
-      return `<div id="${id}" class="${containerClass}"${styleAttr}>\n${childrenHtml}\n</div>`;
+      return generateContainerHTML(component, id, indent, depth);
 
     case 'Navbar':
     case 'NavbarDefault':
@@ -111,50 +141,269 @@ function generateComponentHTML(component: ComponentInstance, isPreview: boolean 
     case 'NavbarDark':
     case 'NavbarGlass':
     case 'NavbarSticky':
-      return generateNavbarHTML(component, id, className, styleAttr);
+      return generateNavbarHTML(component, id, indent);
 
     default:
-      // Generic fallback
-      if (children && children.length > 0) {
-        const childrenHtml = children.map(child => generateComponentHTML(child, isPreview)).join('\n');
-        return `<div id="${id}" class="${className}"${styleAttr}>\n${childrenHtml}\n</div>`;
-      }
-      return `<div id="${id}" class="${className}"${styleAttr}>${escapeHtml(props.text || props.content || componentId)}</div>`;
+      return generateGenericHTML(component, id, indent, depth);
   }
+}
+
+/**
+ * Generate Label HTML
+ */
+function generateLabelHTML(component: ComponentInstance, id: string, indent: string): string {
+  const { props, styles } = component;
+  const text = props.text || '';
+  const variant = props.variant || 'span';
+
+  // Map variant to HTML tag
+  const tagMap: Record<string, string> = {
+    h1: 'h1', h2: 'h2', h3: 'h3', h4: 'h4', h5: 'h5', h6: 'h6',
+    paragraph: 'p', span: 'span', label: 'label'
+  };
+  const tag = tagMap[variant] || 'span';
+
+  const inlineStyle = generateInlineStyle(styles);
+  const styleAttr = inlineStyle ? ` style="${inlineStyle}"` : '';
+
+  return `${indent}<${tag} id="${id}" class="component label"${styleAttr}>${escapeHtml(text)}</${tag}>`;
+}
+
+/**
+ * Generate Button HTML with event handling
+ */
+function generateButtonHTML(component: ComponentInstance, id: string, indent: string): string {
+  const { props, styles } = component;
+  const text = props.text || 'Click Me';
+  const variant = props.variant || 'primary';
+  const size = props.size || 'medium';
+  const disabled = props.disabled ? ' disabled' : '';
+  const fullWidth = props.fullWidth;
+
+  // Button styles
+  const buttonStyles: Record<string, string> = {
+    display: fullWidth ? 'block' : 'inline-block',
+    width: fullWidth ? '100%' : 'auto',
+    fontWeight: '500',
+    textAlign: 'center',
+    whiteSpace: 'nowrap',
+    verticalAlign: 'middle',
+    userSelect: 'none',
+    borderRadius: '6px',
+    transition: 'all 0.2s',
+    cursor: props.disabled ? 'not-allowed' : 'pointer',
+    opacity: props.disabled ? '0.65' : '1',
+    border: 'none',
+    ...getButtonVariantStyles(variant),
+    ...getButtonSizeStyles(size),
+  };
+
+  const mergedStyles = mergeStyles(buttonStyles, styles);
+  const inlineStyle = generateInlineStyle(mergedStyles);
+  const styleAttr = inlineStyle ? ` style="${inlineStyle}"` : '';
+
+  // Handle onClick navigation
+  let onClickAttr = '';
+  const events = component.events || props.events || [];
+  const clickEvent = events.find?.((e: any) => e.eventType === 'onClick');
+  if (clickEvent?.action?.type === 'navigate' && clickEvent?.action?.config?.url) {
+    onClickAttr = ` onclick="window.location.href='${clickEvent.action.config.url}'"`;
+  }
+
+  return `${indent}<button id="${id}" class="component button btn-${variant} btn-${size}"${styleAttr}${disabled}${onClickAttr}>${escapeHtml(text)}</button>`;
+}
+
+function getButtonVariantStyles(variant: string): Record<string, string> {
+  const variants: Record<string, Record<string, string>> = {
+    primary: { backgroundColor: '#007bff', color: 'white' },
+    secondary: { backgroundColor: '#6c757d', color: 'white' },
+    success: { backgroundColor: '#28a745', color: 'white' },
+    danger: { backgroundColor: '#dc3545', color: 'white' },
+    warning: { backgroundColor: '#ffc107', color: '#212529' },
+    outline: { backgroundColor: 'transparent', color: '#007bff', border: '2px solid #007bff' },
+    'outline-light': { backgroundColor: 'transparent', color: '#ffffff', border: '2px solid #ffffff' },
+    link: { backgroundColor: 'transparent', color: '#007bff', textDecoration: 'underline' },
+  };
+  return variants[variant] || variants.primary;
+}
+
+function getButtonSizeStyles(size: string): Record<string, string> {
+  const sizes: Record<string, Record<string, string>> = {
+    small: { padding: '6px 12px', fontSize: '13px' },
+    medium: { padding: '8px 16px', fontSize: '14px' },
+    large: { padding: '12px 24px', fontSize: '16px' },
+  };
+  return sizes[size] || sizes.medium;
+}
+
+/**
+ * Generate Image HTML
+ */
+function generateImageHTML(component: ComponentInstance, id: string, indent: string): string {
+  const { props, styles } = component;
+  const src = props.src || props.url || 'https://via.placeholder.com/300x200';
+  const alt = props.alt || '';
+
+  const imageStyles: Record<string, string> = {
+    maxWidth: '100%',
+    height: 'auto',
+    display: 'block',
+  };
+
+  const mergedStyles = mergeStyles(imageStyles, styles);
+  const inlineStyle = generateInlineStyle(mergedStyles);
+  const styleAttr = inlineStyle ? ` style="${inlineStyle}"` : '';
+
+  return `${indent}<img id="${id}" class="component image" src="${src}" alt="${escapeHtml(alt)}"${styleAttr} />`;
+}
+
+/**
+ * Generate Textbox HTML (rich text content)
+ */
+function generateTextboxHTML(component: ComponentInstance, id: string, indent: string): string {
+  const { props, styles } = component;
+  const content = props.content || props.text || '';
+
+  const inlineStyle = generateInlineStyle(styles);
+  const styleAttr = inlineStyle ? ` style="${inlineStyle}"` : '';
+
+  // Content might contain HTML, so don't escape it
+  return `${indent}<div id="${id}" class="component textbox"${styleAttr}>${content}</div>`;
+}
+
+/**
+ * Generate Container HTML with proper layout styles
+ */
+function generateContainerHTML(component: ComponentInstance, id: string, indent: string, depth: number): string {
+  const { props, styles, children, componentId } = component;
+
+  // Get layout styles from props
+  const layoutStyles = getContainerLayoutStyles(props);
+
+  // Container base styles
+  const containerStyles: Record<string, string> = {
+    ...layoutStyles,
+    gap: styles.gap || props.gap || '16px',
+    backgroundColor: styles.backgroundColor || props.backgroundColor || 'transparent',
+    borderRadius: styles.borderRadius || '0',
+    minHeight: props.minHeight || 'auto',
+  };
+
+  // Add box shadow if present
+  if (styles.boxShadow) {
+    containerStyles.boxShadow = styles.boxShadow;
+  }
+
+  // Handle ScrollableContainer
+  if (componentId === 'ScrollableContainer') {
+    containerStyles.overflow = 'auto';
+    if (props.maxHeight) containerStyles.maxHeight = props.maxHeight;
+  }
+
+  const mergedStyles = mergeStyles(containerStyles, styles);
+  const inlineStyle = generateInlineStyle(mergedStyles);
+  const styleAttr = inlineStyle ? ` style="${inlineStyle}"` : '';
+
+  // Generate children HTML
+  const childrenHtml = (children || [])
+    .map(child => generateComponentHTML(child, depth + 1))
+    .join('\n');
+
+  const containerClass = componentId === 'ScrollableContainer'
+    ? 'component container scrollable-container'
+    : 'component container';
+
+  if (childrenHtml) {
+    return `${indent}<div id="${id}" class="${containerClass}"${styleAttr}>\n${childrenHtml}\n${indent}</div>`;
+  }
+  return `${indent}<div id="${id}" class="${containerClass}"${styleAttr}></div>`;
 }
 
 /**
  * Generate Navbar HTML
  */
-function generateNavbarHTML(component: ComponentInstance, id: string, className: string, styleAttr: string): string {
-  const { props } = component;
+function generateNavbarHTML(component: ComponentInstance, id: string, indent: string): string {
+  const { props, styles, componentId } = component;
   const brandName = props.brandName || props.brand || 'Brand';
   const navItems = props.navItems || props.items || [];
-  const variant = props.variant || 'default';
+  const variant = componentId.replace('Navbar', '').toLowerCase() || props.variant || 'default';
+
+  // Navbar styles based on variant
+  const navbarStyles: Record<string, string> = {
+    display: 'flex',
+    alignItems: 'center',
+    padding: '1rem',
+    width: '100%',
+  };
+
+  // Apply variant-specific styles
+  if (variant === 'dark' || componentId === 'NavbarDark') {
+    navbarStyles.backgroundColor = '#1a1a2e';
+    navbarStyles.color = '#ffffff';
+  } else if (variant === 'glass' || componentId === 'NavbarGlass') {
+    navbarStyles.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+    navbarStyles.backdropFilter = 'blur(10px)';
+  } else {
+    navbarStyles.backgroundColor = '#ffffff';
+    navbarStyles.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+  }
+
+  if (variant === 'sticky' || componentId === 'NavbarSticky') {
+    navbarStyles.position = 'sticky';
+    navbarStyles.top = '0';
+    navbarStyles.zIndex = '100';
+  }
+
+  const mergedStyles = mergeStyles(navbarStyles, styles);
+  const inlineStyle = generateInlineStyle(mergedStyles);
+  const styleAttr = inlineStyle ? ` style="${inlineStyle}"` : '';
+
+  const isDark = variant === 'dark' || componentId === 'NavbarDark';
+  const linkColor = isDark ? '#ffffff' : '#666666';
+  const brandColor = isDark ? '#ffffff' : '#333333';
 
   const navItemsHtml = navItems.map((item: any) => {
-    const activeClass = item.active ? ' active' : '';
+    const activeStyle = item.active ? 'color: #007bff; font-weight: 600;' : '';
     const href = item.href || '#';
-    return `      <li class="nav-item${activeClass}"><a class="nav-link" href="${href}">${escapeHtml(item.label || item.text || '')}</a></li>`;
+    return `${indent}      <li style="margin: 0; list-style: none;"><a href="${href}" style="display: block; padding: 0.5rem 1rem; color: ${item.active ? '#007bff' : linkColor}; text-decoration: none; border-radius: 4px; transition: all 0.2s; ${activeStyle}">${escapeHtml(item.label || item.text || '')}</a></li>`;
   }).join('\n');
 
-  return `<nav id="${id}" class="${className} navbar navbar-${variant}"${styleAttr}>
-  <div class="navbar-container">
-    <a class="navbar-brand" href="/">${escapeHtml(brandName)}</a>
-    <button class="navbar-toggle" aria-label="Toggle navigation">
-      <span class="navbar-toggle-icon"></span>
-    </button>
-    <ul class="navbar-nav">
+  return `${indent}<nav id="${id}" class="component navbar navbar-${variant}"${styleAttr}>
+${indent}  <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 1200px; margin: 0 auto;">
+${indent}    <a href="/" style="font-size: 1.25rem; font-weight: 700; color: ${brandColor}; text-decoration: none;">${escapeHtml(brandName)}</a>
+${indent}    <button class="navbar-toggle" style="display: none; background: none; border: none; padding: 0.5rem; cursor: pointer;" aria-label="Toggle navigation">
+${indent}      <span style="display: block; width: 24px; height: 2px; background-color: ${brandColor}; position: relative;"></span>
+${indent}    </button>
+${indent}    <ul style="display: flex; list-style: none; margin: 0; padding: 0; gap: 0.5rem;">
 ${navItemsHtml}
-    </ul>
-  </div>
-</nav>`;
+${indent}    </ul>
+${indent}  </div>
+${indent}</nav>`;
+}
+
+/**
+ * Generate generic HTML for unknown components
+ */
+function generateGenericHTML(component: ComponentInstance, id: string, indent: string, depth: number): string {
+  const { props, styles, children, componentId } = component;
+
+  const inlineStyle = generateInlineStyle(styles);
+  const styleAttr = inlineStyle ? ` style="${inlineStyle}"` : '';
+
+  if (children && children.length > 0) {
+    const childrenHtml = children.map(child => generateComponentHTML(child, depth + 1)).join('\n');
+    return `${indent}<div id="${id}" class="component ${componentId.toLowerCase()}"${styleAttr}>\n${childrenHtml}\n${indent}</div>`;
+  }
+
+  const text = props.text || props.content || '';
+  return `${indent}<div id="${id}" class="component ${componentId.toLowerCase()}"${styleAttr}>${escapeHtml(text)}</div>`;
 }
 
 /**
  * Escape HTML special characters
  */
 function escapeHtml(text: string): string {
+  if (typeof text !== 'string') return String(text || '');
   const htmlEntities: Record<string, string> = {
     '&': '&amp;',
     '<': '&lt;',
@@ -176,200 +425,72 @@ function generateBaseCSS(): string {
   padding: 0;
 }
 
+html, body {
+  width: 100%;
+  min-height: 100%;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   line-height: 1.6;
   color: #333;
 }
 
+.page-content {
+  width: 100%;
+  min-height: 100vh;
+}
+
 .component {
   position: relative;
 }
 
-/* Button Styles */
-.btn {
-  display: inline-block;
-  font-weight: 500;
-  text-align: center;
-  white-space: nowrap;
-  vertical-align: middle;
-  user-select: none;
-  border: none;
-  border-radius: 6px;
-  padding: 8px 16px;
-  font-size: 14px;
-  line-height: 1.5;
-  transition: all 0.2s ease-in-out;
-  cursor: pointer;
-}
-
-.btn-primary { background-color: #007bff; color: white; }
-.btn-primary:hover { background-color: #0056b3; }
-.btn-secondary { background-color: #6c757d; color: white; }
-.btn-secondary:hover { background-color: #545b62; }
-.btn-success { background-color: #28a745; color: white; }
-.btn-success:hover { background-color: #218838; }
-.btn-danger { background-color: #dc3545; color: white; }
-.btn-danger:hover { background-color: #c82333; }
-.btn-warning { background-color: #ffc107; color: #212529; }
-.btn-warning:hover { background-color: #e0a800; }
-.btn-outline { background-color: transparent; color: #007bff; border: 2px solid #007bff; }
-.btn-outline:hover { background-color: #007bff; color: white; }
-
-.btn-small { padding: 6px 12px; font-size: 13px; }
-.btn-medium { padding: 8px 16px; font-size: 14px; }
-.btn-large { padding: 12px 24px; font-size: 16px; }
-
-.btn:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-}
-
-/* Navbar Styles */
-.navbar {
-  display: flex;
-  align-items: center;
-  padding: 1rem;
-  background-color: #fff;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.navbar-container {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+/* Container defaults */
+.container {
   width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
 }
 
-.navbar-brand {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #333;
-  text-decoration: none;
-}
-
-.navbar-nav {
-  display: flex;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  gap: 0.5rem;
-}
-
-.nav-item {
-  margin: 0;
-}
-
-.nav-link {
-  display: block;
-  padding: 0.5rem 1rem;
-  color: #666;
-  text-decoration: none;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.nav-link:hover {
-  color: #007bff;
-  background-color: #f8f9fa;
-}
-
-.nav-item.active .nav-link {
-  color: #007bff;
-  font-weight: 600;
-}
-
-.navbar-toggle {
-  display: none;
-  background: none;
-  border: none;
-  padding: 0.5rem;
-  cursor: pointer;
-}
-
-.navbar-dark {
-  background-color: #1a1a2e;
-}
-
-.navbar-dark .navbar-brand,
-.navbar-dark .nav-link {
-  color: #fff;
-}
-
-.navbar-dark .nav-link:hover {
-  background-color: rgba(255,255,255,0.1);
-}
-
-/* Container Styles */
-.component-container {
-  display: flex;
-  flex-direction: column;
-}
-
-.scrollable-container {
-  overflow: auto;
-}
-
-/* Image Styles */
-.component-image {
+/* Image defaults */
+.image {
   max-width: 100%;
   height: auto;
 }
 
-/* Textbox Styles */
+/* Textbox defaults */
 .textbox {
-  padding: 1rem;
+  word-wrap: break-word;
 }
 
 /* Mobile Responsive */
 @media (max-width: 768px) {
-  .navbar-nav {
-    display: none;
-    flex-direction: column;
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: inherit;
-    padding: 1rem;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  .navbar ul {
+    display: none !important;
+    flex-direction: column !important;
+    position: absolute !important;
+    top: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: inherit !important;
+    padding: 1rem !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
   }
 
-  .navbar-nav.active {
-    display: flex;
+  .navbar ul.active {
+    display: flex !important;
   }
 
-  .navbar-toggle {
-    display: block;
+  .navbar .navbar-toggle {
+    display: block !important;
   }
 
-  .navbar-toggle-icon {
-    display: block;
-    width: 24px;
-    height: 2px;
-    background-color: #333;
-    position: relative;
+  /* Stack grid columns on mobile */
+  .container[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
   }
 
-  .navbar-toggle-icon::before,
-  .navbar-toggle-icon::after {
-    content: '';
-    position: absolute;
-    width: 100%;
-    height: 2px;
-    background-color: #333;
-    left: 0;
-  }
-
-  .navbar-toggle-icon::before { top: -6px; }
-  .navbar-toggle-icon::after { top: 6px; }
-
-  .navbar-dark .navbar-toggle-icon,
-  .navbar-dark .navbar-toggle-icon::before,
-  .navbar-dark .navbar-toggle-icon::after {
-    background-color: #fff;
+  /* Stack flex rows on mobile */
+  .container[style*="flex-direction: row"] {
+    flex-direction: column !important;
   }
 }
 `;
@@ -386,8 +507,8 @@ document.addEventListener('DOMContentLoaded', function() {
   const navbarToggles = document.querySelectorAll('.navbar-toggle');
   navbarToggles.forEach(function(toggle) {
     toggle.addEventListener('click', function() {
-      const navbar = this.closest('.navbar');
-      const navList = navbar.querySelector('.navbar-nav');
+      const navbar = this.closest('.navbar, nav');
+      const navList = navbar.querySelector('ul');
       if (navList) {
         navList.classList.toggle('active');
       }
@@ -405,6 +526,19 @@ document.addEventListener('DOMContentLoaded', function() {
           target.scrollIntoView({ behavior: 'smooth' });
         }
       }
+    });
+  });
+
+  // Handle hover states for buttons
+  document.querySelectorAll('.button').forEach(function(btn) {
+    const originalBg = btn.style.backgroundColor;
+    btn.addEventListener('mouseenter', function() {
+      if (!this.disabled) {
+        this.style.filter = 'brightness(0.9)';
+      }
+    });
+    btn.addEventListener('mouseleave', function() {
+      this.style.filter = 'none';
     });
   });
 
@@ -426,25 +560,22 @@ function generateHTMLPage(
 
   // Generate component HTML
   const componentsHtml = components
-    .map(comp => generateComponentHTML(comp, false))
+    .map(comp => generateComponentHTML(comp, 2))
     .join('\n\n');
 
   // Generate custom CSS
   let customCss = '';
   if (globalStyles?.customCSS) {
-    customCss = `\n<style>\n${globalStyles.customCSS}\n</style>`;
+    customCss = `\n  <style>\n${globalStyles.customCSS}\n  </style>`;
   }
-
-  // Generate navigation for multi-page sites
-  const hasMultiplePages = allPages.length > 1;
 
   // Determine CSS and JS includes
   const cssInclude = options.includeCss
-    ? '<link rel="stylesheet" href="css/styles.css">'
-    : `<style>\n${generateBaseCSS()}\n</style>`;
+    ? '  <link rel="stylesheet" href="css/styles.css">'
+    : `  <style>\n${generateBaseCSS()}\n  </style>`;
   const jsInclude = options.includeJs
-    ? '<script src="js/main.js" defer></script>'
-    : `<script>\n${generateBaseJS()}\n</script>`;
+    ? '  <script src="js/main.js" defer></script>'
+    : `  <script>\n${generateBaseJS()}\n  </script>`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -452,13 +583,13 @@ function generateHTMLPage(
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(pageName)}</title>
-  ${cssInclude}${customCss}
+${cssInclude}${customCss}
 </head>
 <body>
   <main class="page-content">
 ${componentsHtml}
   </main>
-  ${jsInclude}
+${jsInclude}
 </body>
 </html>`;
 }
