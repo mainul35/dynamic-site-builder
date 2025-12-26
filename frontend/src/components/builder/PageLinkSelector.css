@@ -1,0 +1,269 @@
+/* Page Link Selector Styles */
+
+.page-link-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Mode Toggle */
+.link-mode-toggle {
+  display: flex;
+  gap: 0;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 6px 12px;
+  background: white;
+  border: none;
+  font-size: 11px;
+  font-weight: 500;
+  color: #6c757d;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mode-btn:first-child {
+  border-right: 1px solid #ced4da;
+}
+
+.mode-btn:hover:not(.active) {
+  background: #f8f9fa;
+}
+
+.mode-btn.active {
+  background: #007bff;
+  color: white;
+}
+
+/* Page Selector */
+.page-selector {
+  position: relative;
+}
+
+.page-selector-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #212529;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s;
+}
+
+.page-selector-trigger:hover {
+  border-color: #adb5bd;
+}
+
+.page-selector-trigger:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.selected-page {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.placeholder {
+  color: #6c757d;
+}
+
+.loading-text {
+  color: #6c757d;
+  font-style: italic;
+}
+
+.dropdown-arrow {
+  font-size: 10px;
+  color: #6c757d;
+}
+
+/* Dropdown */
+.page-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  z-index: 1000;
+  animation: dropdownFadeIn 0.15s ease-out;
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-section-header {
+  padding: 8px 12px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.page-dropdown:first-child .dropdown-section-header:first-child {
+  border-radius: 8px 8px 0 0;
+}
+
+.page-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 13px;
+  color: #212529;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.page-option:hover {
+  background: #f8f9fa;
+}
+
+.page-option.selected {
+  background: #e7f1ff;
+  color: #007bff;
+}
+
+.page-option.section-link {
+  color: #6c757d;
+}
+
+.page-option .page-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.page-option .page-name {
+  flex: 1;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.page-option .page-path {
+  font-size: 11px;
+  color: #6c757d;
+  flex-shrink: 0;
+}
+
+.no-pages {
+  padding: 16px;
+  text-align: center;
+  color: #6c757d;
+  font-size: 13px;
+}
+
+/* External URL Input */
+.external-url-input input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.external-url-input input:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.external-url-input input::placeholder {
+  color: #adb5bd;
+}
+
+/* Current Value Display */
+.current-value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: #e9ecef;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.value-label {
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.value-text {
+  flex: 1;
+  color: #495057;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clear-btn {
+  background: none;
+  border: none;
+  color: #6c757d;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 4px;
+  line-height: 1;
+  border-radius: 2px;
+}
+
+.clear-btn:hover {
+  background: #dee2e6;
+  color: #dc3545;
+}
+
+/* Scrollbar styling */
+.page-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+.page-dropdown::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.page-dropdown::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.page-dropdown::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}

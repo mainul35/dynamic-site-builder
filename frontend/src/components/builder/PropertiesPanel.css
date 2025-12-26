@@ -722,17 +722,42 @@
 .nav-item-edit-form {
   flex: 1;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  margin-top: 8px;
+}
+
+.nav-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav-form-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #495057;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.nav-form-actions {
+  display: flex;
   gap: 6px;
-  align-items: center;
+  margin-top: 4px;
 }
 
 .nav-input {
-  padding: 6px 8px;
+  padding: 8px 10px;
   border: 1px solid #ced4da;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 13px;
   outline: none;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .nav-input:focus {
@@ -741,17 +766,17 @@
 }
 
 .nav-input.label-input {
-  width: 100px;
+  width: 100%;
 }
 
 .nav-input.href-input {
-  width: 100px;
+  width: 100%;
 }
 
 .nav-checkbox {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   font-size: 12px;
   color: #495057;
   cursor: pointer;

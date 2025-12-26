@@ -3,6 +3,7 @@ import { useBuilderStore } from '../../stores/builderStore';
 import { useComponentStore } from '../../stores/componentStore';
 import { ComponentManifest, PropDefinition, PropType, ComponentEventConfig, ActionType } from '../../types/builder';
 import { getBuiltInManifest, hasBuiltInManifest } from '../../data/builtInManifests';
+import { PageLinkSelector } from './PageLinkSelector';
 import './PropertiesPanel.css';
 
 /**
@@ -277,20 +278,25 @@ const NavigationEditor: React.FC<NavigationEditorProps> = ({ value, onChange }) 
 
           {isEditing ? (
             <div className="nav-item-edit-form">
-              <input
-                type="text"
-                value={editingItem.item.label}
-                onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, label: e.target.value } })}
-                placeholder="Label"
-                className="nav-input label-input"
-              />
-              <input
-                type="text"
-                value={editingItem.item.href}
-                onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, href: e.target.value } })}
-                placeholder="URL"
-                className="nav-input href-input"
-              />
+              <div className="nav-form-field">
+                <label className="nav-form-label">Label</label>
+                <input
+                  type="text"
+                  value={editingItem.item.label}
+                  onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, label: e.target.value } })}
+                  placeholder="Menu item label"
+                  className="nav-input label-input"
+                />
+              </div>
+              <div className="nav-form-field">
+                <label className="nav-form-label">Link</label>
+                <PageLinkSelector
+                  value={editingItem.item.href}
+                  onChange={(href) => setEditingItem({ ...editingItem, item: { ...editingItem.item, href } })}
+                  placeholder="Select page or enter URL"
+                  showExternalOption={true}
+                />
+              </div>
               <label className="nav-checkbox">
                 <input
                   type="checkbox"
@@ -299,21 +305,23 @@ const NavigationEditor: React.FC<NavigationEditorProps> = ({ value, onChange }) 
                 />
                 Active
               </label>
-              <button
-                className="nav-btn save-btn"
-                onClick={() => {
-                  updateItem(path, editingItem.item);
-                  setEditingItem(null);
-                }}
-              >
-                Save
-              </button>
-              <button
-                className="nav-btn cancel-btn"
-                onClick={() => setEditingItem(null)}
-              >
-                Cancel
-              </button>
+              <div className="nav-form-actions">
+                <button
+                  className="nav-btn save-btn"
+                  onClick={() => {
+                    updateItem(path, editingItem.item);
+                    setEditingItem(null);
+                  }}
+                >
+                  Save
+                </button>
+                <button
+                  className="nav-btn cancel-btn"
+                  onClick={() => setEditingItem(null)}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           ) : (
             <div className="nav-item-display">
@@ -625,7 +633,14 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedCompon
         {actionOption.configFields.map(field => (
           <div key={field} className="property-field">
             <label className="property-label">{field}</label>
-            {field === 'code' ? (
+            {field === 'url' ? (
+              <PageLinkSelector
+                value={event.action?.config[field] || ''}
+                onChange={(value) => handleActionConfigChange(event.eventType, field, value)}
+                placeholder="Select page or enter URL"
+                showExternalOption={true}
+              />
+            ) : field === 'code' ? (
               <textarea
                 value={event.action?.config[field] || ''}
                 onChange={(e) => handleActionConfigChange(event.eventType, field, e.target.value)}
