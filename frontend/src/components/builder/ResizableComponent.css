@@ -28,20 +28,28 @@
 .resizable-component.child-component {
   min-height: 40px;
   min-width: 40px;
+  /* Fill the parent width, but let height be controlled by inline styles or content */
+  width: 100%;
+  /* Don't force height: 100% - let component.size.height control this */
+  /* This allows 'auto' height components to size to their content */
   box-sizing: border-box;
   position: relative;
   /* Prevent flex from overriding explicit dimensions */
   flex-shrink: 0;
   flex-grow: 0;
   flex-basis: auto;
-  /* Width and height are controlled by inline styles from component.size */
+  /* Allow resize handles to show (they have negative offsets) */
+  overflow: visible;
 }
 
 .resizable-component.child-component .resizable-content {
   width: 100%;
-  height: 100%;
+  /* Don't force height: 100% - let parent height cascade down */
   min-height: 40px;
   box-sizing: border-box;
+  /* Allow nested children's resize handles to be visible */
+  /* Leaf components clip their own content via .component-placeholder */
+  overflow: visible;
 }
 
 .resize-handles {
