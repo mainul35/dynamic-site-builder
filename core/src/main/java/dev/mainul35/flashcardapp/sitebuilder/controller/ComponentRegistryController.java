@@ -196,6 +196,36 @@ public class ComponentRegistryController {
     }
 
     /**
+     * Delete a specific component from the registry.
+     * Used to clean up old/obsolete component entries.
+     *
+     * @param pluginId Plugin identifier
+     * @param componentId Component identifier
+     * @return Success or not found response
+     */
+    @DeleteMapping("/{pluginId}/{componentId}")
+    public ResponseEntity<Void> deleteComponent(
+            @PathVariable String pluginId,
+            @PathVariable String componentId) {
+        try {
+            log.info("Deleting component: {} from plugin: {}", componentId, pluginId);
+
+            // Check if component exists
+            if (!componentRegistryService.isComponentRegistered(pluginId, componentId)) {
+                log.warn("Component not found: {} from plugin: {}", componentId, pluginId);
+                return ResponseEntity.notFound().build();
+            }
+
+            componentRegistryService.unregisterComponent(pluginId, componentId);
+            log.info("Successfully deleted component: {} from plugin: {}", componentId, pluginId);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            log.error("Error deleting component: {} from plugin: {}", componentId, pluginId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
      * Debug endpoint to check plugin loading status
      */
     @GetMapping("/debug/status")

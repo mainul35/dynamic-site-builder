@@ -47,4 +47,9 @@ public interface ComponentRegistryRepository extends JpaRepository<ComponentRegi
      * Delete all components from a plugin
      */
     void deleteByPluginId(String pluginId);
+
+    /**
+     * Delete a specific component by plugin ID and component ID
+     */
+    void deleteByPluginIdAndComponentId(String pluginId, String componentId);
 }

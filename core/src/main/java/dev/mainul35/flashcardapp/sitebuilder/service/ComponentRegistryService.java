@@ -146,6 +146,15 @@ public class ComponentRegistryService {
     }
 
     /**
+     * Unregister a specific component
+     */
+    @Transactional
+    public void unregisterComponent(String pluginId, String componentId) {
+        log.info("Unregistering component: {} from plugin: {}", componentId, pluginId);
+        componentRegistryRepository.deleteByPluginIdAndComponentId(pluginId, componentId);
+    }
+
+    /**
      * Check if a component is registered
      */
     public boolean isComponentRegistered(String pluginId, String componentId) {
@@ -156,6 +165,18 @@ public class ComponentRegistryService {
      * Get component categories
      */
     public List<String> getCategories() {
-        return List.of("ui", "layout", "form", "widget", "navbar");
+        return List.of("ui", "layout", "form", "widget", "navbar", "data");
+    }
+
+    /**
+     * Register multiple components from a single plugin
+     * Useful for plugins that provide multiple component variants
+     */
+    @Transactional
+    public List<ComponentRegistryEntry> registerComponents(List<ComponentManifest> manifests) {
+        log.info("Registering {} components", manifests.size());
+        return manifests.stream()
+                .map(this::registerComponent)
+                .toList();
     }
 }
