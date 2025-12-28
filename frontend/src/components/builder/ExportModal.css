@@ -357,3 +357,115 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* Large modal variant for Spring Boot export */
+.export-modal-large {
+  max-width: 640px;
+}
+
+/* Featured export option (Spring Boot) */
+.export-option-featured {
+  border-color: #28a745;
+  background-color: #f0fff4;
+  position: relative;
+}
+
+.export-option-featured:hover {
+  border-color: #28a745;
+  background-color: #e6ffe6;
+}
+
+.export-option-featured:has(input:checked) {
+  border-color: #28a745;
+  background-color: #e6ffe6;
+}
+
+.option-badge {
+  position: absolute;
+  top: -8px;
+  right: 12px;
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Spring Boot Options Section */
+.spring-boot-options {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+  border: 1px solid #e9ecef;
+}
+
+.spring-boot-options h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #212529;
+  margin: 0 0 16px 0;
+}
+
+.options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.options-grid .export-field {
+  margin-bottom: 0;
+}
+
+.options-grid .export-field label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6c757d;
+  margin-bottom: 4px;
+}
+
+.options-grid .export-field input,
+.options-grid .export-field select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  font-size: 13px;
+  background-color: white;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.options-grid .export-field input:focus,
+.options-grid .export-field select:focus {
+  outline: none;
+  border-color: #28a745;
+  box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.15);
+}
+
+/* Deploy option info (non-link) */
+.deploy-option-info {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  cursor: default;
+}
+
+.deploy-option-info div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.deploy-option-info strong {
+  font-size: 12px;
+  color: #212529;
+}
+
+.deploy-option-info span {
+  font-size: 11px;
+  color: #6c757d;
+  font-family: 'SF Mono', 'Consolas', monospace;
+}
