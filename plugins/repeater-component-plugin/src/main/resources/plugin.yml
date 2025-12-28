@@ -1,0 +1,6 @@
+plugin-id: repeater-component-plugin
+plugin-name: Repeater Component
+version: 1.0.0
+main-class: dev.mainul35.plugins.data.RepeaterComponentPlugin
+description: Repeater component for iterating over data arrays and rendering children for each item
+author: Mainul35
