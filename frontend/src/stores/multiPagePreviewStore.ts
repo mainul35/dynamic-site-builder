@@ -15,6 +15,15 @@ interface MultiPagePreviewState {
   // Loaded page definitions (cached)
   loadedPages: Map<string, PageDefinition>;
 
+  // Current page being previewed (separate from builder's current page!)
+  // This is the page DISPLAYED in preview mode
+  previewPage: PageDefinition | null;
+
+  // The original page being edited (stored when entering preview)
+  // This is restored when exiting preview mode
+  originalEditingPage: PageDefinition | null;
+  originalEditingPageMeta: Page | null;
+
   // Current page being previewed (by slug or route path)
   currentPreviewPath: string;
 
@@ -28,6 +37,9 @@ interface MultiPagePreviewState {
   navigateToPage: (path: string) => void;
   loadPageDefinition: (path: string, definition: PageDefinition) => void;
   getPageDefinition: (path: string) => PageDefinition | undefined;
+  setPreviewPage: (page: PageDefinition | null) => void;
+  setOriginalEditingPage: (page: PageDefinition | null, pageMeta: Page | null) => void;
+  getOriginalEditingPage: () => { page: PageDefinition | null; meta: Page | null };
   goBack: () => void;
   goForward: () => void;
   canGoBack: () => boolean;
@@ -39,6 +51,9 @@ export const useMultiPagePreviewStore = create<MultiPagePreviewState>((set, get)
   isActive: false,
   pages: [],
   loadedPages: new Map(),
+  previewPage: null,
+  originalEditingPage: null,
+  originalEditingPageMeta: null,
   currentPreviewPath: '/',
   history: ['/'],
   historyIndex: 0,
@@ -46,11 +61,12 @@ export const useMultiPagePreviewStore = create<MultiPagePreviewState>((set, get)
   setActive: (active: boolean) => {
     set({ isActive: active });
     if (!active) {
-      // Reset when exiting preview
+      // Reset when exiting preview (but keep original page for restoration)
       set({
         currentPreviewPath: '/',
         history: ['/'],
         historyIndex: 0,
+        previewPage: null,
       });
     }
   },
@@ -90,6 +106,22 @@ export const useMultiPagePreviewStore = create<MultiPagePreviewState>((set, get)
     return get().loadedPages.get(path);
   },
 
+  setPreviewPage: (page: PageDefinition | null) => {
+    set({ previewPage: page });
+  },
+
+  setOriginalEditingPage: (page: PageDefinition | null, pageMeta: Page | null) => {
+    set({
+      originalEditingPage: page,
+      originalEditingPageMeta: pageMeta,
+    });
+  },
+
+  getOriginalEditingPage: () => {
+    const { originalEditingPage, originalEditingPageMeta } = get();
+    return { page: originalEditingPage, meta: originalEditingPageMeta };
+  },
+
   goBack: () => {
     const { history, historyIndex } = get();
     if (historyIndex > 0) {
@@ -126,6 +158,9 @@ export const useMultiPagePreviewStore = create<MultiPagePreviewState>((set, get)
       isActive: false,
       pages: [],
       loadedPages: new Map(),
+      previewPage: null,
+      originalEditingPage: null,
+      originalEditingPageMeta: null,
       currentPreviewPath: '/',
       history: ['/'],
       historyIndex: 0,

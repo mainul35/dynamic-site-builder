@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useMultiPagePreviewStore } from '../../stores/multiPagePreviewStore';
 import { useBuilderStore } from '../../stores/builderStore';
 import { PreviewNavigationInterceptor } from './PreviewNavigationInterceptor';
@@ -31,22 +31,31 @@ export const MultiPagePreview: React.FC<MultiPagePreviewProps> = ({
     isActive,
     pages,
     currentPreviewPath,
+    previewPage,
     setActive,
     setPages,
     navigateToPage,
     loadPageDefinition,
     getPageDefinition,
+    setPreviewPage,
+    setOriginalEditingPage,
     goBack,
     goForward,
     canGoBack,
     canGoForward,
   } = useMultiPagePreviewStore();
 
-  const { currentPage, setCurrentPage } = useBuilderStore();
+  const { currentPage } = useBuilderStore();
 
   // Initialize preview mode
   useEffect(() => {
     setActive(true);
+
+    // IMPORTANT: Store the original page being edited so we can restore it when exiting preview
+    // This prevents the bug where navigating in preview overwrites the editing page
+    if (currentPage && currentEditingPage) {
+      setOriginalEditingPage(currentPage, currentEditingPage);
+    }
 
     // Load pages
     if (initialPages.length > 0) {
@@ -74,6 +83,8 @@ export const MultiPagePreview: React.FC<MultiPagePreviewProps> = ({
         // Cache the current page definition under its correct path
         if (currentPage && currentEditingPage) {
           loadPageDefinition(startPath, currentPage);
+          // Set initial preview page
+          setPreviewPage(currentPage);
         }
 
         navigateToPage(startPath);
@@ -85,6 +96,7 @@ export const MultiPagePreview: React.FC<MultiPagePreviewProps> = ({
       if (currentPage) {
         const initialPath = '/';
         loadPageDefinition(initialPath, currentPage);
+        setPreviewPage(currentPage);
       }
     }
 
@@ -135,6 +147,8 @@ export const MultiPagePreview: React.FC<MultiPagePreviewProps> = ({
   };
 
   // Load page when path changes
+  // IMPORTANT: We use setPreviewPage (NOT setCurrentPage from builderStore)
+  // This keeps the preview page separate from the editing page
   useEffect(() => {
     if (!isActive) return;
 
@@ -142,7 +156,7 @@ export const MultiPagePreview: React.FC<MultiPagePreviewProps> = ({
       // Check if page is already loaded
       const cachedPage = getPageDefinition(currentPreviewPath);
       if (cachedPage) {
-        setCurrentPage(cachedPage);
+        setPreviewPage(cachedPage);
         return;
       }
 
@@ -160,7 +174,7 @@ export const MultiPagePreview: React.FC<MultiPagePreviewProps> = ({
 
         if (localPage) {
           loadPageDefinition(currentPreviewPath, localPage);
-          setCurrentPage(localPage);
+          setPreviewPage(localPage);
           return;
         }
 
@@ -176,7 +190,7 @@ export const MultiPagePreview: React.FC<MultiPagePreviewProps> = ({
           // Load from backend
           const definition = await pageService.getPageDefinition(siteId, page.id);
           loadPageDefinition(currentPreviewPath, definition);
-          setCurrentPage(definition);
+          setPreviewPage(definition);
         } else {
           // Demo mode - load from localStorage
           const savedPages = JSON.parse(localStorage.getItem('builder_saved_pages') || '{}');
@@ -184,7 +198,7 @@ export const MultiPagePreview: React.FC<MultiPagePreviewProps> = ({
 
           if (pageData) {
             loadPageDefinition(currentPreviewPath, pageData);
-            setCurrentPage(pageData);
+            setPreviewPage(pageData);
           } else {
             setError(`Page data not found for: ${page.pageName}`);
           }
@@ -205,7 +219,7 @@ export const MultiPagePreview: React.FC<MultiPagePreviewProps> = ({
       const pagePath = p.routePath || `/${p.pageSlug}`;
       return pagePath === currentPreviewPath;
     });
-    return page?.pageName || currentPage?.pageName || 'Preview';
+    return page?.pageName || previewPage?.pageName || 'Preview';
   };
 
   // Handle page selection from dropdown
@@ -291,7 +305,7 @@ export const MultiPagePreview: React.FC<MultiPagePreviewProps> = ({
           </div>
         ) : (
           <PreviewNavigationInterceptor enabled={isActive}>
-            <BuilderCanvas />
+            <BuilderCanvas pageOverride={previewPage} />
           </PreviewNavigationInterceptor>
         )}
       </div>
