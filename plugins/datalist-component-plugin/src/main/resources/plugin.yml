@@ -1,0 +1,6 @@
+plugin-id: datalist-component-plugin
+plugin-name: DataList Component
+version: 1.0.0
+main-class: dev.mainul35.plugins.data.DataListComponentPlugin
+description: Pre-styled data list component for displaying data as cards, table, or list
+author: Mainul35
