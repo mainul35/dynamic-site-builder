@@ -107,6 +107,59 @@ public class PluginClassLoader extends URLClassLoader {
     }
 
     /**
+     * Get a resource from the plugin JAR as an InputStream.
+     * This allows access to frontend bundles, CSS, images, etc. packaged in the JAR.
+     *
+     * @param resourcePath Path to the resource within the JAR (e.g., "frontend/bundle.js")
+     * @return InputStream for the resource, or null if not found
+     */
+    public java.io.InputStream getPluginResourceAsStream(String resourcePath) {
+        // Normalize path - remove leading slash if present
+        String normalizedPath = resourcePath.startsWith("/") ? resourcePath.substring(1) : resourcePath;
+        log.debug("Loading plugin resource: {} for plugin: {}", normalizedPath, pluginId);
+        return getResourceAsStream(normalizedPath);
+    }
+
+    /**
+     * Get a resource URL from the plugin JAR.
+     *
+     * @param resourcePath Path to the resource within the JAR
+     * @return URL for the resource, or null if not found
+     */
+    public URL getPluginResourceUrl(String resourcePath) {
+        String normalizedPath = resourcePath.startsWith("/") ? resourcePath.substring(1) : resourcePath;
+        return getResource(normalizedPath);
+    }
+
+    /**
+     * Check if a resource exists in the plugin JAR.
+     *
+     * @param resourcePath Path to the resource within the JAR
+     * @return true if the resource exists
+     */
+    public boolean hasPluginResource(String resourcePath) {
+        return getPluginResourceUrl(resourcePath) != null;
+    }
+
+    /**
+     * Get the content of a resource as a byte array.
+     *
+     * @param resourcePath Path to the resource within the JAR
+     * @return byte array of the resource content, or null if not found
+     */
+    public byte[] getPluginResourceBytes(String resourcePath) {
+        try (java.io.InputStream is = getPluginResourceAsStream(resourcePath)) {
+            if (is == null) {
+                return new byte[0];
+            }
+            return is.readAllBytes();
+        } catch (IOException e) {
+            log.error("Failed to read plugin resource: {} for plugin: {}", resourcePath, pluginId, e);
+            return new byte[0];
+        }
+    }
+
+    /**
      * Close the ClassLoader and release resources
      */
     @Override

@@ -442,4 +442,15 @@ public class PluginManager {
     public Object getLoadedPlugin(String pluginId) {
         return loadedPlugins.get(pluginId);
     }
+
+    /**
+     * Get the ClassLoader for a specific plugin.
+     * Used by PluginAssetService to serve frontend assets from plugin JARs.
+     *
+     * @param pluginId The plugin ID
+     * @return The PluginClassLoader, or null if not found
+     */
+    public PluginClassLoader getPluginClassLoader(String pluginId) {
+        return pluginClassLoaders.get(pluginId);
+    }
 }
