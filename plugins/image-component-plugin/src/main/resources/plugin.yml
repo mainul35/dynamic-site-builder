@@ -1,0 +1,25 @@
+plugin-id: image-component-plugin
+plugin-name: Image Component
+version: 1.0.0
+author: Mainul35
+description: Image component with placeholder support and various display options
+main-class: dev.mainul35.plugins.ui.ImageComponentPlugin
+plugin-type: ui-component
+
+ui-component:
+  component-id: Image
+  display-name: Image
+  category: ui
+  icon: "\uD83D\uDDBC\uFE0F"
+  description: Display images with customizable sizing, fit options, and placeholder support
+
+  default-width: 300px
+  default-height: 200px
+
+  resizable: true
+  min-width: 50px
+  max-width: 2000px
+  min-height: 50px
+  max-height: 2000px
+
+  react-component-path: /renderers/ImageRenderer
