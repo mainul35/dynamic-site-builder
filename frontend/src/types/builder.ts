@@ -2,6 +2,102 @@
  * TypeScript types for the visual site builder
  */
 
+// ============================================================
+// DATA BINDING TYPES (Phase 1: Data Binding Infrastructure)
+// ============================================================
+
+/**
+ * Data source types supported by the system
+ */
+export type DataSourceType = 'api' | 'context' | 'static';
+
+/**
+ * Field mapping configuration for transforming API responses
+ */
+export interface FieldMappingConfig {
+  /** JSON path to extract value (e.g., "data.items", "response.user.name") */
+  path: string;
+  /** Optional transform: "uppercase", "lowercase", "date", "currency", etc. */
+  transform?: string;
+  /** Default value if path not found */
+  fallback?: any;
+}
+
+/**
+ * Field mapping - maps API response fields to component props
+ */
+export interface FieldMapping {
+  [propName: string]: string | FieldMappingConfig;
+}
+
+/**
+ * Data source configuration for a component
+ */
+export interface DataSourceConfig {
+  /** Type of data source */
+  type: DataSourceType;
+  /** API endpoint (e.g., "/api/products") - for 'api' type */
+  endpoint?: string;
+  /** HTTP method for API calls */
+  method?: 'GET' | 'POST';
+  /** Custom headers for API calls */
+  headers?: Record<string, string>;
+  /** Map API fields to component props */
+  fieldMapping?: FieldMapping;
+  /** Events that trigger refresh */
+  refreshOn?: string[];
+  /** Cache key for response caching */
+  cacheKey?: string;
+  /** Cache TTL in milliseconds */
+  cacheTtlMs?: number;
+  /** Static data - for 'static' type */
+  staticData?: any;
+  /** Context key - for 'context' type */
+  contextKey?: string;
+}
+
+/**
+ * Iterator configuration for Repeater/DataList components
+ */
+export interface IteratorConfig {
+  /** Path to array in data (e.g., "items", "data.products") */
+  dataPath: string;
+  /** Variable name for current item (e.g., "item") */
+  itemAlias: string;
+  /** Variable name for index (e.g., "index") */
+  indexAlias?: string;
+  /** Path to unique key for React keys */
+  keyPath?: string;
+  /** Components to show when array is empty */
+  emptyTemplate?: ComponentInstance[];
+}
+
+/**
+ * Page-level data context configuration
+ */
+export interface PageDataContext {
+  /** Named data sources that can be referenced by components */
+  dataSources: {
+    [key: string]: DataSourceConfig;
+  };
+  /** Data shared between components */
+  sharedData?: {
+    [key: string]: any;
+  };
+}
+
+/**
+ * Template binding for dynamic content
+ * Maps component props to template variables (e.g., {{user.name}})
+ */
+export interface TemplateBindings {
+  [propName: string]: string;
+}
+
+// ============================================================
+// CORE BUILDER TYPES
+// ============================================================
+
 /**
  * Grid configuration for the builder canvas
  */
@@ -101,6 +197,15 @@ export interface ComponentInstance {
   events?: ComponentEventConfig[];
   /** Path to the React bundle for dynamic loading (from plugin) */
   reactBundlePath?: string;
+  // Data binding properties (Phase 1)
+  /** Data source configuration for this component */
+  dataSource?: DataSourceConfig;
+  /** Template bindings for dynamic content (e.g., { "text": "{{user.name}}" }) */
+  templateBindings?: TemplateBindings;
+  /** Iterator configuration for Repeater/DataList components */
+  iteratorConfig?: IteratorConfig;
+  /** Reference to a named data source in PageDataContext */
+  dataSourceRef?: string;
 }
 
 /**
@@ -121,6 +226,8 @@ export interface PageDefinition {
   grid: GridConfig;
   components: ComponentInstance[];
   globalStyles?: GlobalStyles;
+  /** Page-level data sources and context (Phase 1) */
+  dataContext?: PageDataContext;
 }
 
 /**
