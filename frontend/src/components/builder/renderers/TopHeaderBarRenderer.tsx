@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
-import { RendererProps } from './RendererRegistry';
-import { useComponentEvents } from '../events';
+import type { RendererProps } from './RendererRegistry';
 
 /**
  * SocialLink interface for social media links
@@ -18,17 +17,13 @@ interface SocialLink {
  * - Social media links
  * - Contact information display
  * - Announcements/promotions
- *
- * Category: navbar
  */
-// Default social links
 const defaultSocialLinks = [
   { platform: 'facebook', url: '#', icon: '📘' },
   { platform: 'twitter', url: '#', icon: '🐦' },
   { platform: 'linkedin', url: '#', icon: '💼' },
 ];
 
-// Helper to check if socialLinks has actual content
 const hasSocialLinks = (items: unknown): boolean => {
   if (!items) return false;
   if (Array.isArray(items) && items.length > 0) return true;
@@ -37,22 +32,15 @@ const hasSocialLinks = (items: unknown): boolean => {
 };
 
 const TopHeaderBarRenderer: React.FC<RendererProps> = ({ component, isEditMode }) => {
-  // Get event handlers from the event system
-  const eventHandlers = useComponentEvents(component, { isEditMode });
+  const props = component.props || {};
+  const leftContent = (props.leftContent as string) || '📧 contact@example.com';
+  const rightContent = (props.rightContent as string) || '📞 +1 234 567 890';
+  const centerContent = (props.centerContent as string) || '';
+  const showSocialLinks = props.showSocialLinks !== false;
+  const propsSocialLinks = props.socialLinks;
 
-  // Extract props with defaults
-  const {
-    leftContent = '📧 contact@example.com',
-    rightContent = '📞 +1 234 567 890',
-    centerContent = '',
-    showSocialLinks = true,
-    socialLinks: propsSocialLinks,
-  } = component.props;
-
-  // Use component's socialLinks if they exist, otherwise use defaults
   const socialLinks = hasSocialLinks(propsSocialLinks) ? propsSocialLinks : defaultSocialLinks;
 
-  // Extract styles with defaults
   const {
     backgroundColor = '#f8f9fa',
     textColor = '#666666',
@@ -63,7 +51,6 @@ const TopHeaderBarRenderer: React.FC<RendererProps> = ({ component, isEditMode }
     fontSize = '13px',
   } = component.styles as Record<string, string>;
 
-  // Parse socialLinks if it's a string (JSON)
   const parsedSocialLinks: SocialLink[] = useMemo(() => {
     if (typeof socialLinks === 'string') {
       try {
@@ -76,7 +63,6 @@ const TopHeaderBarRenderer: React.FC<RendererProps> = ({ component, isEditMode }
     return Array.isArray(socialLinks) ? socialLinks : [];
   }, [socialLinks]);
 
-  // Container styles
   const containerStyles: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
@@ -91,7 +77,6 @@ const TopHeaderBarRenderer: React.FC<RendererProps> = ({ component, isEditMode }
     boxSizing: 'border-box',
   };
 
-  // Section styles (left, center, right)
   const sectionStyles: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
@@ -116,20 +101,17 @@ const TopHeaderBarRenderer: React.FC<RendererProps> = ({ component, isEditMode }
     flex: 1,
   };
 
-  // Content text styles
   const contentTextStyles: React.CSSProperties = {
     margin: 0,
     whiteSpace: 'nowrap',
   };
 
-  // Social links container styles
   const socialContainerStyles: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
   };
 
-  // Social link styles
   const socialLinkStyles: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
@@ -142,38 +124,31 @@ const TopHeaderBarRenderer: React.FC<RendererProps> = ({ component, isEditMode }
     cursor: isEditMode ? 'default' : 'pointer',
   };
 
-  // Link styles
-  const linkStyles: React.CSSProperties = {
-    color: accentColor,
-    textDecoration: 'none',
-    transition: 'opacity 0.2s ease',
-    cursor: isEditMode ? 'default' : 'pointer',
-  };
-
-  // Handle link click in edit mode
   const handleClick = (e: React.MouseEvent) => {
     if (isEditMode) {
       e.preventDefault();
     }
-    if (eventHandlers.onClick) {
-      eventHandlers.onClick(e);
-    }
   };
 
-  // Render content with link detection
-  const renderContent = (content: string | unknown) => {
+  const renderContent = (content: string) => {
     if (!content) return null;
-    const text = String(content);
-
-    // Simple pattern matching for common contact formats
-    const emailRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
-    const phoneRegex = /(\+?[\d\s-()]{10,})/g;
-
-    // For simplicity, just render as text (links can be added later if needed)
-    return <span style={contentTextStyles}>{text}</span>;
+    return <span style={contentTextStyles}>{content}</span>;
   };
 
-  // Render social link
+  const getPlatformIcon = (platform: string): string => {
+    const icons: Record<string, string> = {
+      facebook: '📘',
+      twitter: '🐦',
+      instagram: '📷',
+      linkedin: '💼',
+      youtube: '📺',
+      github: '💻',
+      email: '✉️',
+      phone: '📞',
+    };
+    return icons[platform.toLowerCase()] || '🔗';
+  };
+
   const renderSocialLink = (link: SocialLink, index: number) => (
     <a
       key={`${link.platform}-${index}`}
@@ -198,25 +173,8 @@ const TopHeaderBarRenderer: React.FC<RendererProps> = ({ component, isEditMode }
     </a>
   );
 
-  // Get default icon for known platforms
-  const getPlatformIcon = (platform: string): string => {
-    const icons: Record<string, string> = {
-      facebook: '📘',
-      twitter: '🐦',
-      instagram: '📷',
-      linkedin: '💼',
-      youtube: '📺',
-      github: '💻',
-      email: '✉️',
-      phone: '📞',
-    };
-    return icons[platform.toLowerCase()] || '🔗';
-  };
-
-  // Check if there's any content to show
   const hasContent = leftContent || rightContent || centerContent || (showSocialLinks && parsedSocialLinks.length > 0);
 
-  // Empty state for edit mode
   if (!hasContent && isEditMode) {
     return (
       <div style={{
@@ -232,23 +190,19 @@ const TopHeaderBarRenderer: React.FC<RendererProps> = ({ component, isEditMode }
 
   return (
     <div style={containerStyles}>
-      {/* Left section */}
       <div style={leftSectionStyles}>
         {renderContent(leftContent)}
       </div>
 
-      {/* Center section */}
       {centerContent && (
         <div style={centerSectionStyles}>
           {renderContent(centerContent)}
         </div>
       )}
 
-      {/* Right section */}
       <div style={rightSectionStyles}>
         {renderContent(rightContent)}
 
-        {/* Social links */}
         {showSocialLinks && parsedSocialLinks.length > 0 && (
           <div style={socialContainerStyles}>
             {parsedSocialLinks.map((link, index) => renderSocialLink(link, index))}

@@ -105,10 +105,13 @@ const RegisterFormRenderer: React.FC<RendererProps> = ({ component, isEditMode }
     width: '100%',
   };
 
+  const title = props.title as string | undefined;
+  const subtitle = props.subtitle as string | undefined;
+
   return (
     <div className="auth-form register-form" style={containerStyle}>
-      {props.title && <h2 className="auth-form-title">{props.title as string}</h2>}
-      {props.subtitle && <p className="auth-form-subtitle">{props.subtitle as string}</p>}
+      {title && <h2 className="auth-form-title">{title}</h2>}
+      {subtitle && <p className="auth-form-subtitle">{subtitle}</p>}
 
       <form onSubmit={handleSubmit} className="auth-form-content">
         {error && <div className="auth-form-error">{error}</div>}

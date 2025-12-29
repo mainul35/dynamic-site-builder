@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { RendererProps } from './RendererRegistry';
-import { useComponentEvents } from '../events';
+import type { RendererProps } from './RendererRegistry';
 
 /**
  * SidebarNavItem interface for sidebar navigation items
@@ -20,10 +19,7 @@ interface SidebarNavItem {
  * - Icon support
  * - Nested menu items
  * - Left or right positioning
- *
- * Category: navbar
  */
-// Default navigation items for sidebar
 const defaultSidebarNavItems = [
   { label: 'Dashboard', href: '/dashboard', icon: '🏠', active: true },
   { label: 'Analytics', href: '/analytics', icon: '📊', active: false },
@@ -31,7 +27,6 @@ const defaultSidebarNavItems = [
   { label: 'Settings', href: '/settings', icon: '⚙️', active: false },
 ];
 
-// Helper to check if navItems has actual content
 const hasNavItems = (items: unknown): boolean => {
   if (!items) return false;
   if (Array.isArray(items) && items.length > 0) return true;
@@ -43,25 +38,18 @@ const SidebarNavRenderer: React.FC<RendererProps> = ({ component, isEditMode }) 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
-  // Get event handlers from the event system
-  const eventHandlers = useComponentEvents(component, { isEditMode });
+  const props = component.props || {};
+  const brandText = (props.brandText as string) || 'Menu';
+  const brandImageUrl = (props.brandImageUrl as string) || '';
+  const brandLink = (props.brandLink as string) || '/';
+  const propsNavItems = props.navItems;
+  const collapsed = Boolean(props.collapsed);
+  const collapsible = props.collapsible !== false;
+  const position = (props.position as string) || 'left';
+  const showIcons = props.showIcons !== false;
 
-  // Extract props with defaults
-  const {
-    brandText = 'Menu',
-    brandImageUrl = '',
-    brandLink = '/',
-    navItems: propsNavItems,
-    collapsed = false,
-    collapsible = true,
-    position = 'left',
-    showIcons = true,
-  } = component.props;
-
-  // Use component's navItems if they exist, otherwise use defaults
   const navItems = hasNavItems(propsNavItems) ? propsNavItems : defaultSidebarNavItems;
 
-  // Extract styles with defaults
   const {
     backgroundColor = '#2c3e50',
     textColor = '#ecf0f1',
@@ -74,12 +62,10 @@ const SidebarNavRenderer: React.FC<RendererProps> = ({ component, isEditMode }) 
     fontSize = '14px',
   } = component.styles as Record<string, string>;
 
-  // Initialize collapsed state from props
   React.useEffect(() => {
-    setIsCollapsed(collapsed as boolean);
+    setIsCollapsed(collapsed);
   }, [collapsed]);
 
-  // Parse navItems if it's a string (JSON)
   const parsedNavItems: SidebarNavItem[] = useMemo(() => {
     if (typeof navItems === 'string') {
       try {
@@ -92,7 +78,6 @@ const SidebarNavRenderer: React.FC<RendererProps> = ({ component, isEditMode }) 
     return Array.isArray(navItems) ? navItems : [];
   }, [navItems]);
 
-  // Toggle item expansion
   const toggleExpanded = (itemLabel: string) => {
     setExpandedItems(prev => {
       const newSet = new Set(prev);
@@ -105,7 +90,6 @@ const SidebarNavRenderer: React.FC<RendererProps> = ({ component, isEditMode }) 
     });
   };
 
-  // Container styles
   const containerStyles: React.CSSProperties = {
     display: 'flex',
     flexDirection: 'column',
@@ -123,7 +107,6 @@ const SidebarNavRenderer: React.FC<RendererProps> = ({ component, isEditMode }) 
     overflow: 'hidden',
   };
 
-  // Header styles
   const headerStyles: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
@@ -133,7 +116,6 @@ const SidebarNavRenderer: React.FC<RendererProps> = ({ component, isEditMode }) 
     marginBottom: '10px',
   };
 
-  // Brand styles
   const brandStyles: React.CSSProperties = {
     display: isCollapsed ? 'none' : 'flex',
     alignItems: 'center',
@@ -145,7 +127,6 @@ const SidebarNavRenderer: React.FC<RendererProps> = ({ component, isEditMode }) 
     cursor: isEditMode ? 'default' : 'pointer',
   };
 
-  // Toggle button styles
   const toggleButtonStyles: React.CSSProperties = {
     display: collapsible ? 'flex' : 'none',
     alignItems: 'center',
@@ -160,7 +141,6 @@ const SidebarNavRenderer: React.FC<RendererProps> = ({ component, isEditMode }) 
     transition: 'background 0.2s ease',
   };
 
-  // Nav list styles
   const navListStyles: React.CSSProperties = {
     listStyle: 'none',
     margin: 0,
@@ -169,7 +149,6 @@ const SidebarNavRenderer: React.FC<RendererProps> = ({ component, isEditMode }) 
     overflowY: 'auto',
   };
 
-  // Get nav item styles
   const getItemStyles = (item: SidebarNavItem, level = 0): React.CSSProperties => ({
     display: 'flex',
     alignItems: 'center',
@@ -185,7 +164,6 @@ const SidebarNavRenderer: React.FC<RendererProps> = ({ component, isEditMode }) 
     whiteSpace: 'nowrap',
   });
 
-  // Icon styles
   const iconStyles: React.CSSProperties = {
     fontSize: '1.2em',
     width: '24px',
@@ -193,7 +171,6 @@ const SidebarNavRenderer: React.FC<RendererProps> = ({ component, isEditMode }) 
     flexShrink: 0,
   };
 
-  // Label styles
   const labelStyles: React.CSSProperties = {
     display: isCollapsed ? 'none' : 'block',
     flex: 1,
@@ -201,14 +178,12 @@ const SidebarNavRenderer: React.FC<RendererProps> = ({ component, isEditMode }) 
     textOverflow: 'ellipsis',
   };
 
-  // Expand arrow styles
   const expandArrowStyles: React.CSSProperties = {
     display: isCollapsed ? 'none' : 'block',
     fontSize: '10px',
     transition: 'transform 0.2s ease',
   };
 
-  // Handle nav item click
   const handleNavClick = (e: React.MouseEvent, item: SidebarNavItem) => {
     if (isEditMode) {
       e.preventDefault();
@@ -220,20 +195,14 @@ const SidebarNavRenderer: React.FC<RendererProps> = ({ component, isEditMode }) 
       toggleExpanded(item.label);
       return;
     }
-
-    if (eventHandlers.onClick) {
-      eventHandlers.onClick(e);
-    }
   };
 
-  // Handle brand click
   const handleBrandClick = (e: React.MouseEvent) => {
     if (isEditMode) {
       e.preventDefault();
     }
   };
 
-  // Render nav item recursively
   const renderNavItem = (item: SidebarNavItem, index: number, level = 0): React.ReactNode => {
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedItems.has(item.label);
@@ -270,7 +239,6 @@ const SidebarNavRenderer: React.FC<RendererProps> = ({ component, isEditMode }) 
           )}
         </a>
 
-        {/* Nested items */}
         {hasChildren && isExpanded && !isCollapsed && (
           <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
             {item.children!.map((child, childIndex) =>
@@ -284,17 +252,16 @@ const SidebarNavRenderer: React.FC<RendererProps> = ({ component, isEditMode }) 
 
   return (
     <nav style={containerStyles}>
-      {/* Header with brand and toggle */}
       <div style={headerStyles}>
-        <a href={brandLink as string} style={brandStyles} onClick={handleBrandClick}>
+        <a href={brandLink} style={brandStyles} onClick={handleBrandClick}>
           {brandImageUrl && (
             <img
-              src={brandImageUrl as string}
-              alt={brandText as string || 'Logo'}
+              src={brandImageUrl}
+              alt={brandText || 'Logo'}
               style={{ height: '24px', width: 'auto' }}
             />
           )}
-          {brandText && <span>{brandText as string}</span>}
+          {brandText && <span>{brandText}</span>}
         </a>
         {collapsible && (
           <button
@@ -307,12 +274,10 @@ const SidebarNavRenderer: React.FC<RendererProps> = ({ component, isEditMode }) 
         )}
       </div>
 
-      {/* Navigation items */}
       <ul style={navListStyles}>
         {parsedNavItems.map((item, index) => renderNavItem(item, index))}
       </ul>
 
-      {/* Empty state for edit mode */}
       {parsedNavItems.length === 0 && isEditMode && (
         <div style={{
           color: 'rgba(255,255,255,0.5)',

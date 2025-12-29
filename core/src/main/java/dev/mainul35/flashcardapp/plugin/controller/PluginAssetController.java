@@ -9,7 +9,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Duration;
 import java.util.Optional;
 
 /**
@@ -27,16 +26,17 @@ import java.util.Optional;
 @RequestMapping("/api/plugins")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*") // Allow frontend to load assets from any origin
+@CrossOrigin(originPatterns = "*") // Allow frontend to load assets from any origin
 public class PluginAssetController {
 
     private final PluginAssetService pluginAssetService;
 
     /**
-     * Cache control for static assets - 1 hour in production
+     * Cache control for static assets - disabled during development
+     * TODO: Enable caching in production with versioned URLs
      */
     private static final CacheControl ASSET_CACHE_CONTROL =
-            CacheControl.maxAge(Duration.ofHours(1)).cachePublic();
+            CacheControl.noCache().mustRevalidate();
 
     /**
      * Serve the main JavaScript bundle for a plugin.

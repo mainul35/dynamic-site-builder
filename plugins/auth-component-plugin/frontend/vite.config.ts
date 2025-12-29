@@ -19,19 +19,21 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),
       name: 'AuthComponentPlugin',
-      formats: ['es'],
+      formats: ['iife'],
       fileName: () => 'bundle.js',
     },
     rollupOptions: {
-      // React is provided by the host application
+      // React is provided by the host application as globals
       external: ['react', 'react-dom', 'react/jsx-runtime'],
       output: {
-        // Provide global variables for externals in UMD build
+        // Map externals to global variables (React is exposed by host app)
         globals: {
           react: 'React',
           'react-dom': 'ReactDOM',
           'react/jsx-runtime': 'jsxRuntime',
         },
+        extend: true,
+        exports: 'named',
         // Single CSS file
         assetFileNames: (assetInfo) => {
           if (assetInfo.name === 'style.css') {
@@ -43,13 +45,8 @@ export default defineConfig({
     },
     // Generate source maps for debugging
     sourcemap: true,
-    // Minimize for production
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: false, // Keep console logs for debugging
-      },
-    },
+    // Use esbuild for minification (terser requires separate install)
+    minify: 'esbuild',
   },
   // Resolve aliases
   resolve: {

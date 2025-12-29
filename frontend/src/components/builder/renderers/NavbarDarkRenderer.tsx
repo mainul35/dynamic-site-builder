@@ -1,15 +1,11 @@
 import React from 'react';
-import { RendererProps } from './RendererRegistry';
+import type { RendererProps } from './RendererRegistry';
 import NavbarRenderer from './NavbarRenderer';
 
 /**
  * NavbarDarkRenderer - Dark theme navbar
  * Dark background with light text
- *
- * This is a variant that wraps NavbarRenderer with specific default props
- * Category: navbar
  */
-// Default navigation items for this variant
 const defaultNavItems = [
   { label: 'Home', href: '/', active: true },
   { label: 'About', href: '/about', active: false },
@@ -17,7 +13,6 @@ const defaultNavItems = [
   { label: 'Contact', href: '/contact', active: false },
 ];
 
-// Helper to check if navItems has actual content
 const hasNavItems = (items: unknown): boolean => {
   if (!items) return false;
   if (Array.isArray(items) && items.length > 0) return true;
@@ -26,19 +21,17 @@ const hasNavItems = (items: unknown): boolean => {
 };
 
 const NavbarDarkRenderer: React.FC<RendererProps> = ({ component, isEditMode }) => {
-  // Use component's navItems if they exist, otherwise use defaults
   const navItems = hasNavItems(component.props?.navItems)
     ? component.props.navItems
     : defaultNavItems;
 
-  // Merge default props for this variant
   const enhancedComponent = {
     ...component,
     props: {
       layout: 'default',
       brandText: 'My Site',
       ...component.props,
-      navItems, // Override with resolved navItems
+      navItems,
     },
     styles: {
       backgroundColor: '#1a1a2e',

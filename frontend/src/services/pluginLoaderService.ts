@@ -4,6 +4,8 @@
  * This service handles loading plugin frontend bundles from the backend API.
  * When a plugin is loaded, its renderers are automatically registered
  * with the RendererRegistry.
+ *
+ * Bundles are loaded as IIFE scripts that expose themselves on window globals.
  */
 
 import { RendererRegistry, RendererComponent } from '../components/builder/renderers/RendererRegistry';
@@ -37,6 +39,35 @@ const loadingPlugins = new Map<string, Promise<boolean>>();
  * Base URL for plugin assets API
  */
 const PLUGIN_API_BASE = '/api/plugins';
+
+/**
+ * Maps plugin IDs to their global variable names (used by IIFE bundles)
+ */
+const PLUGIN_GLOBAL_NAMES: Record<string, string> = {
+  'navbar-component-plugin': 'NavbarComponentPlugin',
+  'label-component-plugin': 'LabelComponentPlugin',
+  'button-component-plugin': 'ButtonComponentPlugin',
+  'textbox-component-plugin': 'TextboxComponentPlugin',
+  'container-layout-plugin': 'ContainerLayoutPlugin',
+  'scrollable-container-plugin': 'ScrollableContainerPlugin',
+  'image-component-plugin': 'ImageComponentPlugin',
+  'auth-component-plugin': 'AuthComponentPlugin',
+};
+
+/**
+ * Get the global variable name for a plugin
+ */
+function getPluginGlobalName(pluginId: string): string {
+  // Check predefined mapping first
+  if (PLUGIN_GLOBAL_NAMES[pluginId]) {
+    return PLUGIN_GLOBAL_NAMES[pluginId];
+  }
+  // Convert plugin-id to PascalCase (e.g., "my-plugin" -> "MyPlugin")
+  return pluginId
+    .split('-')
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('');
+}
 
 /**
  * Check if a plugin has frontend assets available
@@ -85,17 +116,56 @@ async function loadPluginStyles(pluginId: string): Promise<void> {
 }
 
 /**
- * Load a plugin's JavaScript bundle and register its renderers
+ * Load a plugin's JavaScript bundle via script injection and register its renderers.
+ * IIFE bundles expose themselves on window globals (e.g., window.NavbarComponentPlugin).
  */
 async function loadPluginBundle(pluginId: string): Promise<boolean> {
   try {
     const bundleUrl = `${PLUGIN_API_BASE}/${pluginId}/bundle.js`;
+    const globalName = getPluginGlobalName(pluginId);
 
-    // Dynamic import of the plugin bundle
-    const module = await import(/* @vite-ignore */ bundleUrl);
+    // Verify jsxRuntime is available before loading the bundle
+    const jsxRuntimeCheck = (window as Record<string, unknown>).jsxRuntime as Record<string, unknown>;
+    console.log(`[PluginLoader] jsxRuntime check before loading ${pluginId}:`, {
+      exists: !!jsxRuntimeCheck,
+      hasJsx: typeof jsxRuntimeCheck?.jsx,
+      hasJsxs: typeof jsxRuntimeCheck?.jsxs,
+      keys: jsxRuntimeCheck ? Object.keys(jsxRuntimeCheck) : [],
+    });
 
-    // Handle different export formats
-    const pluginBundle: PluginBundle = module.default || module.pluginBundle || module;
+    if (!jsxRuntimeCheck?.jsx || typeof jsxRuntimeCheck.jsx !== 'function') {
+      console.error(`[PluginLoader] ERROR: jsxRuntime.jsx is not available! Plugin ${pluginId} will fail.`);
+      console.error('[PluginLoader] Current window.jsxRuntime:', jsxRuntimeCheck);
+    }
+
+    // Load bundle via script tag injection (for IIFE format)
+    // Add cache-busting query param to force fresh load during development
+    const cacheBuster = import.meta.env.DEV ? `?t=${Date.now()}` : '';
+    await new Promise<void>((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = bundleUrl + cacheBuster;
+      script.id = `plugin-script-${pluginId}`;
+      script.async = true;
+
+      script.onload = () => {
+        console.log(`[PluginLoader] Script loaded for ${pluginId}`);
+        resolve();
+      };
+
+      script.onerror = () => {
+        reject(new Error(`Failed to load script for ${pluginId}`));
+      };
+
+      document.head.appendChild(script);
+    });
+
+    // Get the plugin from the global variable
+    const pluginBundle: PluginBundle = (window as Record<string, unknown>)[globalName] as PluginBundle;
+
+    if (!pluginBundle) {
+      console.warn(`[PluginLoader] Plugin global not found: window.${globalName}`);
+      return false;
+    }
 
     if (!pluginBundle.renderers && !pluginBundle.registerRenderers) {
       console.warn(`[PluginLoader] Invalid bundle format for ${pluginId}: no renderers found`);
@@ -206,9 +276,15 @@ export function unloadPlugin(pluginId: string): void {
     styleElement.remove();
   }
 
-  // Note: JavaScript modules cannot be fully unloaded from memory
-  // We just unregister the renderers
-  // The actual module will be garbage collected if no references remain
+  // Remove script tag
+  const scriptElement = document.getElementById(`plugin-script-${pluginId}`);
+  if (scriptElement) {
+    scriptElement.remove();
+  }
+
+  // Clean up global variable
+  const globalName = getPluginGlobalName(pluginId);
+  delete (window as Record<string, unknown>)[globalName];
 
   loadedPlugins.delete(pluginId);
 
@@ -246,9 +322,40 @@ export function preloadPlugins(pluginIds: string[]): void {
   });
 }
 
+/**
+ * Load all available plugin bundles
+ * Fetches the component registry and loads all plugins that have frontends
+ */
+export async function loadAllPlugins(): Promise<Map<string, boolean>> {
+  try {
+    // Fetch list of available plugins from the component registry
+    const response = await fetch('/api/component-registry');
+    if (!response.ok) {
+      throw new Error('Failed to fetch component registry');
+    }
+
+    const components = await response.json();
+
+    // Extract unique plugin IDs
+    const pluginIds = new Set<string>();
+    for (const component of components) {
+      if (component.pluginId) {
+        pluginIds.add(component.pluginId);
+      }
+    }
+
+    // Load all plugin bundles
+    return loadPlugins(Array.from(pluginIds));
+  } catch (error) {
+    console.error('[PluginLoader] Failed to load all plugins:', error);
+    return new Map();
+  }
+}
+
 export default {
   loadPlugin,
   loadPlugins,
+  loadAllPlugins,
   unloadPlugin,
   isPluginLoaded,
   getLoadedPlugins,

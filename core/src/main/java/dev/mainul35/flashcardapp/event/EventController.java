@@ -25,7 +25,7 @@ import java.util.Set;
 @RequestMapping("/api/events")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*") // Configure appropriately for production
+@CrossOrigin(originPatterns = "*") // Configure appropriately for production
 public class EventController {
 
     private final EventHandlerRegistry eventHandlerRegistry;

@@ -13,6 +13,16 @@ export interface RendererProps {
 export type RendererComponent = React.FC<RendererProps>;
 
 /**
+ * Navigation item with multi-level support
+ */
+export interface NavItem {
+  label: string;
+  href: string;
+  active?: boolean;
+  children?: NavItem[];
+}
+
+/**
  * Registry key format: "pluginId:componentId" or just "componentId" for core components
  */
 type RendererKey = string;

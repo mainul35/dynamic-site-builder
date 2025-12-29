@@ -63,6 +63,11 @@ flashcard-app/frontend/dist/
 flashcard-app/frontend/dist-ssr/
 flashcard-app/frontend/.vite/
 
+# Plugin frontend dependencies (generated)
+plugins/*/frontend/node_modules/
+plugins/*/frontend/dist/
+plugins/*/target/node/
+
 # Logs
 *.log
 npm-debug.log*
@@ -124,3 +129,18 @@ coverage/
 *.dylib
 *.dll
 *.exe
+
+# Uploads directory (user content)
+uploads/
+
+# Core plugins directory (JAR files are copied here at runtime)
+core/plugins/
+
+# Plugin frontend build outputs
+plugins/*/src/main/resources/frontend/
+
+# Windows null device file
+nul
+
+# Package lock files in plugins (regenerated)
+plugins/*/frontend/package-lock.json

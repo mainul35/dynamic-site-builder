@@ -1,46 +1,28 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { RendererProps } from './RendererRegistry';
-import { useComponentEvents } from '../events';
-
-/**
- * NavItem interface for navigation items with multi-level support
- */
-interface NavItem {
-  label: string;
-  href: string;
-  active?: boolean;
-  children?: NavItem[];
-}
+import type { RendererProps, NavItem } from './RendererRegistry';
 
 /**
  * NavbarRenderer - Renders a navigation bar component
  * Supports multiple layouts, responsive design, multi-level dropdowns, and customizable styling
- *
- * File naming convention: {ComponentName}Renderer.tsx
- * The component name "Navbar" is derived from filename "NavbarRenderer.tsx"
  */
 const NavbarRenderer: React.FC<RendererProps> = ({ component, isEditMode }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
 
-  // Get event handlers from the event system
-  const eventHandlers = useComponentEvents(component, { isEditMode });
-
   // Extract props with defaults
-  const {
-    brandText = 'My Site',
-    brandImageUrl = '',
-    brandLink = '/',
-    logoType = 'text', // 'text', 'image', or 'both'
-    logoHeight = '32px',
-    logoWidth = 'auto',
-    navItems = [],
-    layout = 'default',
-    sticky = false,
-    showMobileMenu = true,
-    mobileBreakpoint = '768px',
-  } = component.props;
+  const props = component.props || {};
+  const brandText = (props.brandText as string) || 'My Site';
+  const brandImageUrl = (props.brandImageUrl as string) || '';
+  const brandLink = (props.brandLink as string) || '/';
+  const logoType = (props.logoType as string) || 'text';
+  const logoHeight = (props.logoHeight as string) || '32px';
+  const logoWidth = (props.logoWidth as string) || 'auto';
+  const navItems = props.navItems || [];
+  const layout = (props.layout as string) || 'default';
+  const sticky = Boolean(props.sticky);
+  const showMobileMenu = props.showMobileMenu !== false;
+  const mobileBreakpoint = (props.mobileBreakpoint as string) || '768px';
 
   // Parse navItems if it's a string (JSON)
   const parsedNavItems: NavItem[] = useMemo(() => {
@@ -130,8 +112,6 @@ const NavbarRenderer: React.FC<RendererProps> = ({ component, isEditMode }) => {
     alignItems: 'center',
     justifyContent: getJustifyContent(),
     width: '100%',
-    // Don't set height: 100% - navbar should size to its content
-    // height: '100%' would make the navbar stretch to fill the parent container
     minHeight: '40px',
     backgroundColor,
     color: textColor,
@@ -213,7 +193,7 @@ const NavbarRenderer: React.FC<RendererProps> = ({ component, isEditMode }) => {
     overflow: 'hidden',
   });
 
-  // Nav item wrapper styles (for items with dropdowns)
+  // Nav item wrapper styles
   const navItemWrapperStyles: React.CSSProperties = {
     position: 'relative',
     display: isMobile ? 'block' : 'inline-block',
@@ -255,17 +235,12 @@ const NavbarRenderer: React.FC<RendererProps> = ({ component, isEditMode }) => {
       return;
     }
 
-    // If item has children, toggle dropdown instead of navigating
     if (item.children && item.children.length > 0) {
       e.preventDefault();
       toggleDropdown(item.label);
       return;
     }
 
-    // Trigger onClick event handler if configured
-    if (eventHandlers.onClick) {
-      eventHandlers.onClick(e);
-    }
     if (isMobile) {
       setIsMobileMenuOpen(false);
     }
@@ -318,7 +293,6 @@ const NavbarRenderer: React.FC<RendererProps> = ({ component, isEditMode }) => {
           )}
         </a>
 
-        {/* Dropdown menu for items with children */}
         {hasChildren && (
           <ul
             style={getDropdownStyles(isOpen)}
@@ -347,23 +321,23 @@ const NavbarRenderer: React.FC<RendererProps> = ({ component, isEditMode }) => {
 
   // Logo image styles
   const logoImageStyles: React.CSSProperties = {
-    height: logoHeight as string || '32px',
-    width: logoWidth as string || 'auto',
+    height: logoHeight || '32px',
+    width: logoWidth || 'auto',
     objectFit: 'contain',
   };
 
   return (
     <nav style={containerStyles}>
       {/* Brand/Logo */}
-      <a href={brandLink as string} style={brandStyles} onClick={handleBrandClick}>
+      <a href={brandLink} style={brandStyles} onClick={handleBrandClick}>
         {showLogo && (
           <img
-            src={brandImageUrl as string}
-            alt={brandText as string || 'Logo'}
+            src={brandImageUrl}
+            alt={brandText || 'Logo'}
             style={logoImageStyles}
           />
         )}
-        {showText && brandText && <span>{brandText as string}</span>}
+        {showText && brandText && <span>{brandText}</span>}
       </a>
 
       {/* Spacer for split layout */}
