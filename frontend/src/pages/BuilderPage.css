@@ -4,6 +4,16 @@
   height: 100vh;
   background: #ffffff;
   overflow: hidden;
+  /* Ensure the page itself and direct children can receive pointer events */
+  pointer-events: auto;
+}
+
+/* Ensure main interactive areas have pointer events enabled */
+.builder-page > .builder-menubar,
+.builder-page > .builder-toolbar,
+.builder-page > .builder-main,
+.builder-page > .builder-status-bar {
+  pointer-events: auto;
 }
 
 /* ========== Top Toolbar ========== */

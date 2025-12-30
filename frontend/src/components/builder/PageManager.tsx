@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Page, CreatePageRequest } from '../../types/site';
+import { useSiteManagerStore } from '../../stores/siteManagerStore';
+import { PageTree } from '../page-tree/PageTree';
 import { pageService } from '../../services/pageService';
 import './PageManager.css';
 
@@ -13,7 +15,7 @@ interface PageManagerProps {
 
 /**
  * PageManager - Component for managing pages within a site
- * Displays page list, allows creating, renaming, duplicating, and deleting pages
+ * Displays site info, hierarchical page tree, and page management controls
  */
 export const PageManager: React.FC<PageManagerProps> = ({
   siteId,
@@ -22,26 +24,46 @@ export const PageManager: React.FC<PageManagerProps> = ({
   onPageCreate,
   onPageDelete,
 }) => {
-  const [pages, setPages] = useState<Page[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Local state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newPageName, setNewPageName] = useState('');
   const [newPageSlug, setNewPageSlug] = useState('');
-  const [editingPageId, setEditingPageId] = useState<number | null>(null);
-  const [editingName, setEditingName] = useState('');
+  const [newPageParentId, setNewPageParentId] = useState<number | null>(null);
   const [contextMenuPageId, setContextMenuPageId] = useState<number | null>(null);
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
+  const [editingPageId, setEditingPageId] = useState<number | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const [localError, setLocalError] = useState<string | null>(null);
 
-  // Load pages when siteId changes
+  // Site manager store
+  const {
+    currentSite,
+    pages,
+    pageTree,
+    isLoadingPages,
+    error: storeError,
+    selectSite,
+    loadSitePages,
+    createPage,
+    updatePage,
+    deletePage,
+    duplicatePage,
+    clearError,
+  } = useSiteManagerStore();
+
+  // Get currentSiteId from store
+  const { currentSiteId: storeSiteId } = useSiteManagerStore();
+
+  // Use siteId prop if provided, otherwise use store's currentSiteId
+  const effectiveSiteId = siteId ?? storeSiteId;
+
+  // Load site and pages when effective siteId changes
   useEffect(() => {
-    if (siteId) {
-      loadPages();
-    } else {
-      // Demo mode - load from localStorage
-      loadDemoPages();
+    if (effectiveSiteId) {
+      console.log('[PageManager] Loading site:', effectiveSiteId);
+      selectSite(effectiveSiteId);
     }
-  }, [siteId]);
+  }, [effectiveSiteId, selectSite]);
 
   // Close context menu when clicking outside
   useEffect(() => {
@@ -55,80 +77,45 @@ export const PageManager: React.FC<PageManagerProps> = ({
     }
   }, [contextMenuPageId]);
 
-  const loadPages = async () => {
-    if (!siteId) return;
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const fetchedPages = await pageService.getAllPages(siteId);
-      setPages(fetchedPages);
-    } catch (err) {
-      setError('Failed to load pages');
-      console.error('Error loading pages:', err);
-    } finally {
-      setIsLoading(false);
+  // Handle page selection from tree
+  const handlePageSelect = (pageId: number) => {
+    const page = pages.find(p => p.id === pageId);
+    if (page) {
+      onPageSelect(page);
     }
   };
 
-  const loadDemoPages = () => {
-    // Load demo pages from localStorage
-    const savedPages = JSON.parse(localStorage.getItem('builder_saved_pages') || '{}');
-    const demoPages: Page[] = Object.entries(savedPages).map(([key, value]: [string, any], index) => ({
-      id: index + 1,
-      siteId: 0,
-      pageName: value.pageName || key,
-      pageSlug: key,
-      pageType: value.pageType || 'standard',
-      routePath: `/${key}`,
-      displayOrder: index,
-      isPublished: false,
-      createdAt: value.savedAt || new Date().toISOString(),
-      updatedAt: value.savedAt || new Date().toISOString(),
-    }));
-
-    // Always add a "New Page" option if no pages exist
-    if (demoPages.length === 0) {
-      demoPages.push({
-        id: 1,
-        siteId: 0,
-        pageName: 'Home',
-        pageSlug: 'home',
-        pageType: 'homepage',
-        routePath: '/',
-        displayOrder: 0,
-        isPublished: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-    }
-
-    setPages(demoPages);
+  // Handle context menu on page
+  const handlePageContextMenu = (e: React.MouseEvent, pageId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenuPageId(pageId);
+    setContextMenuPosition({ x: e.clientX, y: e.clientY });
   };
 
+  // Create new page
   const handleCreatePage = async () => {
     if (!newPageName.trim()) return;
 
     const slug = newPageSlug.trim() || newPageName.toLowerCase().replace(/\s+/g, '-');
 
-    if (siteId) {
+    if (effectiveSiteId) {
       try {
-        const createRequest: CreatePageRequest = {
+        const newPage = await createPage({
           pageName: newPageName,
           pageSlug: slug,
           pageType: 'standard',
           routePath: `/${slug}`,
-        };
+          parentPageId: newPageParentId || undefined,
+        });
 
-        const newPage = await pageService.createPage(siteId, createRequest);
-        setPages([...pages, newPage]);
-        onPageCreate?.(newPage);
-        setShowCreateModal(false);
-        setNewPageName('');
-        setNewPageSlug('');
+        if (newPage) {
+          onPageCreate?.(newPage);
+          setShowCreateModal(false);
+          resetCreateForm();
+        }
       } catch (err) {
-        setError('Failed to create page');
+        setLocalError('Failed to create page');
         console.error('Error creating page:', err);
       }
     } else {
@@ -140,6 +127,7 @@ export const PageManager: React.FC<PageManagerProps> = ({
         pageSlug: slug,
         pageType: 'standard',
         routePath: `/${slug}`,
+        parentPageId: newPageParentId || undefined,
         displayOrder: pages.length,
         isPublished: false,
         createdAt: new Date().toISOString(),
@@ -158,14 +146,19 @@ export const PageManager: React.FC<PageManagerProps> = ({
       };
       localStorage.setItem('builder_saved_pages', JSON.stringify(savedPages));
 
-      setPages([...pages, newPage]);
       onPageCreate?.(newPage);
       setShowCreateModal(false);
-      setNewPageName('');
-      setNewPageSlug('');
+      resetCreateForm();
     }
   };
 
+  const resetCreateForm = () => {
+    setNewPageName('');
+    setNewPageSlug('');
+    setNewPageParentId(null);
+  };
+
+  // Delete page
   const handleDeletePage = async (pageId: number) => {
     const page = pages.find(p => p.id === pageId);
     if (!page) return;
@@ -174,74 +167,49 @@ export const PageManager: React.FC<PageManagerProps> = ({
       return;
     }
 
-    if (siteId) {
-      try {
-        await pageService.deletePage(siteId, pageId);
-        setPages(pages.filter(p => p.id !== pageId));
+    if (effectiveSiteId) {
+      const success = await deletePage(pageId);
+      if (success) {
         onPageDelete?.(pageId);
-      } catch (err) {
-        setError('Failed to delete page');
-        console.error('Error deleting page:', err);
       }
     } else {
-      // Demo mode - delete from localStorage
+      // Demo mode
       const savedPages = JSON.parse(localStorage.getItem('builder_saved_pages') || '{}');
       delete savedPages[page.pageSlug];
       localStorage.setItem('builder_saved_pages', JSON.stringify(savedPages));
-
-      setPages(pages.filter(p => p.id !== pageId));
       onPageDelete?.(pageId);
     }
 
     setContextMenuPageId(null);
   };
 
+  // Duplicate page
   const handleDuplicatePage = async (pageId: number) => {
-    const page = pages.find(p => p.id === pageId);
-    if (!page) return;
-
-    const newName = `${page.pageName} (Copy)`;
-    const newSlug = `${page.pageSlug}-copy-${Date.now()}`;
-
-    if (siteId) {
-      try {
-        const duplicatedPage = await pageService.duplicatePage(siteId, pageId, newName);
-        setPages([...pages, duplicatedPage]);
-      } catch (err) {
-        setError('Failed to duplicate page');
-        console.error('Error duplicating page:', err);
-      }
+    if (effectiveSiteId) {
+      await duplicatePage(pageId);
     } else {
-      // Demo mode - duplicate in localStorage
+      // Demo mode
+      const page = pages.find(p => p.id === pageId);
+      if (!page) return;
+
+      const newSlug = `${page.pageSlug}-copy-${Date.now()}`;
       const savedPages = JSON.parse(localStorage.getItem('builder_saved_pages') || '{}');
       const originalPageData = savedPages[page.pageSlug];
 
       if (originalPageData) {
         savedPages[newSlug] = {
           ...originalPageData,
-          pageName: newName,
+          pageName: `${page.pageName} (Copy)`,
           savedAt: new Date().toISOString(),
         };
         localStorage.setItem('builder_saved_pages', JSON.stringify(savedPages));
-
-        const duplicatedPage: Page = {
-          ...page,
-          id: Date.now(),
-          pageName: newName,
-          pageSlug: newSlug,
-          routePath: `/${newSlug}`,
-          displayOrder: pages.length,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-
-        setPages([...pages, duplicatedPage]);
       }
     }
 
     setContextMenuPageId(null);
   };
 
+  // Rename page
   const handleRenameStart = (page: Page) => {
     setEditingPageId(page.id);
     setEditingName(page.pageName);
@@ -254,86 +222,74 @@ export const PageManager: React.FC<PageManagerProps> = ({
       return;
     }
 
-    const page = pages.find(p => p.id === editingPageId);
-    if (!page) return;
-
-    if (siteId) {
-      try {
-        await pageService.updatePage(siteId, editingPageId, { pageName: editingName });
-        setPages(pages.map(p =>
-          p.id === editingPageId ? { ...p, pageName: editingName } : p
-        ));
-      } catch (err) {
-        setError('Failed to rename page');
-        console.error('Error renaming page:', err);
-      }
+    if (effectiveSiteId) {
+      await updatePage(editingPageId, { pageName: editingName });
     } else {
-      // Demo mode - update in localStorage
-      const savedPages = JSON.parse(localStorage.getItem('builder_saved_pages') || '{}');
-      if (savedPages[page.pageSlug]) {
-        savedPages[page.pageSlug].pageName = editingName;
-        localStorage.setItem('builder_saved_pages', JSON.stringify(savedPages));
+      // Demo mode
+      const page = pages.find(p => p.id === editingPageId);
+      if (page) {
+        const savedPages = JSON.parse(localStorage.getItem('builder_saved_pages') || '{}');
+        if (savedPages[page.pageSlug]) {
+          savedPages[page.pageSlug].pageName = editingName;
+          localStorage.setItem('builder_saved_pages', JSON.stringify(savedPages));
+        }
       }
-
-      setPages(pages.map(p =>
-        p.id === editingPageId ? { ...p, pageName: editingName } : p
-      ));
     }
 
     setEditingPageId(null);
   };
 
-  const handleContextMenu = (e: React.MouseEvent, pageId: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setContextMenuPageId(pageId);
-    setContextMenuPosition({ x: e.clientX, y: e.clientY });
-  };
-
+  // Set as homepage
   const handleSetHomepage = async (pageId: number) => {
-    const page = pages.find(p => p.id === pageId);
-    if (!page) return;
-
-    if (siteId) {
-      try {
-        await pageService.updatePage(siteId, pageId, { routePath: '/' });
-        // Update other pages that had homepage route
-        for (const p of pages) {
-          if (p.id !== pageId && p.routePath === '/') {
-            await pageService.updatePage(siteId, p.id, { routePath: `/${p.pageSlug}` });
-          }
-        }
-        loadPages();
-      } catch (err) {
-        setError('Failed to set homepage');
-        console.error('Error setting homepage:', err);
-      }
-    } else {
-      // Demo mode
-      setPages(pages.map(p => ({
-        ...p,
-        routePath: p.id === pageId ? '/' : `/${p.pageSlug}`,
-        pageType: p.id === pageId ? 'homepage' : 'standard',
-      })));
+    if (effectiveSiteId) {
+      await updatePage(pageId, { routePath: '/' });
     }
-
     setContextMenuPageId(null);
   };
 
-  const getPageIcon = (page: Page): string => {
-    if (page.pageType === 'homepage' || page.routePath === '/') return '🏠';
-    if (page.pageType === 'template') return '📐';
-    return '📄';
+  // Create subpage
+  const handleCreateSubpage = (parentPageId: number) => {
+    setNewPageParentId(parentPageId);
+    setShowCreateModal(true);
+    setContextMenuPageId(null);
   };
+
+  const error = localError || storeError;
 
   return (
     <div className="page-manager">
-      {/* Header */}
+      {/* Site Header */}
+      <div className="page-manager-site-header">
+        {currentSite ? (
+          <>
+            <div className="site-info">
+              <span className="site-icon">🌐</span>
+              <div className="site-details">
+                <span className="site-name">{currentSite.siteName}</span>
+                <span className="site-slug">/{currentSite.siteSlug}</span>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="site-info">
+            <span className="site-icon">📁</span>
+            <div className="site-details">
+              <span className="site-name">Local Project</span>
+              <span className="site-slug">Demo Mode</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Header with New button */}
       <div className="page-manager-header">
         <h3>Pages</h3>
         <button
           className="add-page-button"
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => {
+            setNewPageParentId(null);
+            setShowCreateModal(true);
+          }}
           title="Create new page"
         >
           + New
@@ -344,80 +300,55 @@ export const PageManager: React.FC<PageManagerProps> = ({
       {error && (
         <div className="page-manager-error">
           <span>{error}</span>
-          <button onClick={() => setError(null)}>×</button>
+          <button onClick={() => {
+            setLocalError(null);
+            clearError();
+          }}>×</button>
         </div>
       )}
 
       {/* Loading state */}
-      {isLoading && (
+      {isLoadingPages && (
         <div className="page-manager-loading">
           <span className="loading-spinner-small" />
           Loading pages...
         </div>
       )}
 
-      {/* Pages list */}
-      <div className="pages-list">
-        {pages.length === 0 && !isLoading ? (
-          <div className="no-pages-message">
-            <p>No pages yet.</p>
-            <button
-              className="create-first-page-button"
-              onClick={() => setShowCreateModal(true)}
-            >
-              Create your first page
-            </button>
-          </div>
-        ) : (
-          pages.map(page => (
-            <div
-              key={page.id}
-              className={`page-item ${currentPageId === page.id ? 'active' : ''}`}
-              onClick={() => onPageSelect(page)}
-              onContextMenu={(e) => handleContextMenu(e, page.id)}
-            >
-              <span className="page-icon">{getPageIcon(page)}</span>
-
-              {editingPageId === page.id ? (
-                <input
-                  type="text"
-                  className="page-name-edit"
-                  value={editingName}
-                  onChange={(e) => setEditingName(e.target.value)}
-                  onBlur={handleRenameSubmit}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleRenameSubmit();
-                    if (e.key === 'Escape') setEditingPageId(null);
-                  }}
-                  autoFocus
-                  onClick={(e) => e.stopPropagation()}
-                />
-              ) : (
-                <span className="page-name">{page.pageName}</span>
-              )}
-
-              <span className="page-path" title={page.routePath}>
-                {page.routePath || `/${page.pageSlug}`}
-              </span>
-
-              {page.isPublished && (
-                <span className="published-badge" title="Published">●</span>
-              )}
-
-              <button
-                className="page-menu-button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleContextMenu(e, page.id);
-                }}
-                title="Page options"
-              >
-                ⋮
-              </button>
-            </div>
-          ))
-        )}
-      </div>
+      {/* Page Tree - Hierarchical Display */}
+      {!isLoadingPages && effectiveSiteId && (pageTree.length > 0 || pages.length > 0) ? (
+        <div className="page-tree-container">
+          <PageTree
+            activePageId={currentPageId}
+            onPageSelect={handlePageSelect}
+            onPageContextMenu={handlePageContextMenu}
+          />
+        </div>
+      ) : !isLoadingPages && !effectiveSiteId ? (
+        // Demo mode - flat list with simple styling
+        <DemoPagesList
+          pages={pages}
+          currentPageId={currentPageId}
+          editingPageId={editingPageId}
+          editingName={editingName}
+          onPageSelect={onPageSelect}
+          onEditNameChange={setEditingName}
+          onEditSubmit={handleRenameSubmit}
+          onEditCancel={() => setEditingPageId(null)}
+          onContextMenu={handlePageContextMenu}
+          onCreatePage={() => setShowCreateModal(true)}
+        />
+      ) : !isLoadingPages && pages.length === 0 ? (
+        <div className="no-pages-message">
+          <p>No pages yet.</p>
+          <button
+            className="create-first-page-button"
+            onClick={() => setShowCreateModal(true)}
+          >
+            Create your first page
+          </button>
+        </div>
+      ) : null}
 
       {/* Context Menu */}
       {contextMenuPageId !== null && (
@@ -434,6 +365,9 @@ export const PageManager: React.FC<PageManagerProps> = ({
           </button>
           <button onClick={() => handleDuplicatePage(contextMenuPageId)}>
             📋 Duplicate
+          </button>
+          <button onClick={() => handleCreateSubpage(contextMenuPageId)}>
+            ➕ Add Subpage
           </button>
           <button onClick={() => handleSetHomepage(contextMenuPageId)}>
             🏠 Set as Homepage
@@ -453,16 +387,26 @@ export const PageManager: React.FC<PageManagerProps> = ({
         <div className="create-page-modal" onClick={() => setShowCreateModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Create New Page</h3>
+              <h3>{newPageParentId ? 'Create Subpage' : 'Create New Page'}</h3>
               <button
                 className="close-button"
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => {
+                  setShowCreateModal(false);
+                  resetCreateForm();
+                }}
               >
                 ×
               </button>
             </div>
 
             <div className="modal-body">
+              {newPageParentId && (
+                <div className="parent-page-info">
+                  <span>Parent: </span>
+                  <strong>{pages.find(p => p.id === newPageParentId)?.pageName}</strong>
+                </div>
+              )}
+
               <div className="form-group">
                 <label htmlFor="pageName">Page Name</label>
                 <input
@@ -499,7 +443,10 @@ export const PageManager: React.FC<PageManagerProps> = ({
             <div className="modal-footer">
               <button
                 className="cancel-button"
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => {
+                  setShowCreateModal(false);
+                  resetCreateForm();
+                }}
               >
                 Cancel
               </button>
@@ -514,6 +461,107 @@ export const PageManager: React.FC<PageManagerProps> = ({
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+/**
+ * DemoPagesList - Simple flat page list for demo mode (no siteId)
+ */
+interface DemoPagesListProps {
+  pages: Page[];
+  currentPageId: number | null;
+  editingPageId: number | null;
+  editingName: string;
+  onPageSelect: (page: Page) => void;
+  onEditNameChange: (name: string) => void;
+  onEditSubmit: () => void;
+  onEditCancel: () => void;
+  onContextMenu: (e: React.MouseEvent, pageId: number) => void;
+  onCreatePage: () => void;
+}
+
+const DemoPagesList: React.FC<DemoPagesListProps> = ({
+  pages,
+  currentPageId,
+  editingPageId,
+  editingName,
+  onPageSelect,
+  onEditNameChange,
+  onEditSubmit,
+  onEditCancel,
+  onContextMenu,
+  onCreatePage,
+}) => {
+  const getPageIcon = (page: Page): string => {
+    if (page.pageType === 'homepage' || page.routePath === '/') return '🏠';
+    if (page.pageType === 'template') return '📐';
+    return '📄';
+  };
+
+  if (pages.length === 0) {
+    return (
+      <div className="no-pages-message">
+        <p>No pages yet.</p>
+        <button
+          className="create-first-page-button"
+          onClick={onCreatePage}
+        >
+          Create your first page
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pages-list">
+      {pages.map(page => (
+        <div
+          key={page.id}
+          className={`page-item ${currentPageId === page.id ? 'active' : ''}`}
+          onClick={() => onPageSelect(page)}
+          onContextMenu={(e) => onContextMenu(e, page.id)}
+        >
+          <span className="page-icon">{getPageIcon(page)}</span>
+
+          {editingPageId === page.id ? (
+            <input
+              type="text"
+              className="page-name-edit"
+              value={editingName}
+              onChange={(e) => onEditNameChange(e.target.value)}
+              onBlur={onEditSubmit}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') onEditSubmit();
+                if (e.key === 'Escape') onEditCancel();
+              }}
+              autoFocus
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <span className="page-name">{page.pageName}</span>
+          )}
+
+          <span className="page-path" title={page.routePath}>
+            {page.routePath || `/${page.pageSlug}`}
+          </span>
+
+          {page.isPublished && (
+            <span className="published-badge" title="Published">●</span>
+          )}
+
+          <button
+            className="page-menu-button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onContextMenu(e, page.id);
+            }}
+            title="Page options"
+          >
+            ⋮
+          </button>
+        </div>
+      ))}
     </div>
   );
 };

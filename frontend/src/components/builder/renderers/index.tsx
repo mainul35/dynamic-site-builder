@@ -19,7 +19,7 @@ const coreRendererModules = import.meta.glob<{ default: RendererComponent }>(
   { eager: true }
 );
 
-// Navbar component renderer names that should be registered with navbar-component-plugin
+// Navbar component renderer names that should be registered with navbar plugins
 const NAVBAR_PLUGIN_RENDERERS = [
   'Navbar',
   'NavbarCentered',
@@ -31,7 +31,14 @@ const NAVBAR_PLUGIN_RENDERERS = [
   'TopHeaderBar',
 ];
 
-const NAVBAR_PLUGIN_ID = 'navbar-component-plugin';
+// Register navbar renderers under both plugin IDs for compatibility
+const NAVBAR_PLUGIN_IDS = ['navbar-component-plugin', 'core-navbar'];
+
+// Map of componentId aliases to their actual renderer names
+// e.g., 'NavbarDefault' uses the 'Navbar' renderer
+const NAVBAR_ALIASES: Record<string, string> = {
+  'NavbarDefault': 'Navbar',
+};
 
 // Register all core renderers on module load
 for (const path in coreRendererModules) {
@@ -41,9 +48,20 @@ for (const path in coreRendererModules) {
     const componentName = match[1];
     const module = coreRendererModules[path];
     if (module.default) {
-      // Check if this is a navbar renderer - register with plugin ID
+      // Check if this is a navbar renderer - register with both plugin IDs for compatibility
       if (NAVBAR_PLUGIN_RENDERERS.includes(componentName)) {
-        RendererRegistry.register(componentName, module.default, NAVBAR_PLUGIN_ID);
+        NAVBAR_PLUGIN_IDS.forEach(pluginId => {
+          RendererRegistry.register(componentName, module.default, pluginId);
+        });
+
+        // Register aliases for this renderer (e.g., NavbarDefault -> Navbar)
+        Object.entries(NAVBAR_ALIASES).forEach(([alias, target]) => {
+          if (target === componentName) {
+            NAVBAR_PLUGIN_IDS.forEach(pluginId => {
+              RendererRegistry.register(alias, module.default, pluginId);
+            });
+          }
+        });
       } else {
         // Register as core renderer (no pluginId)
         RendererRegistry.register(componentName, module.default);
@@ -73,15 +91,15 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({ component,
   // Try to get renderer from registry
   const Renderer = RendererRegistry.get(component.componentId, component.pluginId);
 
-  // Debug logging (remove in production)
-  if (import.meta.env.DEV) {
-    console.log('[ComponentRenderer] Lookup:', {
-      componentId: component.componentId,
-      pluginId: component.pluginId,
-      found: !!Renderer,
-      registeredKeys: RendererRegistry.debugGetAllKeys(),
-    });
-  }
+  // Debug logging - disabled to reduce console spam
+  // Uncomment for debugging component resolution issues:
+  // if (import.meta.env.DEV && !Renderer) {
+  //   console.log('[ComponentRenderer] Lookup (not found):', {
+  //     componentId: component.componentId,
+  //     pluginId: component.pluginId,
+  //     registeredKeys: RendererRegistry.debugGetAllKeys(),
+  //   });
+  // }
 
   // If no renderer found, try loading the plugin dynamically
   useEffect(() => {
