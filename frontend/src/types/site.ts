@@ -135,8 +135,8 @@ export interface NavigationItem {
  */
 export interface CreateSiteRequest {
   siteName: string;
-  siteSlug: string;
-  siteMode: SiteMode;
+  siteSlug?: string;
+  siteMode?: SiteMode;
   description?: string;
 }
 
