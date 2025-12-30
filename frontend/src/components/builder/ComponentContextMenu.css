@@ -1,0 +1,115 @@
+/* Component Context Menu Styles */
+.component-context-menu {
+  position: fixed;
+  z-index: 10000;
+  min-width: 200px;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 4px 0;
+  font-size: 13px;
+  animation: contextMenuFadeIn 0.15s ease-out;
+}
+
+@keyframes contextMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.context-menu-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 4px;
+}
+
+.context-menu-header .component-name {
+  font-size: 11px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.context-menu-divider {
+  height: 1px;
+  background: #e8e8e8;
+  margin: 4px 8px;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  color: #333;
+  transition: background-color 0.1s ease;
+  gap: 8px;
+}
+
+.context-menu-item:hover:not(.disabled) {
+  background-color: #f0f7ff;
+}
+
+.context-menu-item:active:not(.disabled) {
+  background-color: #e0efff;
+}
+
+.context-menu-item.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.context-menu-item.danger {
+  color: #dc3545;
+}
+
+.context-menu-item.danger:hover:not(.disabled) {
+  background-color: #fff5f5;
+}
+
+.menu-icon {
+  width: 20px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.menu-label {
+  flex: 1;
+  font-weight: 400;
+}
+
+.menu-shortcut {
+  font-size: 11px;
+  color: #999;
+  font-weight: 400;
+  margin-left: 16px;
+}
+
+/* Submenu indicator */
+.context-menu-item.has-submenu::after {
+  content: '›';
+  margin-left: auto;
+  font-size: 14px;
+  color: #999;
+}
+
+/* Focus styles for keyboard navigation */
+.context-menu-item:focus {
+  outline: none;
+  background-color: #f0f7ff;
+}
+
+.context-menu-item:focus-visible {
+  box-shadow: inset 0 0 0 2px #3b82f6;
+}
