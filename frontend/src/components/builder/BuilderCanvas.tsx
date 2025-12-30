@@ -1,11 +1,19 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useBuilderStore } from '../../stores/builderStore';
 import { useComponentStore } from '../../stores/componentStore';
+import { useUIPreferencesStore } from '../../stores/uiPreferencesStore';
 import { ComponentInstance, ComponentRegistryEntry } from '../../types/builder';
 import { DraggableComponent } from './DraggableComponent';
 import { ResizableComponent } from './ResizableComponent';
 import { ComponentRenderer } from './renderers';
+import { CanvasContextMenu } from './CanvasContextMenu';
 import './BuilderCanvas.css';
+
+interface CanvasContextMenuState {
+  isOpen: boolean;
+  x: number;
+  y: number;
+}
 
 interface BuilderCanvasProps {
   onComponentSelect?: (componentId: string | null) => void;
@@ -22,6 +30,11 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
   const canvasRef = useRef<HTMLDivElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [dragOverContainerId, setDragOverContainerId] = useState<string | null>(null);
+  const [canvasContextMenu, setCanvasContextMenu] = useState<CanvasContextMenuState>({
+    isOpen: false,
+    x: 0,
+    y: 0,
+  });
 
   const {
     currentPage: storeCurrentPage,
@@ -40,6 +53,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
   const currentPage = pageOverride !== undefined ? pageOverride : storeCurrentPage;
 
   const { getManifest } = useComponentStore();
+  const { showGrid } = useUIPreferencesStore();
 
   // Global hover tracking - single listener for entire canvas
   // This finds the innermost (closest) draggable component under the mouse
@@ -324,6 +338,29 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
       selectComponent(null);
       onComponentSelect?.(null);
     }
+  };
+
+  // Handle right-click on empty canvas area
+  const handleCanvasContextMenu = (e: React.MouseEvent) => {
+    // Only show canvas context menu in edit mode
+    if (viewMode !== 'edit') return;
+
+    // Only handle if clicking directly on canvas (not on a component)
+    // Components have their own context menu handlers
+    if (e.target === e.currentTarget || (e.target as HTMLElement).closest('.empty-canvas-state')) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      setCanvasContextMenu({
+        isOpen: true,
+        x: e.clientX,
+        y: e.clientY,
+      });
+    }
+  };
+
+  const handleCloseCanvasContextMenu = () => {
+    setCanvasContextMenu({ isOpen: false, x: 0, y: 0 });
   };
 
   const handleComponentSelect = (componentId: string) => {
@@ -744,6 +781,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
   };
 
   return (
+    <>
     <div
       ref={canvasRef}
       className={`builder-canvas ${isDragOver ? 'drag-over' : ''} ${viewMode === 'preview' ? 'preview-mode' : 'edit-mode'}`}
@@ -752,11 +790,12 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onClick={handleCanvasClick}
+      onContextMenu={handleCanvasContextMenu}
       onKeyDown={handleKeyDown}
       tabIndex={0}
     >
-      {/* Grid Background */}
-      <div className="grid-background" style={gridStyles}></div>
+      {/* Grid Background - only show when enabled */}
+      {showGrid && <div className="grid-background" style={gridStyles}></div>}
 
       {/* Empty State */}
       {(!currentPage || currentPage.components.filter(c => !c.parentId).length === 0) && (
@@ -840,5 +879,15 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
         </div>
       )}
     </div>
+
+    {/* Canvas Context Menu - for right-click on empty canvas area */}
+    {canvasContextMenu.isOpen && (
+      <CanvasContextMenu
+        x={canvasContextMenu.x}
+        y={canvasContextMenu.y}
+        onClose={handleCloseCanvasContextMenu}
+      />
+    )}
+    </>
   );
 };

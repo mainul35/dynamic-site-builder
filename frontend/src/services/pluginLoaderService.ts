@@ -55,6 +55,35 @@ const PLUGIN_GLOBAL_NAMES: Record<string, string> = {
 };
 
 /**
+ * Virtual plugin IDs that map to multiple actual plugins
+ * When 'core-ui' is requested, all these plugins will be loaded
+ */
+const VIRTUAL_PLUGIN_MAPPINGS: Record<string, string[]> = {
+  'core-ui': [
+    'label-component-plugin',
+    'button-component-plugin',
+    'container-layout-plugin',
+    'textbox-component-plugin',
+    'image-component-plugin',
+  ],
+  'core-navbar': [
+    'navbar-component-plugin',
+  ],
+};
+
+/**
+ * Maps componentId to the actual plugin that provides it
+ * Used for registering renderers under alias plugin IDs
+ */
+const COMPONENT_TO_PLUGIN_MAPPING: Record<string, string> = {
+  'Label': 'label-component-plugin',
+  'Button': 'button-component-plugin',
+  'Container': 'container-layout-plugin',
+  'Textbox': 'textbox-component-plugin',
+  'Image': 'image-component-plugin',
+};
+
+/**
  * Get the global variable name for a plugin
  */
 function getPluginGlobalName(pluginId: string): string {
@@ -212,6 +241,58 @@ export async function loadPlugin(pluginId: string): Promise<boolean> {
     return loadingPlugins.get(pluginId)!;
   }
 
+  // Check if this is a virtual plugin (maps to multiple actual plugins)
+  if (VIRTUAL_PLUGIN_MAPPINGS[pluginId]) {
+    const actualPluginIds = VIRTUAL_PLUGIN_MAPPINGS[pluginId];
+    console.log(`[PluginLoader] Loading virtual plugin ${pluginId} -> [${actualPluginIds.join(', ')}]`);
+
+    const loadPromise = (async () => {
+      try {
+        // Load all actual plugins that make up this virtual plugin
+        const results = await Promise.all(
+          actualPluginIds.map(async (actualPluginId) => {
+            const success = await loadActualPlugin(actualPluginId);
+            if (success) {
+              // Also register renderers under the virtual plugin ID
+              registerRenderersUnderAlias(actualPluginId, pluginId);
+            }
+            return success;
+          })
+        );
+
+        // Consider virtual plugin loaded if at least one actual plugin loaded
+        const anyLoaded = results.some(Boolean);
+        if (anyLoaded) {
+          loadedPlugins.add(pluginId);
+        }
+        return anyLoaded;
+      } finally {
+        loadingPlugins.delete(pluginId);
+      }
+    })();
+
+    loadingPlugins.set(pluginId, loadPromise);
+    return loadPromise;
+  }
+
+  // Regular plugin loading
+  return loadActualPlugin(pluginId);
+}
+
+/**
+ * Load an actual (non-virtual) plugin's frontend assets
+ */
+async function loadActualPlugin(pluginId: string): Promise<boolean> {
+  // Check if already loaded
+  if (loadedPlugins.has(pluginId)) {
+    return true;
+  }
+
+  // Check if currently loading
+  if (loadingPlugins.has(pluginId)) {
+    return loadingPlugins.get(pluginId)!;
+  }
+
   // Start loading
   const loadPromise = (async () => {
     try {
@@ -243,6 +324,25 @@ export async function loadPlugin(pluginId: string): Promise<boolean> {
 
   loadingPlugins.set(pluginId, loadPromise);
   return loadPromise;
+}
+
+/**
+ * Register renderers from one plugin under an alias plugin ID
+ * This allows components with pluginId='core-ui' to find renderers registered by 'label-component-plugin'
+ */
+function registerRenderersUnderAlias(actualPluginId: string, aliasPluginId: string): void {
+  // Find components provided by this plugin
+  const componentsFromPlugin = Object.entries(COMPONENT_TO_PLUGIN_MAPPING)
+    .filter(([_, plugin]) => plugin === actualPluginId)
+    .map(([component]) => component);
+
+  componentsFromPlugin.forEach((componentId) => {
+    const renderer = RendererRegistry.get(componentId, actualPluginId);
+    if (renderer) {
+      RendererRegistry.register(componentId, renderer, aliasPluginId);
+      console.log(`[PluginLoader] Registered ${componentId} under alias ${aliasPluginId}`);
+    }
+  });
 }
 
 /**

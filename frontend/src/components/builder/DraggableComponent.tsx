@@ -1,7 +1,14 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { ComponentInstance } from '../../types/builder';
 import { useBuilderStore } from '../../stores/builderStore';
+import { ComponentContextMenu } from './ComponentContextMenu';
 import './DraggableComponent.css';
+
+interface ContextMenuState {
+  isOpen: boolean;
+  x: number;
+  y: number;
+}
 
 interface DraggableComponentProps {
   component: ComponentInstance;
@@ -10,6 +17,8 @@ interface DraggableComponentProps {
   isInGridLayout?: boolean; // If true, don't apply fixed width - let grid control sizing
   onSelect?: (componentId: string) => void;
   onDoubleClick?: (componentId: string) => void;
+  onDelete?: (componentId: string) => void;
+  onDuplicate?: (componentId: string) => void;
 }
 
 /**
@@ -22,15 +31,22 @@ export const DraggableComponent: React.FC<DraggableComponentProps> = ({
   isSelected = false,
   isInGridLayout = false,
   onSelect,
-  onDoubleClick
+  onDoubleClick,
+  onDelete,
+  onDuplicate
 }) => {
   const componentRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
   const [hasMoved, setHasMoved] = useState(false);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>({
+    isOpen: false,
+    x: 0,
+    y: 0,
+  });
 
-  const { moveComponent, viewMode, hoveredComponentId, setHoveredComponent } = useBuilderStore();
+  const { moveComponent, viewMode, hoveredComponentId, removeComponent, duplicateComponent } = useBuilderStore();
 
   // Check if this component is the currently hovered one (global state)
   const isHovered = hoveredComponentId === component.instanceId;
@@ -203,6 +219,52 @@ export const DraggableComponent: React.FC<DraggableComponentProps> = ({
     onDoubleClick?.(component.instanceId);
   };
 
+  // Handle right-click context menu
+  const handleContextMenu = (e: React.MouseEvent) => {
+    if (!canDrag) return;
+
+    // Check if the right-click originated from a nested DraggableComponent
+    const target = e.target as HTMLElement;
+    const closestDraggable = target.closest('.draggable-component');
+    if (closestDraggable && closestDraggable !== componentRef.current) {
+      // Right-click was on a nested draggable component, don't handle here
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Select the component on right-click
+    onSelect?.(component.instanceId);
+
+    // Open context menu at mouse position
+    setContextMenu({
+      isOpen: true,
+      x: e.clientX,
+      y: e.clientY,
+    });
+  };
+
+  const handleCloseContextMenu = () => {
+    setContextMenu({ isOpen: false, x: 0, y: 0 });
+  };
+
+  const handleDeleteFromContextMenu = (componentId: string) => {
+    if (onDelete) {
+      onDelete(componentId);
+    } else {
+      removeComponent(componentId);
+    }
+  };
+
+  const handleDuplicateFromContextMenu = (componentId: string) => {
+    if (onDuplicate) {
+      onDuplicate(componentId);
+    } else {
+      duplicateComponent(componentId);
+    }
+  };
+
   // Attach/detach mouse event listeners
   useEffect(() => {
     if (isDragging) {
@@ -291,42 +353,57 @@ export const DraggableComponent: React.FC<DraggableComponentProps> = ({
   const isChildComponent = !!component.parentId;
 
   return (
-    <div
-      ref={componentRef}
-      className={`draggable-component ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''} ${!canDrag ? 'view-mode' : ''} ${isChildComponent ? 'child-component' : ''} ${isHovered && !isSelected ? 'hovered' : ''}`}
-      style={getComponentStyles()}
-      onMouseDown={handleMouseDown}
-      onClick={handleClick}
-      onDoubleClick={handleDoubleClick}
-      data-component-id={component.instanceId}
-    >
-      {/* Selection Overlay */}
-      {isSelected && canDrag && (
-        <div className="selection-overlay">
-          <div className="selection-border"></div>
-          <div className="component-label">
-            {component.componentId}
+    <>
+      <div
+        ref={componentRef}
+        className={`draggable-component ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''} ${!canDrag ? 'view-mode' : ''} ${isChildComponent ? 'child-component' : ''} ${isHovered && !isSelected ? 'hovered' : ''}`}
+        style={getComponentStyles()}
+        onMouseDown={handleMouseDown}
+        onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
+        onContextMenu={handleContextMenu}
+        data-component-id={component.instanceId}
+      >
+        {/* Selection Overlay */}
+        {isSelected && canDrag && (
+          <div className="selection-overlay">
+            <div className="selection-border"></div>
+            <div className="component-label">
+              {component.componentId}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Component Content */}
-      <div className="component-content">
-        {children}
+        {/* Component Content */}
+        <div className="component-content">
+          {children}
+        </div>
+
+        {/* Move Handle (for moving between containers) */}
+        {canDrag && isSelected && (
+          <div
+            className="move-handle"
+            title="Drag to move between containers"
+            draggable={true}
+            onDragStart={handleMoveHandleDragStart}
+            onDragEnd={handleMoveHandleDragEnd}
+          >
+            ↕
+          </div>
+        )}
       </div>
 
-      {/* Move Handle (for moving between containers) */}
-      {canDrag && isSelected && (
-        <div
-          className="move-handle"
-          title="Drag to move between containers"
-          draggable={true}
-          onDragStart={handleMoveHandleDragStart}
-          onDragEnd={handleMoveHandleDragEnd}
-        >
-          ↕
-        </div>
+      {/* Context Menu */}
+      {contextMenu.isOpen && (
+        <ComponentContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          component={component}
+          onClose={handleCloseContextMenu}
+          onDelete={handleDeleteFromContextMenu}
+          onDuplicate={handleDuplicateFromContextMenu}
+        />
       )}
-    </div>
+    </>
   );
 };
