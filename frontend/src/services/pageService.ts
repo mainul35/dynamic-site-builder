@@ -118,7 +118,14 @@ export const pageService = {
    * Get page definition from active version
    */
   getPageDefinition: async (siteId: number, pageId: number): Promise<PageDefinition> => {
+    console.log(`[pageService] Getting page definition: siteId=${siteId}, pageId=${pageId}`);
     const response = await api.get<PageDefinition>(`/sites/${siteId}/pages/${pageId}/definition`);
+    console.log(`[pageService] Got page definition response:`, {
+      status: response.status,
+      dataType: typeof response.data,
+      pageName: response.data?.pageName,
+      componentsCount: response.data?.components?.length
+    });
     return response.data;
   },
 
@@ -131,10 +138,12 @@ export const pageService = {
     pageDefinition: PageDefinition,
     changeDescription?: string
   ): Promise<PageVersion> => {
+    console.log(`[pageService] Saving page version: siteId=${siteId}, pageId=${pageId}, pageName="${pageDefinition.pageName}", componentsCount=${pageDefinition.components?.length}`);
     const response = await api.post<PageVersion>(`/sites/${siteId}/pages/${pageId}/versions`, {
       pageDefinition: JSON.stringify(pageDefinition),
       changeDescription
     });
+    console.log(`[pageService] Save response:`, response.data);
     return response.data;
   },
 
