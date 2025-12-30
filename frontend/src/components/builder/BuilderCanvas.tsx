@@ -232,21 +232,25 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
       // Find parent layout based on drop position
       let parentLayout: ComponentInstance | null = null;
 
-      // Get all layout components (including nested ones)
-      const getAllLayoutComponents = (components: ComponentInstance[]): ComponentInstance[] => {
-        const layouts: ComponentInstance[] = [];
+      // Get all container components (layout and data containers like Repeater)
+      const getAllContainerComponents = (components: ComponentInstance[]): ComponentInstance[] => {
+        const containers: ComponentInstance[] = [];
         components.forEach(comp => {
-          if (comp.componentCategory?.toLowerCase() === 'layout') {
-            layouts.push(comp);
+          const isLayoutComp = comp.componentCategory?.toLowerCase() === 'layout';
+          const isDataContainer = comp.componentCategory?.toLowerCase() === 'data' &&
+            (comp.componentId === 'Repeater' || comp.componentId === 'DataList');
+
+          if (isLayoutComp || isDataContainer) {
+            containers.push(comp);
             if (comp.children && comp.children.length > 0) {
-              layouts.push(...getAllLayoutComponents(comp.children));
+              containers.push(...getAllContainerComponents(comp.children));
             }
           }
         });
-        return layouts;
+        return containers;
       };
 
-      const allLayoutComponents = getAllLayoutComponents(currentPage?.components || []);
+      const allLayoutComponents = getAllContainerComponents(currentPage?.components || []);
 
       // For non-layout components, enforce layout-first rule
       if (!isLayout && allLayoutComponents.length === 0) {
@@ -445,8 +449,13 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
     const hasChildren = component.children && component.children.length > 0;
     const isEditMode = viewMode === 'edit';
 
-    // For layout components, render container with children
-    if (isLayout) {
+    // Check if this is a data component that can have children (like Repeater)
+    // These components need to show the same drag-drop UI as layout components
+    const isDataContainerComponent = component.componentCategory?.toLowerCase() === 'data' &&
+      (component.componentId === 'Repeater' || component.componentId === 'DataList');
+
+    // For layout components and data container components, render container with children
+    if (isLayout || isDataContainerComponent) {
       // Get layout type from component props - layoutMode is primary (set by UI), layoutType is fallback
       const layoutType = component.props?.layoutMode || component.props?.layoutType || 'flex-column';
       const layoutStyles = getLayoutStyles(layoutType);
@@ -592,7 +601,9 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
             }}
           >
             <span className="placeholder-id">{component.componentId}</span>
-            <span className="layout-badge">Layout</span>
+            <span className={`layout-badge ${isDataContainerComponent ? 'data-badge' : ''}`}>
+              {isDataContainerComponent ? 'Data' : 'Layout'}
+            </span>
             <span className="layout-type-badge">{layoutType}</span>
             {isScrollable && (
               <span className="scroll-direction-badge">

@@ -247,6 +247,10 @@
   text-transform: uppercase;
 }
 
+.layout-badge.data-badge {
+  background: #6f42c1;
+}
+
 .layout-type-badge {
   display: inline-block;
   padding: 2px 8px;
