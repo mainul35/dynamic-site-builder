@@ -5,6 +5,7 @@ import { ComponentManifest, PropDefinition, PropType, ComponentEventConfig, Acti
 import { getBuiltInManifest, hasBuiltInManifest } from '../../data/builtInManifests';
 import { PageLinkSelector } from './PageLinkSelector';
 import { ImageRepositoryModal } from './ImageRepositoryModal';
+import { GradientPicker } from './GradientPicker';
 import './PropertiesPanel.css';
 
 /**
@@ -938,40 +939,87 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedCompon
         {/* Styles Tab */}
         {activeTab === 'styles' && (
           <div className="styles-section">
-            {/* Common style properties */}
-            <div className="property-field">
-              <label className="property-label">Background Color</label>
-              <div className="color-input-group">
-                <input
-                  type="color"
-                  value={selectedComponent.styles.backgroundColor || '#ffffff'}
-                  onChange={(e) => handleStyleChange('backgroundColor', e.target.value)}
-                />
-                <input
-                  type="text"
-                  value={selectedComponent.styles.backgroundColor || ''}
-                  onChange={(e) => handleStyleChange('backgroundColor', e.target.value)}
-                  placeholder="#ffffff"
+            {/* Component-specific: Container gets gradient background */}
+            {selectedComponent.componentId?.toLowerCase() === 'container' ? (
+              <div className="property-field">
+                <label className="property-label">Background</label>
+                <GradientPicker
+                  value={selectedComponent.styles.background || selectedComponent.styles.backgroundColor || '#ffffff'}
+                  onChange={(value) => {
+                    // Use 'background' for gradients, clear backgroundColor
+                    handleStyleChange('background', value);
+                    if (selectedComponent.styles.backgroundColor) {
+                      handleStyleChange('backgroundColor', '');
+                    }
+                  }}
+                  defaultColor="#ffffff"
                 />
               </div>
-            </div>
+            ) : (
+              <div className="property-field">
+                <label className="property-label">Background Color</label>
+                <div className="color-input-group">
+                  <input
+                    type="color"
+                    value={selectedComponent.styles.backgroundColor || '#ffffff'}
+                    onChange={(e) => handleStyleChange('backgroundColor', e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    value={selectedComponent.styles.backgroundColor || ''}
+                    onChange={(e) => handleStyleChange('backgroundColor', e.target.value)}
+                    placeholder="#ffffff"
+                  />
+                </div>
+              </div>
+            )}
 
-            <div className="property-field">
-              <label className="property-label">Text Color</label>
-              <div className="color-input-group">
-                <input
-                  type="color"
-                  value={selectedComponent.styles.color || '#000000'}
-                  onChange={(e) => handleStyleChange('color', e.target.value)}
-                />
-                <input
-                  type="text"
-                  value={selectedComponent.styles.color || ''}
-                  onChange={(e) => handleStyleChange('color', e.target.value)}
-                  placeholder="#000000"
+            {/* Component-specific: Label gets gradient text color */}
+            {selectedComponent.componentId?.toLowerCase() === 'label' ? (
+              <div className="property-field">
+                <label className="property-label">Text Color</label>
+                <GradientPicker
+                  value={selectedComponent.styles.backgroundImage || selectedComponent.styles.color || '#333333'}
+                  onChange={(value) => {
+                    // Check if it's a gradient or solid color
+                    const isGradient = value.includes('gradient');
+                    if (isGradient) {
+                      // For gradient text, we use background-clip technique
+                      handleStyleChange('backgroundImage', value);
+                      handleStyleChange('backgroundClip', 'text');
+                      handleStyleChange('WebkitBackgroundClip', 'text');
+                      handleStyleChange('WebkitTextFillColor', 'transparent');
+                      handleStyleChange('color', 'transparent');
+                    } else {
+                      // For solid color, reset gradient properties
+                      handleStyleChange('color', value);
+                      handleStyleChange('backgroundImage', '');
+                      handleStyleChange('backgroundClip', '');
+                      handleStyleChange('WebkitBackgroundClip', '');
+                      handleStyleChange('WebkitTextFillColor', '');
+                    }
+                  }}
+                  defaultColor="#333333"
                 />
               </div>
-            </div>
+            ) : (
+              <div className="property-field">
+                <label className="property-label">Text Color</label>
+                <div className="color-input-group">
+                  <input
+                    type="color"
+                    value={selectedComponent.styles.color || '#000000'}
+                    onChange={(e) => handleStyleChange('color', e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    value={selectedComponent.styles.color || ''}
+                    onChange={(e) => handleStyleChange('color', e.target.value)}
+                    placeholder="#000000"
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="property-field">
               <label className="property-label">Font Size</label>

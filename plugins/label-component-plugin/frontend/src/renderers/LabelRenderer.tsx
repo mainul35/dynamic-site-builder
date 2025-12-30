@@ -26,6 +26,20 @@ const LabelRenderer: React.FC<RendererProps> = ({ component }) => {
     caption: { fontSize: '0.875rem', fontWeight: 400, lineHeight: 1.4, color: '#666' },
   };
 
+  // Check if gradient text is enabled (backgroundImage with gradient)
+  const hasGradientText = customStyles.backgroundImage &&
+    typeof customStyles.backgroundImage === 'string' &&
+    customStyles.backgroundImage.includes('gradient');
+
+  // Build gradient text styles if needed
+  const gradientTextStyles: React.CSSProperties = hasGradientText ? {
+    backgroundImage: customStyles.backgroundImage,
+    backgroundClip: 'text',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    color: 'transparent',
+  } : {};
+
   const labelStyles: React.CSSProperties = {
     margin: 0,
     padding: 0,
@@ -34,7 +48,14 @@ const LabelRenderer: React.FC<RendererProps> = ({ component }) => {
     wordWrap: 'break-word',
     overflowWrap: 'break-word',
     ...variantDefaults[elementType],
-    ...(customStyles as React.CSSProperties),
+    // Apply custom styles but exclude gradient-related ones if using gradient text
+    ...Object.fromEntries(
+      Object.entries(customStyles as React.CSSProperties).filter(
+        ([key]) => !hasGradientText || !['backgroundImage', 'backgroundClip', 'WebkitBackgroundClip', 'WebkitTextFillColor'].includes(key)
+      )
+    ),
+    // Apply gradient text styles last to ensure they override
+    ...gradientTextStyles,
   };
 
   if (truncate) {

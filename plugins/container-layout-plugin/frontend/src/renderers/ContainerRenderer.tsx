@@ -62,6 +62,19 @@ const ContainerRenderer: React.FC<RendererProps> = ({ component, isEditMode }) =
     }
   };
 
+  // Determine background style - support both solid colors and gradients
+  const getBackgroundStyle = (): React.CSSProperties => {
+    const { background, backgroundColor } = component.styles;
+
+    // If 'background' is set (could be gradient or color), use it
+    if (background) {
+      return { background };
+    }
+
+    // Otherwise fall back to backgroundColor
+    return { backgroundColor: backgroundColor || '#ffffff' };
+  };
+
   // Base container styles
   const containerStyles: React.CSSProperties = {
     ...getLayoutStyles(),
@@ -70,12 +83,16 @@ const ContainerRenderer: React.FC<RendererProps> = ({ component, isEditMode }) =
     maxWidth: maxWidth !== 'none' ? (maxWidth as string) : undefined,
     margin: centerContent ? '0 auto' : undefined,
     overflow: allowOverflow ? 'visible' : 'hidden',
-    backgroundColor: component.styles.backgroundColor || '#ffffff',
+    ...getBackgroundStyle(),
     borderRadius: component.styles.borderRadius || '8px',
     boxShadow: component.styles.boxShadow || '0 1px 3px rgba(0,0,0,0.1)',
     minHeight: '100px',
-    // Apply additional styles from component
-    ...(component.styles as React.CSSProperties),
+    // Apply additional styles from component (excluding background to avoid override)
+    ...Object.fromEntries(
+      Object.entries(component.styles as React.CSSProperties).filter(
+        ([key]) => key !== 'background' && key !== 'backgroundColor'
+      )
+    ),
   };
 
   // In edit mode, we don't render children here - BuilderCanvas handles that
