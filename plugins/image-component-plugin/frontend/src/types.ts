@@ -8,8 +8,8 @@ export interface ComponentPosition {
 }
 
 export interface ComponentSize {
-  width: number;
-  height: number;
+  width: string;
+  height: string;
 }
 
 export interface ComponentInstance {

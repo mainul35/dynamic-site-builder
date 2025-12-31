@@ -20,18 +20,44 @@ const ImageRenderer: React.FC<RendererProps> = ({ component, isEditMode }) => {
   const showCaption = Boolean(props.showCaption);
   const lazyLoad = props.lazyLoad !== false;
 
+  // Get width/height from props (set via Properties panel)
+  const propsWidth = (props.width as string) || '';
+  const propsHeight = (props.height as string) || '';
+
+  // Get stored dimensions from component.size (set by ResizableComponent)
+  const storedWidth = component.size?.width;
+  const storedHeight = component.size?.height;
+
+  // Determine if we're inside a parent container or at root level
+  const hasParent = !!component.parentId;
+
+  // Container sizing logic - priority order:
+  // 1. Props width/height (from Properties panel) - highest priority
+  // 2. Stored dimensions (from resize)
+  // 3. Parent-aware defaults (100% for children, auto for root)
+  const effectiveWidth = propsWidth || storedWidth || (hasParent ? '100%' : 'auto');
+  const effectiveHeight = propsHeight || storedHeight || 'auto';
+
   const containerStyles: React.CSSProperties = {
-    width: '100%',
-    height: '100%',
+    width: effectiveWidth,
+    height: effectiveHeight,
+    maxWidth: '100%', // Prevent overflow in containers
     position: 'relative',
     overflow: 'hidden',
+    boxSizing: 'border-box',
     ...(component.styles as React.CSSProperties),
   };
 
+  // When height is not explicitly set (auto), use aspect ratio to determine height
+  // Otherwise, fill the allocated space
+  const hasExplicitHeight = (propsHeight && propsHeight !== 'auto') || (storedHeight && storedHeight !== 'auto');
+  const useAspectRatio = !hasExplicitHeight;
+
   const imageWrapperStyles: React.CSSProperties = {
     width: '100%',
-    height: '100%',
-    aspectRatio: aspectRatio,
+    // If explicit height is set, fill it; otherwise use aspect ratio
+    height: hasExplicitHeight ? '100%' : 'auto',
+    aspectRatio: useAspectRatio ? aspectRatio : undefined,
     backgroundColor: placeholderColor,
     borderRadius: borderRadius,
     overflow: 'hidden',
