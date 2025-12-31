@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { ModalBase, ModalSection, ModalField, ModalActions, ModalButton } from './ModalBase';
 import { useSiteManagerStore } from '../../stores/siteManagerStore';
-import { Site } from '../../types/site';
 
 export interface SiteSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   siteId?: number;
+  onSiteDeleted?: () => void;
 }
 
 /**
  * SiteSettingsModal - Edit site configuration
  */
-export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({ isOpen, onClose, siteId }) => {
-  const { sites, currentSiteId, updateSite } = useSiteManagerStore();
+export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({ isOpen, onClose, siteId, onSiteDeleted }) => {
+  const { sites, currentSiteId, updateSite, deleteSite } = useSiteManagerStore();
 
   const site = sites.find((s) => s.id === (siteId ?? currentSiteId));
 
@@ -24,6 +24,9 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({ isOpen, on
     faviconUrl: '',
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -35,6 +38,8 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({ isOpen, on
         faviconUrl: '',
       });
       setErrors({});
+      setShowDeleteConfirm(false);
+      setDeleteConfirmText('');
     }
   }, [site, isOpen]);
 
@@ -75,6 +80,26 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({ isOpen, on
       setErrors({ submit: 'Failed to update site settings' });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!site || deleteConfirmText !== site.siteName) return;
+
+    setIsDeleting(true);
+
+    try {
+      const success = await deleteSite(site.id);
+      if (success) {
+        onClose();
+        onSiteDeleted?.();
+      } else {
+        setErrors({ submit: 'Failed to delete site' });
+      }
+    } catch {
+      setErrors({ submit: 'Failed to delete site' });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -153,6 +178,75 @@ export const SiteSettingsModal: React.FC<SiteSettingsModalProps> = ({ isOpen, on
         <div className="profile-info-row">
           <span className="profile-info-label">Status</span>
           <span className="profile-info-value">{site.status || 'Active'}</span>
+        </div>
+      </ModalSection>
+
+      <ModalSection title="Danger Zone">
+        <div style={{
+          padding: '16px',
+          border: '1px solid #dc3545',
+          borderRadius: '8px',
+          backgroundColor: 'rgba(220, 53, 69, 0.05)'
+        }}>
+          {!showDeleteConfirm ? (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontWeight: 500, color: '#dc3545' }}>Delete this site</div>
+                <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  Once deleted, this site and all its pages cannot be recovered.
+                </div>
+              </div>
+              <ModalButton
+                variant="danger"
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={isSaving}
+              >
+                Delete Site
+              </ModalButton>
+            </div>
+          ) : (
+            <div>
+              <div style={{ fontWeight: 500, color: '#dc3545', marginBottom: '12px' }}>
+                Are you sure you want to delete "{site.siteName}"?
+              </div>
+              <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+                This action cannot be undone. All pages, content, and settings will be permanently deleted.
+              </div>
+              <ModalField
+                label={`Type "${site.siteName}" to confirm`}
+                htmlFor="deleteConfirm"
+              >
+                <input
+                  id="deleteConfirm"
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder={site.siteName}
+                  style={{ borderColor: '#dc3545' }}
+                />
+              </ModalField>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                <ModalButton
+                  variant="secondary"
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setDeleteConfirmText('');
+                  }}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </ModalButton>
+                <ModalButton
+                  variant="danger"
+                  onClick={handleDelete}
+                  disabled={deleteConfirmText !== site.siteName || isDeleting}
+                  loading={isDeleting}
+                >
+                  Delete Site Permanently
+                </ModalButton>
+              </div>
+            </div>
+          )}
         </div>
       </ModalSection>
     </ModalBase>

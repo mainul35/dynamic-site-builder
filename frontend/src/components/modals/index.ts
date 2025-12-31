@@ -19,3 +19,6 @@ export type { NewSiteModalProps } from './NewSiteModal';
 
 export { NewPageModal } from './NewPageModal';
 export type { NewPageModalProps } from './NewPageModal';
+
+export { PageManagerModal } from './PageManagerModal';
+export type { PageManagerModalProps } from './PageManagerModal';
