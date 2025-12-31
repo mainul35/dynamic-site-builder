@@ -7,6 +7,9 @@ import { loadPlugin, isPluginLoaded } from '../../../services/pluginLoaderServic
 export type { RendererProps, RendererComponent };
 export { RendererRegistry };
 
+// Expose RendererRegistry globally so plugins can use it to render children
+(globalThis as unknown as { RendererRegistry: typeof RendererRegistry }).RendererRegistry = RendererRegistry;
+
 /**
  * Auto-discover and register all core *Renderer.tsx files from this directory
  * Uses Vite's import.meta.glob for convention-based auto-discovery
