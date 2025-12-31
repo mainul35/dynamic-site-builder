@@ -750,4 +750,114 @@ await siteManagerStore.reorderPages(siteId, [
 
 ---
 
+## Component Sizing Architecture
+
+### Dimension Priority System
+
+The system uses a consistent priority order for component dimensions across all contexts:
+
+```
+1. props.width/height     (Properties Panel - highest priority)
+2. size.width/height      (Resize drag operations)
+3. Context-aware defaults (100% for children, auto for root)
+```
+
+This applies to:
+- **ResizableComponent.tsx** - Edit mode rendering and resize behavior
+- **ImageRenderer.tsx** - Preview mode rendering
+- **thymeleafExportService.ts** - Thymeleaf/Spring Boot export
+
+### Flex Layout Behavior
+
+Components with explicit dimensions properly escape parent flex stretch:
+
+| Component State | Flex Behavior | Result |
+|-----------------|---------------|--------|
+| No explicit width | `alignSelf: undefined` | Stretches to parent width |
+| Explicit width set | `alignSelf: flex-start` | Uses exact specified width |
+
+### Resize Operations
+
+The `ResizableComponent` wrapper provides resize handles for all components:
+
+| Handle | Position | Resize Direction |
+|--------|----------|------------------|
+| n, s | Top, Bottom edges | Vertical only |
+| e, w | Left, Right edges | Horizontal only |
+| ne, nw, se, sw | Corners | Both directions |
+
+**Resize behavior**:
+- Drag operations update `component.size.width/height`
+- Properties panel updates `component.props.width/height`
+- Props take precedence over size (see priority system above)
+
+---
+
+## Thymeleaf Export Service
+
+### Overview
+
+Location: `frontend/src/services/thymeleafExportService.ts`
+
+The export service generates a complete Spring Boot project with Thymeleaf templates from the visual builder pages.
+
+### Template Variable Conversion
+
+Builder uses `{{variable}}` syntax which is converted to Thymeleaf expressions:
+
+| Builder Syntax | Thymeleaf Output | Context |
+|----------------|------------------|---------|
+| `{{item.name}}` | `${item.name}` | Simple variable |
+| `Name: {{item.name}}` | `'Name: ' + ${item.name}` | Mixed text + variable |
+| `{{item.name}} - {{item.price}}` | `${item.name} + ' - ' + ${item.price}` | Multiple variables |
+
+### Component Export Functions
+
+| Function | Description |
+|----------|-------------|
+| `generateThymeleafLabel` | Exports Label with th:text for template bindings |
+| `generateThymeleafImage` | 3-level structure matching ImageRenderer |
+| `generateThymeleafContainer` | Flex/grid layout with proper styling |
+| `generateThymeleafRepeater` | th:each with grid/flex layout support |
+| `generateThymeleafNavbar` | Navigation with th:href links |
+| `generateThymeleafButton` | Button with th:href for navigation events |
+
+### Export Package Structure
+
+```
+exported-project/
+├── pom.xml
+├── src/main/java/{package}/
+│   ├── Application.java
+│   └── controller/
+│       └── PageController.java
+├── src/main/resources/
+│   ├── application.properties
+│   ├── templates/           # Thymeleaf templates
+│   │   └── {page-name}.html
+│   ├── pages/               # Page data JSON
+│   │   └── {page-name}.json
+│   └── static/
+│       ├── css/styles.css
+│       ├── js/main.js
+│       └── images/          # Downloaded images
+└── README.md
+```
+
+### Image Handling
+
+Images are automatically:
+1. Collected from all page components
+2. Downloaded from their URLs
+3. Saved to `static/images/`
+4. Referenced using Thymeleaf URL syntax `@{/images/filename.ext}`
+
+---
+
+## Related Documentation
+
+- [CHANGELOG.md](./CHANGELOG.md) - Detailed change history and bug fixes
+
+---
+
 *Documentation last updated: December 2024*
