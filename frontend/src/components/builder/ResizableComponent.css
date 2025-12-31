@@ -28,8 +28,8 @@
 .resizable-component.child-component {
   min-height: 40px;
   min-width: 40px;
-  /* Fill the parent width, but let height be controlled by inline styles or content */
-  width: 100%;
+  /* Don't set width: 100% here - let inline styles from getContainerStyles() control width */
+  /* This allows components to be resized to smaller widths */
   /* Don't force height: 100% - let component.size.height control this */
   /* This allows 'auto' height components to size to their content */
   box-sizing: border-box;
