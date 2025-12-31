@@ -206,37 +206,73 @@ export const ResizableComponent: React.FC<ResizableComponentProps> = ({
 
   // Check if this is a layout component
   const isLayoutComponent = component.componentCategory?.toLowerCase() === 'layout';
+  // Check if this is a data container component (Repeater, DataList)
+  const isDataContainerComponent = component.componentCategory?.toLowerCase() === 'data' &&
+    (component.componentId === 'Repeater' || component.componentId === 'DataList');
   // Layout components use auto height only if explicitly set to 'auto', otherwise use stored height
+  // Data container components (Repeater, DataList) always use auto height to wrap children
   const hasExplicitHeight = component.size.height && component.size.height !== 'auto';
-  const shouldAutoHeight = isLayoutComponent && !hasExplicitHeight;
+  const shouldAutoHeight = (isLayoutComponent && !hasExplicitHeight) || isDataContainerComponent;
 
   // Child components (with parentId) should size naturally within parent's grid/flex layout
   const isChildComponent = !!component.parentId;
+
+  // Get explicit dimensions from props (set via Properties panel)
+  // These take priority over stored size from resize operations
+  const propsWidth = component.props?.width as string | undefined;
+  const propsHeight = component.props?.height as string | undefined;
 
   // Calculate styles based on whether this is a root or child component
   const getContainerStyles = (): React.CSSProperties => {
     if (isChildComponent) {
       // Child components: apply their stored dimensions for resizing
+      // Priority: props (Properties panel) > size (from resize) > defaults
       // For grid layouts, don't apply any width - let grid cells control sizing completely
-      // For flex layouts, use stored width but provide a fallback for 'auto' to prevent collapsing
-      const childWidth = isInGridLayout
-        ? undefined
-        : (component.size.width === 'auto' || !component.size.width ? '100%' : component.size.width);
+      // UNLESS explicit width is set in props
+      let childWidth: string | undefined;
+      if (propsWidth) {
+        // Explicit width from Properties panel - always respect this
+        childWidth = propsWidth;
+      } else if (isInGridLayout) {
+        // In grid layout without explicit width - let grid control sizing
+        childWidth = undefined;
+      } else {
+        // Not in grid, no explicit width - use stored size or default to 100%
+        childWidth = (component.size.width === 'auto' || !component.size.width) ? '100%' : component.size.width;
+      }
+
+      // Same logic for height
+      let childHeight: string | undefined;
+      if (propsHeight) {
+        // Explicit height from Properties panel - always respect this
+        childHeight = propsHeight;
+      } else {
+        // Data containers nested as children should use auto height to wrap their children
+        // Layout containers (Container) nested as children should also use auto height to allow children to expand
+        const shouldChildAutoHeight = isDataContainerComponent || (isLayoutComponent && !hasExplicitHeight);
+        childHeight = shouldChildAutoHeight ? 'auto' : component.size.height;
+      }
+
       return {
         position: 'relative',
         width: childWidth,
         // Note: Don't apply maxWidth inline - it prevents resize from working
         // CSS handles the visual overflow constraints
-        height: component.size.height,
+        height: childHeight,
+        minHeight: (isDataContainerComponent || isLayoutComponent) ? '100px' : undefined,
         boxSizing: 'border-box',
+        // CRITICAL: When explicit width is set, prevent flex stretch from parent
+        // Without this, flex-column parents stretch children to full width
+        alignSelf: propsWidth ? 'flex-start' : undefined,
       };
     }
 
     // Root-level components: apply explicit dimensions
+    // Priority: props (Properties panel) > size (from resize)
     return {
-      width: component.size.width,
+      width: propsWidth || component.size.width,
       // Note: Don't apply maxWidth inline - it prevents resize from working
-      height: shouldAutoHeight ? 'auto' : component.size.height,
+      height: propsHeight || (shouldAutoHeight ? 'auto' : component.size.height),
       minHeight: shouldAutoHeight ? '40px' : undefined,
       position: 'relative',
       boxSizing: 'border-box',
