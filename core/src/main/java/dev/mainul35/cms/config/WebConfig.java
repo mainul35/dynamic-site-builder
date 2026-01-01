@@ -1,5 +1,6 @@
 package dev.mainul35.cms.config;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
@@ -11,19 +12,26 @@ import org.springframework.web.servlet.resource.PathResourceResolver;
 import java.io.IOException;
 
 @Configuration
+@RequiredArgsConstructor
 public class WebConfig implements WebMvcConfigurer {
 
+    private final CorsProperties corsProperties;
+
     /**
-     * Configure CORS for development
-     * Allows React dev server (running on port 5173) to call Spring Boot API
+     * Configure CORS dynamically based on application.properties.
+     * This allows different origins for dev, staging, and production environments.
+     *
+     * Configure via:
+     * - application.properties: cors.allowed-origins=https://myapp.com,https://admin.myapp.com
+     * - Environment variable: CORS_ALLOWED_ORIGINS=https://myapp.com,https://admin.myapp.com
      */
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
-                .allowedOrigins("http://localhost:5173", "http://localhost:3000")
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedOrigins(corsProperties.getAllowedOrigins())
+                .allowedMethods(corsProperties.getAllowedMethods())
                 .allowedHeaders("*")
-                .allowCredentials(true);
+                .allowCredentials(corsProperties.isAllowCredentials());
     }
 
     /**
