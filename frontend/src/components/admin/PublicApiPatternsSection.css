@@ -1,0 +1,202 @@
+/* Public API Patterns Section Styles */
+
+.public-api-patterns-section .section-description {
+  font-size: 13px;
+  color: var(--text-secondary, #6b7280);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.patterns-loading {
+  text-align: center;
+  padding: 24px;
+  color: var(--text-secondary, #6b7280);
+  font-size: 14px;
+}
+
+.patterns-empty {
+  text-align: center;
+  padding: 24px;
+  color: var(--text-secondary, #6b7280);
+  font-size: 14px;
+  background: var(--bg-secondary, #f9fafb);
+  border-radius: 6px;
+  border: 1px dashed var(--border-color, #e5e7eb);
+}
+
+/* Patterns List */
+.patterns-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.pattern-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: var(--bg-secondary, #f9fafb);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.pattern-item:hover {
+  background: var(--bg-hover, #f3f4f6);
+}
+
+.pattern-item.pattern-disabled {
+  opacity: 0.6;
+}
+
+.pattern-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.pattern-path {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pattern-path code {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+  font-size: 13px;
+  color: var(--text-primary, #1f2937);
+  background: var(--bg-code, #e5e7eb);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.pattern-methods {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-secondary, #6b7280);
+  background: var(--bg-secondary, #f3f4f6);
+  border: 1px solid var(--border-color, #d1d5db);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.pattern-description {
+  font-size: 12px;
+  color: var(--text-secondary, #6b7280);
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Pattern Actions */
+.pattern-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 12px;
+}
+
+.pattern-toggle {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pattern-toggle.enabled {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.pattern-toggle.enabled:hover {
+  background: #bbf7d0;
+}
+
+.pattern-toggle.disabled {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.pattern-toggle.disabled:hover {
+  background: #fecaca;
+}
+
+.pattern-edit,
+.pattern-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: transparent;
+  color: var(--text-secondary, #6b7280);
+}
+
+.pattern-edit:hover {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.pattern-delete:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* Patterns Footer */
+.patterns-footer {
+  display: flex;
+  justify-content: flex-start;
+}
+
+/* Pattern Form */
+.pattern-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  background: var(--bg-secondary, #f9fafb);
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e5e7eb);
+}
+
+.pattern-form-checkbox {
+  display: flex;
+  align-items: center;
+}
+
+.pattern-form-checkbox label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-primary, #1f2937);
+  cursor: pointer;
+}
+
+.pattern-form-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.pattern-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color, #e5e7eb);
+}
