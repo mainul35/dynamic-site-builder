@@ -990,6 +990,490 @@ Images are automatically:
 
 ---
 
+## Plugin Frontend Development
+
+This section covers how to develop the frontend (React) part of a plugin that renders components in the visual builder.
+
+### Architecture Overview
+
+```
+Plugin Frontend Loading Flow:
+┌─────────────────┐    ┌──────────────────┐    ┌────────────────────┐
+│ BuilderCanvas   │───>│ PluginLoaderSvc  │───>│ /api/plugins/{id}/ │
+│ needs renderer  │    │ loadPlugin()     │    │ bundle.js          │
+└─────────────────┘    └──────────────────┘    └────────────────────┘
+                                │
+                                ▼
+                       ┌──────────────────┐
+                       │ RendererRegistry │
+                       │ register()       │
+                       └──────────────────┘
+```
+
+Plugins are built as IIFE (Immediately Invoked Function Expression) bundles that:
+1. Are served from the backend via `/api/plugins/{pluginId}/bundle.js`
+2. Expose a global variable (e.g., `window.ButtonComponentPlugin`)
+3. Register their renderers with the core RendererRegistry
+
+### Frontend Directory Structure
+
+```
+plugins/{plugin-name}/
+├── pom.xml                    # Maven build config
+├── frontend/
+│   ├── package.json           # NPM dependencies
+│   ├── tsconfig.json          # TypeScript configuration
+│   ├── vite.config.ts         # Vite build configuration
+│   └── src/
+│       ├── index.ts           # Main entry point
+│       ├── types.ts           # TypeScript type definitions
+│       ├── styles/            # Optional CSS files
+│       │   └── {Component}.css
+│       └── renderers/
+│           └── {ComponentName}Renderer.tsx
+└── src/main/
+    └── resources/
+        └── frontend/          # Build output directory
+            ├── bundle.js      # Generated IIFE bundle
+            └── bundle.css     # Generated CSS (optional)
+```
+
+### Step 1: Create package.json
+
+```json
+{
+  "name": "@dynamic-site-builder/{plugin-name}",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Frontend bundle for {plugin-name}",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "build:watch": "vite build --watch"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "typescript": "^5.3.0",
+    "vite": "^5.1.0"
+  }
+}
+```
+
+**Key points:**
+- React is a `peerDependency` (provided by host application)
+- No runtime dependencies in the bundle
+- Build outputs to `../src/main/resources/frontend/`
+
+### Step 2: Create vite.config.ts
+
+```typescript
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import { resolve } from 'path';
+
+export default defineConfig({
+  plugins: [react()],
+  build: {
+    // Output to Maven resources directory
+    outDir: resolve(__dirname, '../src/main/resources/frontend'),
+    emptyOutDir: true,
+    lib: {
+      entry: resolve(__dirname, 'src/index.ts'),
+      name: 'MyComponentPlugin',  // Global variable name (PascalCase)
+      formats: ['iife'],           // IIFE for browser loading
+      fileName: () => 'bundle.js',
+    },
+    rollupOptions: {
+      // React is provided by host app - don't bundle it
+      external: ['react', 'react-dom', 'react/jsx-runtime'],
+      output: {
+        globals: {
+          react: 'React',
+          'react-dom': 'ReactDOM',
+          'react/jsx-runtime': 'jsxRuntime',
+        },
+        extend: true,
+        exports: 'named',
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name === 'style.css') {
+            return 'bundle.css';
+          }
+          return assetInfo.name || 'asset';
+        },
+      },
+    },
+    sourcemap: true,
+    minify: 'esbuild',
+  },
+});
+```
+
+**Important:** The `name` must match the entry in `PLUGIN_GLOBAL_NAMES` in `pluginLoaderService.ts`.
+
+### Step 3: Create types.ts
+
+```typescript
+/**
+ * Type definitions for plugin renderers
+ */
+
+export interface ComponentPosition {
+  x: number;
+  y: number;
+}
+
+export interface ComponentSize {
+  width: number;
+  height: number;
+}
+
+export interface ComponentInstance {
+  instanceId: string;
+  pluginId: string;
+  componentId: string;
+  componentCategory?: string;
+  parentId?: string | null;
+  position: ComponentPosition;
+  size: ComponentSize;
+  props: Record<string, unknown>;
+  styles: Record<string, string>;
+  children?: ComponentInstance[];
+  zIndex?: number;
+  displayOrder?: number;
+  isVisible?: boolean;
+}
+
+export interface RendererProps {
+  component: ComponentInstance;
+  isEditMode: boolean;
+}
+
+export type RendererComponent = React.FC<RendererProps>;
+
+export interface PluginBundle {
+  pluginId: string;
+  renderers: Record<string, RendererComponent>;
+  styles?: string;
+  version?: string;
+}
+```
+
+### Step 4: Create Renderer Components
+
+Location: `frontend/src/renderers/{ComponentName}Renderer.tsx`
+
+**Naming Convention:** The filename must be `{ComponentId}Renderer.tsx` where `ComponentId` matches the component ID registered in the Java plugin.
+
+```tsx
+import React, { useState } from 'react';
+import type { RendererProps } from '../types';
+
+/**
+ * MyComponentRenderer - Description of what this renders
+ */
+const MyComponentRenderer: React.FC<RendererProps> = ({ component, isEditMode }) => {
+  // Extract props with defaults
+  const {
+    text = 'Default Text',
+    variant = 'primary',
+    disabled = false,
+  } = component.props;
+
+  // Handle edit mode (prevent interactions in builder)
+  const handleClick = (e: React.MouseEvent) => {
+    if (isEditMode) {
+      e.preventDefault();
+      return;
+    }
+    // Production behavior
+  };
+
+  // Build styles
+  const containerStyles: React.CSSProperties = {
+    padding: '16px',
+    backgroundColor: component.styles.backgroundColor || '#ffffff',
+    borderRadius: component.styles.borderRadius || '8px',
+    ...component.styles,
+  };
+
+  return (
+    <div style={containerStyles} onClick={handleClick}>
+      {text as string}
+    </div>
+  );
+};
+
+export default MyComponentRenderer;
+export { MyComponentRenderer };
+```
+
+**Best Practices:**
+
+1. **Extract props with defaults:**
+   ```tsx
+   const { text = 'Default', size = 'medium' } = component.props;
+   ```
+
+2. **Handle isEditMode:** Disable interactions in edit mode
+   ```tsx
+   if (isEditMode) {
+     e.preventDefault();
+     return;
+   }
+   ```
+
+3. **Apply component.styles:** Merge with default styles
+   ```tsx
+   const styles = {
+     ...defaultStyles,
+     ...component.styles,
+   };
+   ```
+
+4. **Type casting for props:**
+   ```tsx
+   {text as string}
+   {disabled as boolean}
+   ```
+
+### Step 5: Create index.ts (Entry Point)
+
+```typescript
+/**
+ * {PluginName} - Frontend Bundle
+ */
+import type { PluginBundle, RendererComponent } from './types';
+import MyComponentRenderer from './renderers/MyComponentRenderer';
+
+// PLUGIN_ID must match the Java plugin's ID exactly
+export const PLUGIN_ID = 'my-component-plugin';
+
+// Map of componentId -> renderer
+export const renderers: Record<string, RendererComponent> = {
+  MyComponent: MyComponentRenderer,
+};
+
+// Plugin bundle for dynamic loader
+export const pluginBundle: PluginBundle = {
+  pluginId: PLUGIN_ID,
+  renderers,
+  version: '1.0.0',
+};
+
+// Named exports for direct imports
+export { MyComponentRenderer };
+
+// Default export
+export default pluginBundle;
+
+// Self-registration function (called by host app)
+export function registerRenderers(registry: {
+  register: (componentId: string, renderer: RendererComponent, pluginId?: string) => void;
+}): void {
+  Object.entries(renderers).forEach(([componentId, renderer]) => {
+    registry.register(componentId, renderer, PLUGIN_ID);
+  });
+  console.log(`[${PLUGIN_ID}] Registered ${Object.keys(renderers).length} renderers`);
+}
+```
+
+**Multiple Renderers Example (Navbar plugin):**
+
+```typescript
+export const renderers: Record<string, RendererComponent> = {
+  Navbar: NavbarRenderer,
+  NavbarDefault: NavbarDefaultRenderer,
+  NavbarCentered: NavbarCenteredRenderer,
+  NavbarDark: NavbarDarkRenderer,
+};
+```
+
+### Step 6: Register Plugin in PluginLoaderService
+
+Add your plugin to `frontend/src/services/pluginLoaderService.ts`:
+
+```typescript
+const PLUGIN_GLOBAL_NAMES: Record<string, string> = {
+  // ... existing plugins
+  'my-component-plugin': 'MyComponentPlugin',  // Add your plugin
+};
+```
+
+For core plugins (bundled with the CMS):
+
+```typescript
+const VIRTUAL_PLUGIN_MAPPINGS: Record<string, string[]> = {
+  'core-ui': [
+    // ... existing plugins
+    'my-component-plugin',  // Add to core-ui if it's a UI component
+  ],
+};
+```
+
+### Step 7: Add CSS Styles (Optional)
+
+Create: `frontend/src/styles/MyComponent.css`
+
+```css
+/* MyComponent Styles */
+.my-component {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.my-component-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+```
+
+Import in renderer:
+```tsx
+import '../styles/MyComponent.css';
+```
+
+### Step 8: Build the Frontend
+
+```bash
+cd plugins/my-component-plugin/frontend
+npm install
+npm run build
+```
+
+The build outputs to `../src/main/resources/frontend/`:
+- `bundle.js` - IIFE JavaScript bundle
+- `bundle.css` - CSS styles (if any)
+
+### Renderer Patterns
+
+#### Simple Component
+
+```tsx
+const LabelRenderer: React.FC<RendererProps> = ({ component }) => {
+  const { text = 'Label', fontSize = '14px' } = component.props;
+
+  return (
+    <span style={{ fontSize, ...component.styles }}>
+      {text as string}
+    </span>
+  );
+};
+```
+
+#### Component with State
+
+```tsx
+const ButtonRenderer: React.FC<RendererProps> = ({ component, isEditMode }) => {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <button
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={(e) => isEditMode && e.preventDefault()}
+      style={{
+        backgroundColor: isHovered ? '#0056b3' : '#007bff',
+        ...component.styles,
+      }}
+    >
+      {component.props.text as string}
+    </button>
+  );
+};
+```
+
+#### Container with Children
+
+```tsx
+const ContainerRenderer: React.FC<RendererProps> = ({ component, isEditMode }) => {
+  const { layoutMode = 'flex-column', padding = '20px' } = component.props;
+
+  const layoutStyles = layoutMode === 'flex-row'
+    ? { display: 'flex', flexDirection: 'row' }
+    : { display: 'flex', flexDirection: 'column' };
+
+  return (
+    <div style={{ ...layoutStyles, padding, ...component.styles }}>
+      {/* Children are rendered by BuilderCanvas in edit mode */}
+      {/* In preview mode, parent component handles children */}
+    </div>
+  );
+};
+```
+
+#### Form Component
+
+```tsx
+const LoginFormRenderer: React.FC<RendererProps> = ({ component, isEditMode }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isEditMode) return;
+
+    // Call API endpoint from props
+    const response = await fetch(component.props.loginEndpoint as string);
+    // Handle response
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        disabled={isEditMode}
+      />
+      <input
+        type="password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        disabled={isEditMode}
+      />
+      <button type="submit" disabled={isEditMode}>
+        {component.props.submitText as string || 'Sign In'}
+      </button>
+    </form>
+  );
+};
+```
+
+### Debugging Plugin Loading
+
+Enable console logging to debug plugin loading:
+
+```typescript
+// In browser console:
+// Check loaded plugins
+window.ButtonComponentPlugin  // Should show plugin bundle
+
+// Check registry
+RendererRegistry.debugGetAllKeys()  // Shows all registered renderers
+
+// Manual loading
+import('/api/plugins/my-plugin/bundle.js')
+```
+
+### Common Issues
+
+| Issue | Solution |
+|-------|----------|
+| "Plugin global not found" | Ensure `PLUGIN_GLOBAL_NAMES` matches vite config `name` |
+| "jsxRuntime is not available" | Check React is loaded before plugin bundle |
+| Renderer not found | Verify componentId matches between Java and TypeScript |
+| Styles not applied | Check CSS import and build output |
+| Edit mode interactions | Ensure `isEditMode` check prevents clicks/inputs |
+
+---
+
 ## Related Documentation
 
 - [CHANGELOG.md](./CHANGELOG.md) - Detailed change history and bug fixes
