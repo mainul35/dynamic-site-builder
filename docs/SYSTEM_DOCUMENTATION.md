@@ -10,6 +10,7 @@ This document provides comprehensive documentation for the Dynamic Site Builder 
    - [Backend Authentication](#backend-authentication)
    - [Frontend Authentication](#frontend-authentication)
    - [Security Features](#security-features)
+   - [Dynamic Public API Patterns](#dynamic-public-api-patterns)
 2. [Site Management](#site-management)
    - [Site Entity](#site-entity)
    - [Site Operations](#site-operations)
@@ -159,6 +160,141 @@ The API interceptor handles:
    - BCrypt password hashing
    - Stateless JWT authentication (CSRF protection)
    - Role-based access control
+
+### Dynamic Public API Patterns
+
+The CMS supports runtime configuration of public API endpoints that bypass authentication. This allows site developers to expose specific API endpoints without modifying the codebase or restarting the server.
+
+#### Architecture
+
+The system uses a two-tier approach:
+
+1. **Static Patterns** (application.properties) - Requires server restart
+2. **Dynamic Patterns** (database) - No restart needed, changes take effect immediately
+
+```
+┌─────────────┐     ┌──────────────────────┐     ┌─────────────────┐
+│ HTTP Request│────>│ DynamicPublicApiFilter│────>│ JwtAuthFilter   │
+│             │     │ (checks DB patterns) │     │                 │
+└─────────────┘     └──────────────────────┘     └─────────────────┘
+                              │                          │
+                              │ Match found?             │
+                              │ ───────────────>         │
+                              │ Set anonymous auth       │
+                              │                          │
+                              │ No match?                │
+                              │ ─────────────────────────│───> Requires JWT
+```
+
+#### Core Components
+
+| Component | File | Description |
+|-----------|------|-------------|
+| PublicApiPattern | `security/entity/PublicApiPattern.java` | JPA entity for patterns |
+| PublicApiPatternRepository | `security/repository/PublicApiPatternRepository.java` | Data access layer |
+| PublicApiPatternService | `security/service/PublicApiPatternService.java` | Business logic with caching |
+| DynamicPublicApiFilter | `security/filter/DynamicPublicApiFilter.java` | Security filter |
+| PublicApiPatternController | `security/controller/PublicApiPatternController.java` | Admin REST API |
+
+#### Pattern Entity
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | Long | Primary key |
+| pattern | String | Ant-style URL pattern (e.g., `/api/sample/**`) |
+| httpMethods | String | Comma-separated methods (e.g., `GET,POST`) or `*` for all |
+| description | String | Optional documentation |
+| enabled | Boolean | Toggle without deletion |
+| createdBy | Long | User who created the pattern |
+| createdAt | Timestamp | Creation time |
+| updatedAt | Timestamp | Last update time |
+
+#### Pattern Matching
+
+Patterns use Spring's `AntPathMatcher` for URL matching:
+
+| Pattern | Matches | Does Not Match |
+|---------|---------|----------------|
+| `/api/products/*` | `/api/products/123` | `/api/products/123/details` |
+| `/api/products/**` | `/api/products/123`, `/api/products/123/details` | `/api/orders/1` |
+| `/api/*/items` | `/api/products/items`, `/api/orders/items` | `/api/products/123/items` |
+
+#### Admin API Endpoints
+
+```
+GET    /api/admin/security/public-patterns           - List all patterns
+GET    /api/admin/security/public-patterns/enabled   - List enabled patterns only
+GET    /api/admin/security/public-patterns/{id}      - Get pattern by ID
+POST   /api/admin/security/public-patterns           - Create new pattern
+PUT    /api/admin/security/public-patterns/{id}      - Update pattern
+DELETE /api/admin/security/public-patterns/{id}      - Delete pattern
+PATCH  /api/admin/security/public-patterns/{id}/enabled - Toggle enabled state
+POST   /api/admin/security/public-patterns/clear-cache  - Force cache refresh
+POST   /api/admin/security/public-patterns/test      - Test if path matches
+```
+
+All endpoints require `ADMIN` role.
+
+#### Frontend Integration
+
+**Security Service**: `frontend/src/services/securityService.ts`
+
+```typescript
+// Get all patterns
+const patterns = await securityService.getAllPatterns();
+
+// Create new pattern
+await securityService.createPattern({
+  pattern: '/api/products/**',
+  httpMethods: 'GET',
+  description: 'Public product catalog',
+  enabled: true
+});
+
+// Test if path would be public
+const result = await securityService.testPath({
+  path: '/api/products/123',
+  method: 'GET'
+});
+console.log(result.isPublic); // true
+```
+
+**Admin UI**: Settings Modal → Security tab (admin users only)
+
+The UI allows administrators to:
+- View all configured patterns
+- Add new patterns with validation
+- Edit existing patterns
+- Enable/disable patterns
+- Delete patterns
+
+#### Configuration
+
+**Static patterns via application.properties:**
+
+```properties
+# Comma-separated Ant-style patterns
+security.public-api-patterns=/api/sample/**,/api/products/**
+```
+
+**Environment variable:**
+
+```bash
+SECURITY_PUBLIC_API_PATTERNS=/api/sample/**,/api/products/**
+```
+
+#### Caching
+
+Enabled patterns are cached using Spring's caching abstraction:
+- Cache name: `publicApiPatterns`
+- Automatic invalidation on create/update/delete operations
+- Manual cache clear via admin API
+
+#### Database Migration
+
+File: `V9__add_public_api_patterns_table.sql`
+
+Creates `public_api_patterns` table with index on `enabled` column and seeds default `/api/sample/**` pattern.
 
 ---
 
@@ -860,4 +996,4 @@ Images are automatically:
 
 ---
 
-*Documentation last updated: December 2024*
+*Documentation last updated: January 2025*

@@ -4,7 +4,121 @@ All notable changes to this project are documented here. This document covers ar
 
 ---
 
-## [Unreleased] - December 2024
+## [Unreleased] - January 2025
+
+### Dynamic Public API Patterns
+
+#### Feature: Runtime-Configurable Public API Endpoints
+
+Added the ability to configure which API endpoints are publicly accessible without authentication, directly from the admin UI without server restart.
+
+**Problem solved**: Previously, exposing API endpoints (like `/api/sample/**` for testing data sources) required modifying the security configuration and restarting the server.
+
+**Solution**: Two-tier approach with static patterns (properties file) and dynamic patterns (database).
+
+#### Backend Components
+
+| File | Description |
+|------|-------------|
+| `security/entity/PublicApiPattern.java` | JPA entity storing pattern, HTTP methods, description, enabled flag |
+| `security/repository/PublicApiPatternRepository.java` | Data access with custom queries for enabled patterns |
+| `security/service/PublicApiPatternService.java` | Business logic with Spring caching and Ant-style path matching |
+| `security/filter/DynamicPublicApiFilter.java` | Security filter that sets anonymous auth for matching paths |
+| `security/controller/PublicApiPatternController.java` | Admin REST API at `/api/admin/security/public-patterns` |
+| `config/CacheConfig.java` | Enables Spring caching for pattern lookups |
+| `config/SecurityProperties.java` | Configuration properties for static patterns |
+
+#### Frontend Components
+
+| File | Description |
+|------|-------------|
+| `services/securityService.ts` | TypeScript API client for pattern management |
+| `components/admin/PublicApiPatternsSection.tsx` | React component for pattern CRUD |
+| `components/admin/PublicApiPatternsSection.css` | Styling for the admin UI |
+| `components/modals/SettingsModal.tsx` | Added Security tab for admin users |
+
+#### Database Migration
+
+File: `V9__add_public_api_patterns_table.sql`
+
+- Creates `public_api_patterns` table
+- Adds index on `enabled` column
+- Seeds default `/api/sample/**` pattern
+
+#### API Endpoints (Admin only)
+
+```
+GET    /api/admin/security/public-patterns           - List all
+POST   /api/admin/security/public-patterns           - Create
+PUT    /api/admin/security/public-patterns/{id}      - Update
+DELETE /api/admin/security/public-patterns/{id}      - Delete
+PATCH  /api/admin/security/public-patterns/{id}/enabled - Toggle
+POST   /api/admin/security/public-patterns/test      - Test path
+```
+
+---
+
+### Dynamic CORS Configuration
+
+#### Feature: Environment-Based CORS Settings
+
+CORS origins and methods are now configurable via `application.properties` or environment variables.
+
+**Files modified**:
+- `config/CorsProperties.java` - New configuration properties class
+- `config/WebConfig.java` - Uses dynamic CORS properties
+- `sitebuilder/controller/SampleDataController.java` - Removed redundant `@CrossOrigin`
+
+**Configuration**:
+
+```properties
+cors.allowed-origins=http://localhost:5173,http://localhost:3000
+cors.allowed-methods=GET,POST,PUT,DELETE,OPTIONS
+cors.allow-credentials=true
+```
+
+---
+
+### Data Source Test Error Handling
+
+#### Fixed: False "Success" on HTTP Error Responses
+
+**Problem**: Testing API data sources showed "Test Successful" even when the API returned 403 Forbidden.
+
+**Solution**: Updated `PropertiesPanel.tsx` to properly check response status and display detailed error information.
+
+**Improvements**:
+- Parse response body before checking status code
+- Build detailed error messages with status, endpoint, method
+- Include server error message, path, timestamp when available
+- Add helpful hints for common errors (401, 403, 404)
+
+**File**: `frontend/src/components/builder/PropertiesPanel.tsx`
+
+**CSS Enhancement**: `frontend/src/components/builder/DataSourceEditor.css`
+- Added pre-wrap for multiline error messages
+- Monospace font for error details
+- Scrollable container for long errors
+
+---
+
+### Thymeleaf Export API Endpoint Detection
+
+#### Feature: Generate Spring MVC Controllers from Data Sources
+
+The Thymeleaf export now detects API endpoints configured in Repeater components and generates corresponding Spring MVC controller methods.
+
+**File**: `frontend/src/services/thymeleafExportService.ts`
+
+**New capabilities**:
+- Detect API endpoints from component data source configurations
+- Generate controller classes with RestTemplate calls
+- Add Lombok dependency when API endpoints are detected
+- Generate proper Spring MVC route mappings
+
+---
+
+## [Previous] - December 2024
 
 ### Thymeleaf Export Service Improvements
 
