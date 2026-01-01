@@ -1,7 +1,10 @@
 package dev.mainul35.cms.security.config;
 
+import dev.mainul35.cms.config.SecurityProperties;
+import dev.mainul35.cms.security.filter.DynamicPublicApiFilter;
 import dev.mainul35.cms.security.filter.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -13,6 +16,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -31,10 +35,13 @@ import java.util.List;
 @EnableWebSecurity
 @EnableMethodSecurity
 @RequiredArgsConstructor
+@Slf4j
 public class CmsSecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
+    private final DynamicPublicApiFilter dynamicPublicApiFilter;
     private final UserDetailsService userDetailsService;
+    private final SecurityProperties securityProperties;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -45,9 +52,9 @@ public class CmsSecurityConfig {
                         .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
+                .authorizeHttpRequests(auth -> {
                         // Public endpoints - no authentication required
-                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/refresh").permitAll()
+                        auth.requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/refresh").permitAll()
                         .requestMatchers("/api/auth/check").permitAll()
 
                         // OAuth2 endpoints
@@ -72,10 +79,14 @@ public class CmsSecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/content/**").permitAll()
 
                         // Page data - public for site rendering
-                        .requestMatchers(HttpMethod.GET, "/api/pages/*/data").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/pages/*/data").permitAll();
+
+                        // Dynamic public API patterns from configuration
+                        // Configure via: security.public-api-patterns=/api/sample/**,/api/products/**
+                        configurePublicApiPatterns(auth);
 
                         // Admin endpoints - require ADMIN role
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        auth.requestMatchers("/api/admin/**").hasRole("ADMIN")
 
                         // User management endpoints
                         .requestMatchers("/api/users/pending").hasRole("ADMIN")
@@ -85,12 +96,34 @@ public class CmsSecurityConfig {
                         .requestMatchers("/api/**").authenticated()
 
                         // All other requests - permit (for SPA routing)
-                        .anyRequest().permitAll()
-                )
+                        .anyRequest().permitAll();
+                })
                 .authenticationProvider(authenticationProvider())
+                // Dynamic public API filter runs first to check database-configured patterns
+                .addFilterBefore(dynamicPublicApiFilter, UsernamePasswordAuthenticationFilter.class)
+                // JWT filter runs after to authenticate non-public requests
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    /**
+     * Configure public API patterns from application.properties.
+     * This allows site developers to define which endpoints are public
+     * without modifying the CMS codebase.
+     */
+    private void configurePublicApiPatterns(
+            AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry auth) {
+        String[] patterns = securityProperties.getPublicApiPatterns();
+        if (patterns != null && patterns.length > 0) {
+            log.info("Configuring {} public API pattern(s): {}", patterns.length, Arrays.toString(patterns));
+            for (String pattern : patterns) {
+                if (pattern != null && !pattern.trim().isEmpty()) {
+                    auth.requestMatchers(HttpMethod.GET, pattern.trim()).permitAll();
+                    log.debug("Added public API pattern: {}", pattern.trim());
+                }
+            }
+        }
     }
 
     @Bean
