@@ -326,6 +326,14 @@
 .test-result-error {
   color: #721c24;
   font-size: 12px;
+  white-space: pre-wrap;
+  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 10px;
+  border-radius: 4px;
+  line-height: 1.6;
+  max-height: 250px;
+  overflow-y: auto;
 }
 
 /* Responsive */
