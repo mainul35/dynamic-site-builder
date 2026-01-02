@@ -7,22 +7,23 @@
 .gradient-picker-label {
   font-size: 13px;
   font-weight: 500;
-  color: #495057;
+  color: var(--text-primary, #495057);
 }
 
 .gradient-preview {
   height: 40px;
   border-radius: 6px;
-  border: 1px solid #ced4da;
+  border: 1px solid var(--border-color, #ced4da);
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .gradient-type-selector {
   display: flex;
   gap: 4px;
-  background: #e9ecef;
+  background: var(--bg-active, #e9ecef);
   padding: 4px;
   border-radius: 8px;
+  transition: background-color var(--transition-normal, 200ms ease);
 }
 
 .type-btn {
@@ -30,7 +31,7 @@
   padding: 6px 12px;
   border: none;
   background: transparent;
-  color: #6c757d;
+  color: var(--text-secondary, #6c757d);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -39,12 +40,12 @@
 }
 
 .type-btn:hover {
-  color: #495057;
+  color: var(--text-primary, #495057);
 }
 
 .type-btn.active {
-  background: white;
-  color: #007bff;
+  background: var(--bg-secondary, white);
+  color: var(--brand-primary, #007bff);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
@@ -56,14 +57,14 @@
 
 .gradient-angle-control label {
   font-size: 12px;
-  color: #6c757d;
+  color: var(--text-secondary, #6c757d);
 }
 
 .gradient-angle-control input[type="range"] {
   width: 100%;
   height: 6px;
   border-radius: 3px;
-  background: #e9ecef;
+  background: var(--bg-active, #e9ecef);
   appearance: none;
   cursor: pointer;
 }
@@ -102,15 +103,15 @@
 
 .stops-header span {
   font-size: 12px;
-  color: #6c757d;
+  color: var(--text-secondary, #6c757d);
   font-weight: 500;
 }
 
 .add-stop-btn {
   padding: 4px 8px;
   border: none;
-  background: #e9ecef;
-  color: #495057;
+  background: var(--bg-active, #e9ecef);
+  color: var(--text-primary, #495057);
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;
@@ -119,7 +120,7 @@
 }
 
 .add-stop-btn:hover {
-  background: #007bff;
+  background: var(--brand-primary, #007bff);
   color: white;
 }
 
@@ -132,47 +133,51 @@
 .stop-color {
   width: 36px;
   height: 32px;
-  border: 1px solid #ced4da;
+  border: 1px solid var(--border-color, #ced4da);
   border-radius: 4px;
   cursor: pointer;
   padding: 2px;
-  background: white;
+  background: var(--bg-secondary, white);
 }
 
 .stop-color-text {
   flex: 1;
   padding: 6px 8px;
-  border: 1px solid #ced4da;
+  border: 1px solid var(--border-color, #ced4da);
   border-radius: 4px;
   font-size: 12px;
   font-family: monospace;
   min-width: 0;
+  background: var(--bg-secondary, white);
+  color: var(--text-primary, #212529);
 }
 
 .stop-color-text:focus {
   outline: none;
-  border-color: #007bff;
+  border-color: var(--brand-primary, #007bff);
   box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
 }
 
 .stop-position {
   width: 50px;
   padding: 6px 8px;
-  border: 1px solid #ced4da;
+  border: 1px solid var(--border-color, #ced4da);
   border-radius: 4px;
   font-size: 12px;
   text-align: center;
+  background: var(--bg-secondary, white);
+  color: var(--text-primary, #212529);
 }
 
 .stop-position:focus {
   outline: none;
-  border-color: #007bff;
+  border-color: var(--brand-primary, #007bff);
   box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
 }
 
 .stop-position-label {
   font-size: 12px;
-  color: #6c757d;
+  color: var(--text-secondary, #6c757d);
   margin-left: -4px;
 }
 
@@ -180,8 +185,8 @@
   width: 24px;
   height: 24px;
   border: none;
-  background: #ffebee;
-  color: #dc3545;
+  background: rgba(220, 53, 69, 0.1);
+  color: var(--brand-danger, #dc3545);
   font-size: 16px;
   font-weight: bold;
   cursor: pointer;
@@ -194,7 +199,7 @@
 }
 
 .remove-stop-btn:hover {
-  background: #dc3545;
+  background: var(--brand-danger, #dc3545);
   color: white;
 }
 
@@ -206,9 +211,9 @@
 
 .presets-toggle {
   padding: 6px 12px;
-  border: 1px solid #ced4da;
-  background: white;
-  color: #495057;
+  border: 1px solid var(--border-color, #ced4da);
+  background: var(--bg-secondary, white);
+  color: var(--text-primary, #495057);
   font-size: 12px;
   cursor: pointer;
   border-radius: 4px;
@@ -216,9 +221,9 @@
 }
 
 .presets-toggle:hover {
-  background: #f8f9fa;
-  border-color: #007bff;
-  color: #007bff;
+  background: var(--bg-tertiary, #f8f9fa);
+  border-color: var(--brand-primary, #007bff);
+  color: var(--brand-primary, #007bff);
 }
 
 .presets-grid {
@@ -229,7 +234,7 @@
 
 .preset-btn {
   height: 28px;
-  border: 1px solid #ced4da;
+  border: 1px solid var(--border-color, #ced4da);
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s;
@@ -246,27 +251,28 @@
   gap: 4px;
   margin-top: 4px;
   padding-top: 12px;
-  border-top: 1px solid #e9ecef;
+  border-top: 1px solid var(--border-color, #e9ecef);
 }
 
 .gradient-raw-input label {
   font-size: 11px;
-  color: #6c757d;
+  color: var(--text-secondary, #6c757d);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .gradient-raw-input input {
   padding: 8px 10px;
-  border: 1px solid #ced4da;
+  border: 1px solid var(--border-color, #ced4da);
   border-radius: 4px;
   font-size: 12px;
   font-family: monospace;
-  color: #495057;
+  color: var(--text-primary, #495057);
+  background: var(--bg-secondary, white);
 }
 
 .gradient-raw-input input:focus {
   outline: none;
-  border-color: #007bff;
+  border-color: var(--brand-primary, #007bff);
   box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
 }
