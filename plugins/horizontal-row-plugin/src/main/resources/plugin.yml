@@ -1,0 +1,15 @@
+plugin-id: horizontal-row-plugin
+plugin-name: Horizontal Row
+version: 1.0.0
+author: mainul35
+main-class: dev.mainul35.plugins.ui.HorizontalRowComponentPlugin
+plugin-type: ui-component
+ui-component:
+  component-id: HorizontalRow
+  display-name: Horizontal Row
+  category: layout
+  icon: ➖
+  description: A horizontal divider / separator line
+  default-width: 400
+  default-height: 20
+  resizable: true

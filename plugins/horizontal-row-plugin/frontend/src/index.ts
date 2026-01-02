@@ -1,14 +1,14 @@
 /**
- * Image Component Plugin - Frontend Bundle
+ * Horizontal Row Component Plugin - Frontend Bundle
  */
 
 import type { PluginBundle, RendererComponent } from './types';
-import ImageRenderer from './renderers/ImageRenderer';
+import HorizontalRowRenderer from './renderers/HorizontalRowRenderer';
 
-export const PLUGIN_ID = 'image-component-plugin';
+export const PLUGIN_ID = 'horizontal-row-plugin';
 
 export const renderers: Record<string, RendererComponent> = {
-  Image: ImageRenderer,
+  HorizontalRow: HorizontalRowRenderer,
 };
 
 export const pluginBundle: PluginBundle = {
@@ -17,7 +17,7 @@ export const pluginBundle: PluginBundle = {
   version: '1.0.0',
 };
 
-export { ImageRenderer };
+export { HorizontalRowRenderer };
 
 export default pluginBundle;
 

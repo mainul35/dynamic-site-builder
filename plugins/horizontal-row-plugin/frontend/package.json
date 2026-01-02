@@ -1,8 +1,8 @@
 {
-  "name": "@dynamic-site-builder/image-component-plugin",
+  "name": "@dynamic-site-builder/horizontal-row-component-plugin",
   "version": "1.0.0",
   "private": true,
-  "description": "Frontend bundle for image-component-plugin",
+  "description": "Frontend bundle for horizontal-row-component-plugin",
   "type": "module",
   "scripts": {
     "dev": "vite",

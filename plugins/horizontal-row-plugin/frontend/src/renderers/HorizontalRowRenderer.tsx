@@ -1,51 +1,69 @@
-import React, { useState } from 'react';
+import React from 'react';
 import type { RendererProps } from '../types';
 
 /**
- * HorizontalRowRenderer - Renders a horizontal row component with configurable properties
+ * HorizontalRowRenderer - Renders a horizontal divider/separator line
+ *
+ * Props:
+ *   - thickness: Line thickness (1px, 2px, 3px, 4px, 5px)
+ *   - lineStyle: Line style (solid, dashed, dotted, double)
+ *   - width: Line width (25%, 50%, 75%, 100%)
+ *   - alignment: Horizontal alignment (left, center, right)
+ *
+ * Styles:
+ *   - color: Line color
+ *   - marginTop: Top margin
+ *   - marginBottom: Bottom margin
  */
-const HorizontalRowRenderer: React.FC<RendererProps> = ({ component, isEditMode }) => {
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [hasError, setHasError] = useState(false);
-
+const HorizontalRowRenderer: React.FC<RendererProps> = ({ component }) => {
   const props = component.props || {};
-  const lazyLoad = props.lazyLoad !== false;
+  const styles = component.styles || {};
 
-  // Determine if we're inside a parent container or at root level
-  const hasParent = !!component.parentId;
+  // Extract configurable properties with defaults
+  const thickness = (props.thickness as string) || '2px';
+  const lineStyle = (props.lineStyle as string) || 'solid';
+  const width = (props.width as string) || '100%';
+  const alignment = (props.alignment as string) || 'center';
+
+  // Extract styles with defaults
+  const color = (styles.color as string) || '#e0e0e0';
+  const marginTop = (styles.marginTop as string) || '16px';
+  const marginBottom = (styles.marginBottom as string) || '16px';
+
+  // Map alignment to flexbox justify-content
+  const getJustifyContent = (): string => {
+    switch (alignment) {
+      case 'left': return 'flex-start';
+      case 'right': return 'flex-end';
+      case 'center':
+      default: return 'center';
+    }
+  };
+
+  const containerStyles: React.CSSProperties = {
+    width: '100%',
+    display: 'flex',
+    justifyContent: getJustifyContent(),
+    alignItems: 'center',
+    boxSizing: 'border-box',
+    marginTop,
+    marginBottom,
+  };
+
+  const hrStyles: React.CSSProperties = {
+    width,
+    height: 0,
+    border: 'none',
+    borderTop: `${thickness} ${lineStyle} ${color}`,
+    margin: 0,
+  };
 
   return (
-    <div style={containerStyles}>
-      <div style={imageWrapperStyles}>
-        {!hasError ? (
-          <>
-            <div style={placeholderStyles}>
-              {isEditMode && !src ? 'No image selected' : 'Loading...'}
-            </div>
-            <img
-              src={src}
-              alt={alt}
-              style={imageStyles}
-              onLoad={handleImageLoad}
-              onError={handleImageError}
-              loading={lazyLoad ? 'lazy' : 'eager'}
-            />
-          </>
-        ) : (
-          <div style={errorStyles}>
-            <div>Failed to load image</div>
-            <div style={{ fontSize: '12px', marginTop: '8px', color: '#999' }}>
-              {src}
-            </div>
-          </div>
-        )}
-      </div>
-      {showCaption && caption && (
-        <div style={captionStyles}>{caption}</div>
-      )}
+    <div style={containerStyles} className="horizontal-row-container">
+      <hr style={hrStyles} />
     </div>
   );
 };
 
-export default ImageRenderer;
-export { ImageRenderer };
+export default HorizontalRowRenderer;
+export { HorizontalRowRenderer };

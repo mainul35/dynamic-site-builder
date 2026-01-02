@@ -2,6 +2,8 @@
  * Type definitions for plugin renderers.
  */
 
+import type React from 'react';
+
 export interface ComponentPosition {
   x: number;
   y: number;
