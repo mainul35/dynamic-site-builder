@@ -14,6 +14,13 @@ export interface UIPreferencesState {
   showRulers: boolean;
   showComponentOutlines: boolean;
 
+  // Appearance
+  darkMode: boolean;
+  compactMode: boolean;
+
+  // Notifications
+  autoSaveNotifications: boolean;
+
   // Zoom
   zoomLevel: number;
   zoomLevels: number[];
@@ -26,6 +33,9 @@ export interface UIPreferencesState {
   toggleGrid: () => void;
   toggleRulers: () => void;
   toggleComponentOutlines: () => void;
+  toggleDarkMode: () => void;
+  toggleCompactMode: () => void;
+  toggleAutoSaveNotifications: () => void;
   setZoomLevel: (level: number) => void;
   zoomIn: () => void;
   zoomOut: () => void;
@@ -43,6 +53,9 @@ const DEFAULT_PREFERENCES = {
   showGrid: true,
   showRulers: false,
   showComponentOutlines: false,
+  darkMode: false,
+  compactMode: false,
+  autoSaveNotifications: true,
   zoomLevel: 100,
   leftPanelCollapsed: false,
   rightPanelCollapsed: false,
@@ -66,6 +79,36 @@ export const useUIPreferencesStore = create<UIPreferencesState>()(
 
       toggleComponentOutlines: () =>
         set((state) => ({ showComponentOutlines: !state.showComponentOutlines })),
+
+      // Appearance toggles
+      toggleDarkMode: () => {
+        set((state) => {
+          const newDarkMode = !state.darkMode;
+          // Apply dark mode class to document
+          if (newDarkMode) {
+            document.documentElement.classList.add('dark-mode');
+          } else {
+            document.documentElement.classList.remove('dark-mode');
+          }
+          return { darkMode: newDarkMode };
+        });
+      },
+
+      toggleCompactMode: () => {
+        set((state) => {
+          const newCompactMode = !state.compactMode;
+          // Apply compact mode class to document
+          if (newCompactMode) {
+            document.documentElement.classList.add('compact-mode');
+          } else {
+            document.documentElement.classList.remove('compact-mode');
+          }
+          return { compactMode: newCompactMode };
+        });
+      },
+
+      toggleAutoSaveNotifications: () =>
+        set((state) => ({ autoSaveNotifications: !state.autoSaveNotifications })),
 
       // Zoom controls
       setZoomLevel: (level: number) => {
@@ -122,5 +165,23 @@ export const useLeftPanelCollapsed = () =>
   useUIPreferencesStore((state) => state.leftPanelCollapsed);
 export const useRightPanelCollapsed = () =>
   useUIPreferencesStore((state) => state.rightPanelCollapsed);
+export const useDarkMode = () => useUIPreferencesStore((state) => state.darkMode);
+export const useCompactMode = () => useUIPreferencesStore((state) => state.compactMode);
+export const useAutoSaveNotifications = () =>
+  useUIPreferencesStore((state) => state.autoSaveNotifications);
+
+/**
+ * Initialize UI preferences on app load
+ * Apply persisted dark mode and compact mode classes to document
+ */
+export const initializeUIPreferences = () => {
+  const state = useUIPreferencesStore.getState();
+  if (state.darkMode) {
+    document.documentElement.classList.add('dark-mode');
+  }
+  if (state.compactMode) {
+    document.documentElement.classList.add('compact-mode');
+  }
+};
 
 export default useUIPreferencesStore;
