@@ -85,10 +85,33 @@ export const BuilderMenubar: React.FC<BuilderMenubarProps> = ({
 
   const handlePaste = () => {
     const pastedComponents = clipboardStore.paste();
-    if (pastedComponents) {
-      console.log('Pasted:', pastedComponents);
-      // TODO: Add to builder tree
-    }
+    if (!pastedComponents || pastedComponents.length === 0) return;
+
+    // Add each pasted component to the builder tree
+    pastedComponents.forEach((component, index) => {
+      // If a component is selected, paste as sibling; otherwise paste at root
+      const parentId = selectedComponentId
+        ? builderStore.findComponent(selectedComponentId)?.parentId
+        : undefined;
+
+      const componentToAdd = {
+        ...component,
+        parentId: parentId || undefined,
+      };
+
+      builderStore.addComponent(componentToAdd);
+
+      // Select the first pasted component
+      if (index === 0) {
+        builderStore.selectComponent(componentToAdd.instanceId);
+      }
+    });
+
+    // Handle cut operation cleanup - remove original components if this was a cut
+    const cutSourceIds = clipboardStore.getAndClearCutSourceIds();
+    cutSourceIds.forEach((id) => {
+      builderStore.removeComponent(id);
+    });
   };
 
   const handleDelete = () => {
@@ -98,8 +121,7 @@ export const BuilderMenubar: React.FC<BuilderMenubarProps> = ({
   };
 
   const handleSelectAll = () => {
-    // TODO: Implement multi-select
-    console.log('Select all');
+    builderStore.selectAll();
   };
 
   const handleDeselect = () => {

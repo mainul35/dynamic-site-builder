@@ -99,13 +99,17 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
   };
 
   const handleSelectAll = () => {
-    // TODO: Implement select all components
-    console.log('Select all not implemented yet');
+    const { selectAll, getAllComponentIds } = useBuilderStore.getState();
+    const allIds = getAllComponentIds();
+    if (allIds.length > 0) {
+      selectAll();
+    }
     onClose();
   };
 
   const canPaste = clipboardStore.canPaste();
   const clipboardInfo = clipboardStore.getClipboardInfo();
+  const hasComponents = useBuilderStore.getState().getAllComponentIds().length > 0;
 
   return (
     <div
@@ -135,7 +139,11 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
 
       <div className="context-menu-divider" />
 
-      <button className="context-menu-item disabled" onClick={handleSelectAll} disabled>
+      <button
+        className={`context-menu-item ${!hasComponents ? 'disabled' : ''}`}
+        onClick={handleSelectAll}
+        disabled={!hasComponents}
+      >
         <span className="menu-icon">☑️</span>
         <span className="menu-label">Select All</span>
         <span className="menu-shortcut">Ctrl+A</span>
