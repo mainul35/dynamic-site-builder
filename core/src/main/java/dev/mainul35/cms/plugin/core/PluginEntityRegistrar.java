@@ -36,7 +36,16 @@ public class PluginEntityRegistrar {
     private final Map<String, List<Class<?>>> pluginEntities = new ConcurrentHashMap<>();
 
     /**
-     * Register entity classes for a plugin
+     * Register entity classes for a plugin.
+     *
+     * Note: Dynamic entity registration at runtime is limited in JPA/Hibernate.
+     * Entities should be declared in the plugin manifest and loaded at startup.
+     * This method tracks registered entities and can trigger schema validation.
+     *
+     * For full dynamic entity support, plugins should:
+     * 1. Declare entities in plugin.yml under spring.entities
+     * 2. Use @EntityScan in the plugin configuration
+     * 3. Ensure entities are on the classpath before EntityManagerFactory creation
      *
      * @param pluginId       Unique plugin identifier
      * @param entityClasses  List of entity classes to register
@@ -44,24 +53,44 @@ public class PluginEntityRegistrar {
     public void registerEntities(String pluginId, List<Class<?>> entityClasses) {
         log.info("Registering {} entities for plugin: {}", entityClasses.size(), pluginId);
 
-        // Store the entity classes
+        // Store the entity classes for tracking
         pluginEntities.put(pluginId, new ArrayList<>(entityClasses));
 
-        // TODO: Phase 1 - Basic structure only
-        // Future implementation will:
-        // 1. Dynamically add entities to Hibernate MetadataImplementor
-        // 2. Update entity mapping configuration
-        // 3. Trigger schema update for new entities
-        // 4. Handle entity relationships and dependencies
+        // Log entity details for debugging
+        for (Class<?> entityClass : entityClasses) {
+            Entity entityAnnotation = entityClass.getAnnotation(Entity.class);
+            String entityName = entityAnnotation != null && !entityAnnotation.name().isEmpty()
+                    ? entityAnnotation.name()
+                    : entityClass.getSimpleName();
+            log.info("  - Entity: {} (class: {})", entityName, entityClass.getName());
+        }
 
-        // Note: Dynamic entity registration with Hibernate is complex and requires
-        // careful handling of the SessionFactory. This is a placeholder for Phase 1.
-        // A full implementation would require:
-        // - Access to Hibernate's SessionFactory
-        // - Ability to add entities to existing configuration
-        // - Proper handling of entity lifecycle
+        // Validate that entities are managed by the EntityManagerFactory
+        validateEntityRegistration(pluginId, entityClasses);
 
-        log.debug("Entity registration placeholder executed for plugin: {}", pluginId);
+        log.info("Entity registration complete for plugin: {}", pluginId);
+    }
+
+    /**
+     * Validate that entity classes are properly registered with JPA.
+     * Logs warnings for entities that are not managed.
+     */
+    private void validateEntityRegistration(String pluginId, List<Class<?>> entityClasses) {
+        var metamodel = entityManagerFactory.getMetamodel();
+
+        for (Class<?> entityClass : entityClasses) {
+            try {
+                // Check if entity is managed by JPA
+                metamodel.entity(entityClass);
+                log.debug("Entity {} is managed by JPA", entityClass.getSimpleName());
+            } catch (IllegalArgumentException e) {
+                // Entity is not in the metamodel - this means it wasn't scanned at startup
+                log.warn("Entity {} from plugin {} is NOT managed by JPA. " +
+                        "This entity may not work correctly. Ensure it's included in @EntityScan " +
+                        "or plugin JAR is on classpath before application startup.",
+                        entityClass.getSimpleName(), pluginId);
+            }
+        }
     }
 
     /**
@@ -76,11 +105,16 @@ public class PluginEntityRegistrar {
         List<Class<?>> entities = pluginEntities.computeIfAbsent(pluginId, k -> new ArrayList<>());
         entities.add(entityClass);
 
-        // TODO: Implement dynamic entity registration (Phase 2)
+        // Validate this entity is managed
+        validateEntityRegistration(pluginId, List.of(entityClass));
     }
 
     /**
-     * Unregister all entities for a plugin
+     * Unregister all entities for a plugin.
+     *
+     * Note: This removes entities from tracking but does NOT remove them from
+     * the JPA metamodel at runtime (which is not supported by standard JPA).
+     * The entities will remain in the EntityManagerFactory until restart.
      *
      * @param pluginId Unique plugin identifier
      */
@@ -90,15 +124,14 @@ public class PluginEntityRegistrar {
         List<Class<?>> entities = pluginEntities.remove(pluginId);
 
         if (entities != null && !entities.isEmpty()) {
-            log.info("Unregistered {} entities for plugin: {}", entities.size(), pluginId);
-
-            // TODO: Phase 1 - Basic structure only
-            // Future implementation will:
-            // 1. Remove entities from Hibernate configuration
-            // 2. Clear entity caches
-            // 3. Handle entity relationship cleanup
+            log.info("Removed {} entity class(es) from tracking for plugin: {}", entities.size(), pluginId);
+            for (Class<?> entityClass : entities) {
+                log.debug("  - Removed: {}", entityClass.getSimpleName());
+            }
+            // Note: Entity classes remain in JPA metamodel until application restart
+            // This is a JPA/Hibernate limitation for dynamic entity management
         } else {
-            log.warn("No entities found for plugin: {}", pluginId);
+            log.debug("No entities registered for plugin: {}", pluginId);
         }
     }
 
