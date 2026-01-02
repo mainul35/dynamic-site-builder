@@ -25,7 +25,7 @@
 
 /* Modal Content */
 .modal-content {
-  background: var(--bg-primary, #ffffff);
+  background: var(--bg-secondary, #ffffff);
   border-radius: 8px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
   display: flex;
@@ -33,6 +33,7 @@
   max-height: calc(100vh - 40px);
   overflow: hidden;
   animation: modal-slide-in 0.2s ease-out;
+  transition: background-color var(--transition-normal, 200ms ease);
 }
 
 @keyframes modal-slide-in {
@@ -176,9 +177,9 @@
   font-size: 14px;
   border: 1px solid var(--border-color, #e5e7eb);
   border-radius: 6px;
-  background: var(--bg-primary, #ffffff);
+  background: var(--bg-tertiary, #f3f4f6);
   color: var(--text-primary, #1f2937);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color var(--transition-normal, 200ms ease);
 }
 
 .modal-field input:focus,
@@ -512,42 +513,106 @@
   transform: translateX(20px);
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .modal-content {
-    background: var(--bg-primary, #1f2937);
-  }
+/* Dark mode support - class-based (applied via .dark-mode on :root) */
+:root.dark-mode .modal-content {
+  background: var(--bg-secondary, #16213e);
+  color: var(--text-primary, #e8e8e8);
+}
 
-  .modal-header {
-    border-color: var(--border-color, #374151);
-  }
+:root.dark-mode .modal-header {
+  border-color: var(--border-color, #2a3f5f);
+}
 
-  .modal-title {
-    color: var(--text-primary, #f9fafb);
-  }
+:root.dark-mode .modal-title {
+  color: var(--text-primary, #e8e8e8);
+}
 
-  .modal-close-btn {
-    color: var(--text-secondary, #9ca3af);
-  }
+:root.dark-mode .modal-close-btn {
+  color: var(--text-secondary, #b8b8b8);
+}
 
-  .modal-close-btn:hover {
-    background: var(--bg-secondary, #374151);
-    color: var(--text-primary, #f9fafb);
-  }
+:root.dark-mode .modal-close-btn:hover {
+  background: var(--bg-tertiary, #0f3460);
+  color: var(--text-primary, #e8e8e8);
+}
 
-  .modal-footer {
-    border-color: var(--border-color, #374151);
-  }
+:root.dark-mode .modal-footer {
+  border-color: var(--border-color, #2a3f5f);
+}
 
-  .modal-field-label {
-    color: var(--text-primary, #f9fafb);
-  }
+:root.dark-mode .modal-section-title {
+  color: var(--text-primary, #e8e8e8);
+}
 
-  .modal-field input,
-  .modal-field textarea,
-  .modal-field select {
-    background: var(--bg-secondary, #374151);
-    border-color: var(--border-color, #4b5563);
-    color: var(--text-primary, #f9fafb);
-  }
+:root.dark-mode .modal-field-label {
+  color: var(--text-primary, #e8e8e8);
+}
+
+:root.dark-mode .modal-field input,
+:root.dark-mode .modal-field textarea,
+:root.dark-mode .modal-field select {
+  background: var(--bg-tertiary, #0f3460);
+  border-color: var(--border-color, #2a3f5f);
+  color: var(--text-primary, #e8e8e8);
+}
+
+:root.dark-mode .modal-field-hint {
+  color: var(--text-secondary, #b8b8b8);
+}
+
+:root.dark-mode .modal-button-secondary {
+  background: var(--bg-tertiary, #0f3460);
+  color: var(--text-primary, #e8e8e8);
+  border-color: var(--border-color, #2a3f5f);
+}
+
+:root.dark-mode .modal-button-secondary:hover:not(:disabled) {
+  background: var(--bg-active, #2a3f5f);
+}
+
+:root.dark-mode .modal-button-ghost:hover:not(:disabled) {
+  background: var(--bg-tertiary, #0f3460);
+  color: var(--text-primary, #e8e8e8);
+}
+
+:root.dark-mode .modal-tabs {
+  border-color: var(--border-color, #2a3f5f);
+}
+
+:root.dark-mode .modal-tab {
+  color: var(--text-secondary, #b8b8b8);
+}
+
+:root.dark-mode .modal-tab:hover {
+  color: var(--text-primary, #e8e8e8);
+}
+
+:root.dark-mode .modal-tab.active {
+  color: var(--brand-primary, #4dabf5);
+  border-bottom-color: var(--brand-primary, #4dabf5);
+}
+
+:root.dark-mode .modal-divider {
+  background: var(--border-color, #2a3f5f);
+}
+
+:root.dark-mode .modal-toggle {
+  border-color: var(--border-color, #2a3f5f);
+}
+
+:root.dark-mode .modal-toggle-label {
+  color: var(--text-primary, #e8e8e8);
+}
+
+:root.dark-mode .modal-toggle-description {
+  color: var(--text-secondary, #b8b8b8);
+}
+
+:root.dark-mode .modal-switch {
+  background: var(--bg-tertiary, #0f3460);
+}
+
+:root.dark-mode .modal-avatar {
+  background: var(--bg-tertiary, #0f3460);
+  color: var(--text-secondary, #b8b8b8);
 }

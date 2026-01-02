@@ -182,8 +182,102 @@
   padding: 2px 6px;
   font-family: inherit;
   font-size: 11px;
-  background: var(--bg-secondary, #f3f4f6);
+  background: var(--bg-tertiary, #f3f4f6);
   border: 1px solid var(--border-color, #e5e7eb);
   border-radius: 4px;
   box-shadow: 0 1px 0 var(--border-color, #e5e7eb);
+  color: var(--text-primary, #1f2937);
+  transition: background-color var(--transition-normal, 200ms ease), color var(--transition-normal, 200ms ease);
+}
+
+/* Add transitions for smooth dark mode switching */
+.settings-tab,
+.settings-toggle,
+.settings-toggle-label,
+.settings-toggle-desc,
+.settings-switch,
+.settings-zoom-label,
+.settings-zoom-btn,
+.settings-shortcut,
+.settings-shortcut-action {
+  transition: background-color var(--transition-normal, 200ms ease),
+              color var(--transition-normal, 200ms ease),
+              border-color var(--transition-normal, 200ms ease);
+}
+
+/* Dark mode styles for settings modal */
+:root.dark-mode .settings-tabs {
+  border-color: var(--border-color, #2a3f5f);
+}
+
+:root.dark-mode .settings-tab {
+  color: var(--text-secondary, #b8b8b8);
+}
+
+:root.dark-mode .settings-tab:hover {
+  color: var(--text-primary, #e8e8e8);
+}
+
+:root.dark-mode .settings-tab.active {
+  color: var(--brand-primary, #4dabf5);
+  border-bottom-color: var(--brand-primary, #4dabf5);
+}
+
+:root.dark-mode .settings-toggle {
+  border-color: var(--border-color, #2a3f5f);
+}
+
+:root.dark-mode .settings-toggle-label {
+  color: var(--text-primary, #e8e8e8);
+}
+
+:root.dark-mode .settings-toggle-desc {
+  color: var(--text-secondary, #b8b8b8);
+}
+
+:root.dark-mode .settings-switch {
+  background: var(--bg-tertiary, #0f3460);
+}
+
+:root.dark-mode .settings-switch.active {
+  background: var(--brand-primary, #4dabf5);
+}
+
+:root.dark-mode .settings-zoom-label {
+  color: var(--text-primary, #e8e8e8);
+}
+
+:root.dark-mode .settings-zoom-btn {
+  background: var(--bg-tertiary, #0f3460);
+  border-color: var(--border-color, #2a3f5f);
+  color: var(--text-secondary, #b8b8b8);
+}
+
+:root.dark-mode .settings-zoom-btn:hover {
+  background: var(--bg-active, #2a3f5f);
+}
+
+:root.dark-mode .settings-zoom-btn.active {
+  background: var(--brand-primary, #4dabf5);
+  border-color: var(--brand-primary, #4dabf5);
+  color: white;
+}
+
+:root.dark-mode .settings-shortcut {
+  border-color: var(--border-color, #2a3f5f);
+}
+
+:root.dark-mode .settings-shortcut-action {
+  color: var(--text-primary, #e8e8e8);
+}
+
+:root.dark-mode .settings-shortcut-keys {
+  color: var(--text-secondary, #b8b8b8);
+}
+
+:root.dark-mode .settings-shortcut-keys kbd {
+  background: var(--bg-tertiary, #0f3460);
+  border-color: var(--border-color, #2a3f5f);
+  color: var(--text-primary, #e8e8e8);
+  box-shadow: 0 1px 0 var(--border-color, #2a3f5f);
 }
