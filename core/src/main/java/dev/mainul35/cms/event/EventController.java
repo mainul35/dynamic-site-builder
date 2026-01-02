@@ -1,11 +1,14 @@
 package dev.mainul35.cms.event;
 
 import dev.mainul35.cms.sdk.event.EventResult;
+import dev.mainul35.cms.security.filter.JwtAuthenticationFilter.JwtUserPrincipal;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -30,6 +33,7 @@ public class EventController {
 
     private final EventHandlerRegistry eventHandlerRegistry;
     private final ApplicationContext applicationContext;
+    private final EventBroadcastService eventBroadcastService;
 
     /**
      * Request body for event invocation
@@ -98,6 +102,21 @@ public class EventController {
                 request.pluginId(), request.eventType(), request.componentId());
 
         try {
+            // Extract user/session info from security context
+            boolean isAuthenticated = false;
+            Set<String> userRoles = Set.of();
+            String userId = null;
+
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null && authentication.isAuthenticated() &&
+                    authentication.getPrincipal() instanceof JwtUserPrincipal principal) {
+                isAuthenticated = true;
+                userRoles = principal.roles();
+                // Convert Long userId to String for the context
+                userId = principal.userId() != null ? principal.userId().toString() : null;
+                log.debug("Event from authenticated user: {} (ID: {})", principal.email(), userId);
+            }
+
             // Build event context
             DefaultEventContext context = DefaultEventContext.builder()
                     .instanceId(request.instanceId())
@@ -113,9 +132,9 @@ public class EventController {
                     .source(request.source() != null ? request.source() : "unknown")
                     .headers(extractHeaders(httpRequest))
                     .clientIp(getClientIp(httpRequest))
-                    // TODO: Add user/session info from security context
-                    .authenticated(false)
-                    .userRoles(Set.of())
+                    .authenticated(isAuthenticated)
+                    .userId(userId)
+                    .userRoles(userRoles)
                     .applicationContext(applicationContext)
                     .build();
 
@@ -127,10 +146,15 @@ public class EventController {
                     context
             );
 
-            // Handle broadcast events if any
+            // Handle broadcast events via WebSocket
             if (result.getBroadcastEvents() != null && !result.getBroadcastEvents().isEmpty()) {
-                // TODO: Send via WebSocket
-                log.info("Broadcast events to send: {}", result.getBroadcastEvents().keySet());
+                eventBroadcastService.broadcastEvents(
+                        request.pluginId(),
+                        request.componentId(),
+                        request.instanceId(),
+                        request.pageId(),
+                        result.getBroadcastEvents()
+                );
             }
 
             return ResponseEntity.ok(EventInvokeResponse.fromResult(result));
