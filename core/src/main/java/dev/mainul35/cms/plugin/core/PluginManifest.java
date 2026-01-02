@@ -31,6 +31,9 @@ public class PluginManifest {
     private List<String> entityPackages = new ArrayList<>();
     private String apiBasePath;
 
+    // Dependencies
+    private List<String> dependencies = new ArrayList<>();
+
     /**
      * Load plugin manifest from JAR file
      */
@@ -77,6 +80,14 @@ public class PluginManifest {
 
                 // Parse API base path
                 manifest.setApiBasePath((String) data.get("api"));
+
+                // Parse dependencies
+                Object deps = data.get("dependencies");
+                if (deps instanceof List) {
+                    manifest.setDependencies(new ArrayList<>((List<String>) deps));
+                } else if (deps instanceof String) {
+                    manifest.setDependencies(Collections.singletonList((String) deps));
+                }
 
                 return manifest;
             }
