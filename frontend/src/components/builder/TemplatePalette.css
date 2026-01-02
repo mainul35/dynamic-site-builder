@@ -2,10 +2,11 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #f8f9fa;
-  border-right: 1px solid #dee2e6;
+  background: var(--bg-tertiary, #f8f9fa);
+  border-right: 1px solid var(--border-color, #dee2e6);
   width: 280px;
   overflow: hidden;
+  transition: background-color var(--transition-normal, 200ms ease), border-color var(--transition-normal, 200ms ease);
 }
 
 .template-palette .palette-header {
@@ -13,21 +14,21 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-  border-bottom: 1px solid #dee2e6;
-  background: white;
+  border-bottom: 1px solid var(--border-color, #dee2e6);
+  background: var(--bg-secondary, white);
 }
 
 .template-palette .palette-header h3 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: #212529;
+  color: var(--text-primary, #212529);
 }
 
 .template-palette .palette-search {
   padding: 12px 16px;
-  background: white;
-  border-bottom: 1px solid #dee2e6;
+  background: var(--bg-secondary, white);
+  border-bottom: 1px solid var(--border-color, #dee2e6);
   display: flex;
   gap: 8px;
   align-items: center;
@@ -36,11 +37,13 @@
 .template-palette .search-input {
   flex: 1;
   padding: 8px 12px;
-  border: 1px solid #ced4da;
+  border: 1px solid var(--border-color, #ced4da);
   border-radius: 6px;
   font-size: 14px;
   outline: none;
   transition: border-color 0.2s;
+  background: var(--bg-secondary, white);
+  color: var(--text-primary, #212529);
 }
 
 .template-palette .search-input:focus {
@@ -51,7 +54,7 @@
 .template-palette .clear-filters {
   background: none;
   border: none;
-  color: #6c757d;
+  color: var(--text-secondary, #6c757d);
   cursor: pointer;
   padding: 4px 8px;
   font-size: 16px;
@@ -60,8 +63,8 @@
 }
 
 .template-palette .clear-filters:hover {
-  background: #f8f9fa;
-  color: #212529;
+  background: var(--bg-hover, #f8f9fa);
+  color: var(--text-primary, #212529);
 }
 
 .template-palette .category-chips {
@@ -69,17 +72,17 @@
   flex-wrap: wrap;
   gap: 6px;
   padding: 12px 16px;
-  background: white;
-  border-bottom: 1px solid #dee2e6;
+  background: var(--bg-secondary, white);
+  border-bottom: 1px solid var(--border-color, #dee2e6);
   overflow-x: auto;
 }
 
 .template-palette .category-chip {
   padding: 5px 10px;
-  border: 1px solid #dee2e6;
+  border: 1px solid var(--border-color, #dee2e6);
   border-radius: 16px;
-  background: white;
-  color: #495057;
+  background: var(--bg-secondary, white);
+  color: var(--text-primary, #495057);
   font-size: 12px;
   cursor: pointer;
   white-space: nowrap;
@@ -87,8 +90,8 @@
 }
 
 .template-palette .category-chip:hover {
-  background: #e9ecef;
-  border-color: #adb5bd;
+  background: var(--bg-active, #e9ecef);
+  border-color: var(--border-dark, #adb5bd);
 }
 
 .template-palette .category-chip.active {
@@ -110,7 +113,7 @@
   justify-content: center;
   padding: 40px 16px;
   text-align: center;
-  color: #6c757d;
+  color: var(--text-secondary, #6c757d);
 }
 
 .template-palette .clear-filters-button {
@@ -126,10 +129,10 @@
 
 .template-palette .template-category {
   margin-bottom: 8px;
-  background: white;
+  background: var(--bg-secondary, white);
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.1));
 }
 
 .template-palette .category-header {
@@ -143,11 +146,11 @@
 }
 
 .template-palette .category-header:hover {
-  background: #f8f9fa;
+  background: var(--bg-hover, #f8f9fa);
 }
 
 .template-palette .category-toggle {
-  color: #6c757d;
+  color: var(--text-secondary, #6c757d);
   font-size: 12px;
   width: 16px;
   text-align: center;
@@ -162,12 +165,12 @@
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: #212529;
+  color: var(--text-primary, #212529);
 }
 
 .template-palette .template-count {
-  background: #e9ecef;
-  color: #495057;
+  background: var(--bg-active, #e9ecef);
+  color: var(--text-primary, #495057);
   padding: 2px 8px;
   border-radius: 12px;
   font-size: 12px;
@@ -184,8 +187,8 @@
   gap: 10px;
   padding: 12px;
   margin: 4px;
-  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-  border: 1px solid #dee2e6;
+  background: var(--bg-tertiary, #f8f9fa);
+  border: 1px solid var(--border-color, #dee2e6);
   border-radius: 8px;
   cursor: grab;
   transition: all 0.2s;
@@ -193,7 +196,7 @@
 }
 
 .template-palette .template-item:hover {
-  background: linear-gradient(135deg, #ffffff 0%, #f0f0ff 100%);
+  background: var(--bg-secondary, white);
   border-color: #6366f1;
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
   transform: translateY(-2px);
@@ -210,10 +213,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: white;
+  background: var(--bg-secondary, white);
   border-radius: 8px;
   font-size: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.1));
   flex-shrink: 0;
 }
 
@@ -225,13 +228,13 @@
 .template-palette .template-name {
   font-size: 13px;
   font-weight: 600;
-  color: #212529;
+  color: var(--text-primary, #212529);
   margin-bottom: 4px;
 }
 
 .template-palette .template-description {
   font-size: 11px;
-  color: #6c757d;
+  color: var(--text-secondary, #6c757d);
   line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -240,7 +243,7 @@
 }
 
 .template-palette .drag-handle {
-  color: #adb5bd;
+  color: var(--text-muted, #adb5bd);
   font-size: 16px;
   cursor: grab;
   padding: 4px;
@@ -252,13 +255,13 @@
 
 .template-palette .palette-footer {
   padding: 12px 16px;
-  border-top: 1px solid #dee2e6;
-  background: white;
+  border-top: 1px solid var(--border-color, #dee2e6);
+  background: var(--bg-secondary, white);
   text-align: center;
 }
 
 .template-palette .palette-footer small {
-  color: #6c757d;
+  color: var(--text-secondary, #6c757d);
   font-size: 12px;
 }
 
@@ -268,14 +271,14 @@
 }
 
 .template-palette .template-list::-webkit-scrollbar-track {
-  background: #f8f9fa;
+  background: var(--bg-tertiary, #f8f9fa);
 }
 
 .template-palette .template-list::-webkit-scrollbar-thumb {
-  background: #dee2e6;
+  background: var(--border-color, #dee2e6);
   border-radius: 4px;
 }
 
 .template-palette .template-list::-webkit-scrollbar-thumb:hover {
-  background: #adb5bd;
+  background: var(--text-muted, #adb5bd);
 }
