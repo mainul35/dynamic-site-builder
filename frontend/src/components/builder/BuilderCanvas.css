@@ -1,12 +1,13 @@
 .builder-canvas {
   position: relative;
   flex: 1;
-  background: #f8f9fa;
+  background: var(--bg-tertiary, #f8f9fa);
   overflow: auto;
   display: grid;
   padding: 20px;
   min-height: 600px;
   outline: none;
+  transition: background-color var(--transition-normal, 200ms ease);
 }
 
 .builder-canvas.edit-mode {
@@ -67,7 +68,7 @@
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
-  color: #6c757d;
+  color: var(--text-secondary, #6c757d);
   max-width: 400px;
   pointer-events: none;
   z-index: 1;
@@ -82,13 +83,13 @@
 .empty-canvas-state h3 {
   margin: 0 0 8px 0;
   font-size: 24px;
-  color: #495057;
+  color: var(--text-primary, #495057);
 }
 
 .empty-canvas-state p {
   margin: 0 0 24px 0;
   font-size: 16px;
-  color: #6c757d;
+  color: var(--text-secondary, #6c757d);
 }
 
 .empty-state-tips {
@@ -104,12 +105,12 @@
   justify-content: center;
   gap: 8px;
   padding: 12px 16px;
-  background: white;
-  border: 1px solid #dee2e6;
+  background: var(--bg-secondary, white);
+  border: 1px solid var(--border-color, #dee2e6);
   border-radius: 8px;
   font-size: 14px;
-  color: #495057;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  color: var(--text-primary, #495057);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.05));
 }
 
 /* Drop Zone Indicator */
@@ -167,12 +168,12 @@
   min-height: 40px;
   /* Use transparent as default so component.styles backgroundColor can show through */
   background: transparent;
-  border: 1px solid #dee2e6;
+  border: 1px solid var(--border-color, #dee2e6);
   border-radius: 8px;
   padding: 16px;
   /* Use hidden overflow to prevent children from extending outside container bounds */
   overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-sm, 0 2px 4px rgba(0, 0, 0, 0.05));
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -181,12 +182,12 @@
 .placeholder-header {
   margin-bottom: 12px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #dee2e6;
+  border-bottom: 1px solid var(--border-color, #dee2e6);
 }
 
 .placeholder-id {
   font-weight: 600;
-  color: #007bff;
+  color: var(--brand-primary, #007bff);
   font-size: 14px;
 }
 
@@ -198,14 +199,14 @@
 
 .prop-item {
   font-size: 12px;
-  color: #495057;
+  color: var(--text-primary, #495057);
   padding: 6px 8px;
-  background: #f8f9fa;
+  background: var(--bg-tertiary, #f8f9fa);
   border-radius: 4px;
 }
 
 .prop-item strong {
-  color: #212529;
+  color: var(--text-primary, #212529);
   margin-right: 4px;
 }
 
@@ -216,17 +217,17 @@
 }
 
 .builder-canvas::-webkit-scrollbar-track {
-  background: #e9ecef;
+  background: var(--bg-tertiary, #e9ecef);
 }
 
 .builder-canvas::-webkit-scrollbar-thumb {
-  background: #adb5bd;
+  background: var(--text-muted, #adb5bd);
   border-radius: 6px;
-  border: 2px solid #e9ecef;
+  border: 2px solid var(--bg-tertiary, #e9ecef);
 }
 
 .builder-canvas::-webkit-scrollbar-thumb:hover {
-  background: #6c757d;
+  background: var(--text-secondary, #6c757d);
 }
 
 /* Layout Component Styling */
@@ -441,7 +442,7 @@
   align-items: center;
   justify-content: center;
   min-height: 60px;
-  color: #28a745;
+  color: var(--brand-success, #28a745);
   font-size: 13px;
   font-style: italic;
   text-align: center;
@@ -488,17 +489,17 @@
 }
 
 .scrollable-children::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--bg-tertiary, #f1f1f1);
   border-radius: 4px;
 }
 
 .scrollable-children::-webkit-scrollbar-thumb {
-  background: #888;
+  background: var(--text-muted, #888);
   border-radius: 4px;
 }
 
 .scrollable-children::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: var(--text-secondary, #555);
 }
 
 /* Preview Mode Styling */
