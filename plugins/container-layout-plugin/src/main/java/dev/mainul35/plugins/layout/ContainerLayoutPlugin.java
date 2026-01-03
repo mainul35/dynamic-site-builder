@@ -175,7 +175,16 @@ public class ContainerLayoutPlugin implements UIComponentPlugin {
                     "grid-2col",
                     "grid-3col",
                     "grid-4col",
-                    "grid-auto"
+                    "grid-auto",
+                    // Asymmetric 2-column layouts
+                    "grid-20-80",
+                    "grid-25-75",
+                    "grid-33-67",
+                    "grid-40-60",
+                    "grid-60-40",
+                    "grid-67-33",
+                    "grid-75-25",
+                    "grid-80-20"
                 ))
                 .required(true)
                 .helpText("How child components are arranged")

@@ -60,6 +60,47 @@ const ContainerRenderer: React.FC<RendererProps> = ({ component, isEditMode }) =
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
         };
+      // Asymmetric 2-column layouts
+      case 'grid-20-80':
+        return {
+          display: 'grid',
+          gridTemplateColumns: '20% 80%',
+        };
+      case 'grid-25-75':
+        return {
+          display: 'grid',
+          gridTemplateColumns: '25% 75%',
+        };
+      case 'grid-33-67':
+        return {
+          display: 'grid',
+          gridTemplateColumns: '33.33% 66.67%',
+        };
+      case 'grid-40-60':
+        return {
+          display: 'grid',
+          gridTemplateColumns: '40% 60%',
+        };
+      case 'grid-60-40':
+        return {
+          display: 'grid',
+          gridTemplateColumns: '60% 40%',
+        };
+      case 'grid-67-33':
+        return {
+          display: 'grid',
+          gridTemplateColumns: '66.67% 33.33%',
+        };
+      case 'grid-75-25':
+        return {
+          display: 'grid',
+          gridTemplateColumns: '75% 25%',
+        };
+      case 'grid-80-20':
+        return {
+          display: 'grid',
+          gridTemplateColumns: '80% 20%',
+        };
       case 'flex-column':
       default:
         return {
