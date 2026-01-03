@@ -1354,24 +1354,33 @@ flowchart LR
 
 ---
 
-### Step-by-Step Guide
+### Step-by-Step Guide: HorizontalRow Plugin
 
-#### 1. Create Plugin Structure
+This guide walks through creating a plugin using the **HorizontalRow** component as a real-world example. This plugin provides a horizontal divider/separator line for visual layouts.
 
-```bash
-# Backend directories
-mkdir -p plugins/my-component-plugin/src/main/java/com/example/plugins
-mkdir -p plugins/my-component-plugin/src/main/resources/components
-mkdir -p plugins/my-component-plugin/src/main/resources/frontend
+#### 1. Plugin Directory Structure
 
-# Frontend directories
-mkdir -p plugins/my-component-plugin/frontend/src/renderers
-mkdir -p plugins/my-component-plugin/frontend/src/styles
-
-cd plugins/my-component-plugin
+```
+horizontal-row-plugin/
+├── pom.xml                                    # Maven build configuration
+├── frontend/
+│   ├── package.json                           # Frontend dependencies
+│   ├── vite.config.ts                         # Vite bundler config
+│   └── src/
+│       ├── index.ts                           # Plugin bundle entry point
+│       ├── types.ts                           # TypeScript type definitions
+│       └── renderers/
+│           └── HorizontalRowRenderer.tsx      # React component
+└── src/main/
+    ├── java/dev/mainul35/plugins/ui/
+    │   └── HorizontalRowComponentPlugin.java  # Plugin class
+    └── resources/
+        ├── plugin.yml                         # Plugin metadata
+        └── frontend/
+            └── bundle.js                      # Built frontend bundle
 ```
 
-### 2. Create `pom.xml`
+#### 2. Create `pom.xml`
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -1381,13 +1390,13 @@ cd plugins/my-component-plugin
          http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.example.plugins</groupId>
-    <artifactId>my-component-plugin</artifactId>
+    <groupId>dev.mainul35.plugins</groupId>
+    <artifactId>horizontal-row-plugin</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
-    <name>My Component Plugin</name>
-    <description>Custom UI component for site builder</description>
+    <name>Horizontal Row Plugin</name>
+    <description>A horizontal divider/separator line component</description>
 
     <properties>
         <java.version>21</java.version>
@@ -1402,22 +1411,6 @@ cd plugins/my-component-plugin
             <groupId>dev.mainul35</groupId>
             <artifactId>flashcard-cms-plugin-sdk</artifactId>
             <version>1.0.0-SNAPSHOT</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <!-- Lombok -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <version>1.18.34</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <!-- SLF4J -->
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>2.0.9</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
@@ -1438,285 +1431,205 @@ cd plugins/my-component-plugin
 </project>
 ```
 
-### 3. Create `plugin.yml`
+#### 3. Create `plugin.yml`
+
+The `plugin.yml` file defines plugin metadata read by the PluginManager at startup:
 
 ```yaml
-plugin-id: my-component-plugin
-plugin-name: My Component
+plugin-id: horizontal-row-plugin
+plugin-name: Horizontal Row
 version: 1.0.0
-author: Your Name
-description: A custom UI component
-main-class: com.example.plugins.MyComponentPlugin
+author: mainul35
+main-class: dev.mainul35.plugins.ui.HorizontalRowComponentPlugin
 plugin-type: ui-component
-
 ui-component:
-  component-id: my-component
-  display-name: My Component
-  category: ui
-  icon: 🎨
-  description: Custom component description
-  default-width: 200px
-  default-height: 60px
+  component-id: HorizontalRow
+  display-name: Horizontal Row
+  category: layout
+  icon: ➖
+  description: A horizontal divider / separator line
+  default-width: 400
+  default-height: 20
   resizable: true
-  min-width: 100px
-  max-width: 600px
-  min-height: 40px
-  max-height: 200px
-  react-component-path: /components/MyComponent.jsx
 ```
 
-### 4. Create Plugin Java Class
+**Key fields explained:**
+
+| Field | Purpose |
+|-------|---------|
+| `plugin-id` | Unique identifier for plugin loading and frontend bundle matching |
+| `main-class` | Fully qualified class name of the plugin entry point |
+| `plugin-type` | Must be `ui-component` for visual components |
+| `ui-component.component-id` | Must match `@UIComponent` annotation and frontend renderer key |
+
+#### 4. Create Plugin Java Class
+
+Using `AbstractUIComponentPlugin`, the plugin class is minimal:
 
 ```java
-package com.example.plugins;
+package dev.mainul35.plugins.ui;
 
-import dev.mainul35.cms.sdk.Plugin;
-import dev.mainul35.cms.sdk.PluginContext;
-import dev.mainul35.cms.sdk.UIComponentPlugin;
+import dev.mainul35.cms.sdk.AbstractUIComponentPlugin;
 import dev.mainul35.cms.sdk.annotation.UIComponent;
-import dev.mainul35.cms.sdk.component.*;
-import lombok.extern.slf4j.Slf4j;
+import dev.mainul35.cms.sdk.component.PropDefinition;
+import dev.mainul35.cms.sdk.component.StyleDefinition;
 
-import java.util.*;
+import java.util.List;
 
-@Slf4j
 @UIComponent(
-    componentId = "my-component",
-    displayName = "My Component",
+    componentId = "HorizontalRow",
+    displayName = "Horizontal Row",
     category = "ui",
-    icon = "🎨",
-    resizable = true,
-    defaultWidth = "200px",
-    defaultHeight = "60px"
+    icon = "━",
+    description = "A horizontal divider/separator line",
+    defaultWidth = "100%",
+    defaultHeight = "20px",
+    minHeight = "1px",
+    maxHeight = "50px",
+    resizable = true
 )
-public class MyComponentPlugin implements UIComponentPlugin {
-
-    private PluginContext context;
-    private ComponentManifest manifest;
+public class HorizontalRowComponentPlugin extends AbstractUIComponentPlugin {
 
     @Override
-    public void onLoad(PluginContext context) throws Exception {
-        this.context = context;
-        log.info("Loading My Component Plugin");
-        this.manifest = buildComponentManifest();
-        log.info("My Component Plugin loaded successfully");
-    }
-
-    @Override
-    public void onActivate(PluginContext context) throws Exception {
-        log.info("Activating My Component Plugin");
+    protected List<PropDefinition> defineProps() {
+        return List.of(
+            selectProp("thickness", "2px", List.of("1px", "2px", "3px", "4px", "5px")),
+            selectProp("lineStyle", "solid", List.of("solid", "dashed", "dotted", "double")),
+            selectProp("width", "100%", List.of("25%", "50%", "75%", "100%")),
+            selectProp("alignment", "center", List.of("left", "center", "right"))
+        );
     }
 
     @Override
-    public void onDeactivate(PluginContext context) throws Exception {
-        log.info("Deactivating My Component Plugin");
-    }
-
-    @Override
-    public void onUninstall(PluginContext context) throws Exception {
-        log.info("Uninstalling My Component Plugin");
-    }
-
-    @Override
-    public ComponentManifest getComponentManifest() {
-        return manifest;
-    }
-
-    @Override
-    public String getReactComponentPath() {
-        return "/components/MyComponent.jsx";
-    }
-
-    @Override
-    public byte[] getComponentThumbnail() {
-        return null; // Optional: return image bytes
-    }
-
-    @Override
-    public ValidationResult validateProps(Map<String, Object> props) {
-        List<String> errors = new ArrayList<>();
-
-        // Add validation logic
-        if (props.containsKey("text")) {
-            Object text = props.get("text");
-            if (text != null && text.toString().length() > 200) {
-                errors.add("Text must not exceed 200 characters");
-            }
-        }
-
-        return ValidationResult.builder()
-                .isValid(errors.isEmpty())
-                .errors(errors)
-                .build();
-    }
-
-    private ComponentManifest buildComponentManifest() {
-        return ComponentManifest.builder()
-                .componentId("my-component")
-                .displayName("My Component")
-                .category("ui")
-                .icon("🎨")
-                .description("Custom UI component")
-                .pluginId("my-component-plugin")
-                .pluginVersion("1.0.0")
-                .reactComponentPath("/components/MyComponent.jsx")
-                .defaultProps(buildDefaultProps())
-                .defaultStyles(buildDefaultStyles())
-                .configurableProps(buildConfigurableProps())
-                .configurableStyles(buildConfigurableStyles())
-                .sizeConstraints(buildSizeConstraints())
-                .canHaveChildren(false)
-                .build();
-    }
-
-    private Map<String, Object> buildDefaultProps() {
-        Map<String, Object> props = new HashMap<>();
-        props.put("text", "Hello World");
-        props.put("color", "blue");
-        return props;
-    }
-
-    private Map<String, String> buildDefaultStyles() {
-        Map<String, String> styles = new HashMap<>();
-        styles.put("padding", "10px");
-        styles.put("borderRadius", "4px");
-        return styles;
-    }
-
-    private List<PropDefinition> buildConfigurableProps() {
-        List<PropDefinition> props = new ArrayList<>();
-
-        props.add(PropDefinition.builder()
-                .name("text")
-                .type(PropDefinition.PropType.STRING)
-                .label("Text")
-                .defaultValue("Hello World")
-                .required(true)
-                .helpText("Component text content")
-                .build());
-
-        props.add(PropDefinition.builder()
-                .name("color")
-                .type(PropDefinition.PropType.SELECT)
-                .label("Color")
-                .defaultValue("blue")
-                .options(List.of("red", "blue", "green", "yellow"))
-                .helpText("Component color")
-                .build());
-
-        return props;
-    }
-
-    private List<StyleDefinition> buildConfigurableStyles() {
-        List<StyleDefinition> styles = new ArrayList<>();
-
-        styles.add(StyleDefinition.builder()
-                .property("padding")
-                .type(StyleDefinition.StyleType.SIZE)
-                .label("Padding")
-                .defaultValue("10px")
-                .allowedUnits(List.of("px", "rem", "em"))
-                .category("spacing")
-                .build());
-
-        return styles;
-    }
-
-    private SizeConstraints buildSizeConstraints() {
-        return SizeConstraints.builder()
-                .resizable(true)
-                .defaultWidth("200px")
-                .defaultHeight("60px")
-                .minWidth("100px")
-                .maxWidth("600px")
-                .minHeight("40px")
-                .maxHeight("200px")
-                .build();
-    }
-
-    @Override
-    public String getPluginId() {
-        return "my-component-plugin";
-    }
-
-    @Override
-    public String getName() {
-        return "My Component";
-    }
-
-    @Override
-    public String getVersion() {
-        return "1.0.0";
-    }
-
-    @Override
-    public String getDescription() {
-        return "A custom UI component";
+    protected List<StyleDefinition> defineStyles() {
+        return List.of(
+            colorStyle("color", "#e0e0e0"),
+            sizeStyle("marginTop", "16px"),
+            sizeStyle("marginBottom", "16px")
+        );
     }
 }
 ```
 
-### 5. Create React Component
+**Understanding the `@UIComponent` annotation:**
 
-`src/main/resources/components/MyComponent.jsx`:
+The annotation provides component metadata that:
 
-```jsx
-import React, { useState } from 'react';
+- Gets merged with `plugin.yml` to create the component manifest
+- Appears in the Component Palette (displayName, icon, description)
+- Defines size constraints for the canvas (defaultWidth, defaultHeight, min/max)
+- Determines the category for palette organization
 
-const MyComponent = ({ text, color, onClick, styles }) => {
-  const [isHovered, setIsHovered] = useState(false);
+**Critical requirement:** The `componentId` must be identical in:
 
-  const colorStyles = {
-    red: { backgroundColor: '#ff4444', color: 'white' },
-    blue: { backgroundColor: '#4444ff', color: 'white' },
-    green: { backgroundColor: '#44ff44', color: 'black' },
-    yellow: { backgroundColor: '#ffff44', color: 'black' },
-  };
+1. `@UIComponent(componentId = "HorizontalRow")`
+2. `plugin.yml` → `ui-component.component-id: HorizontalRow`
+3. Frontend `renderers` object key: `{ HorizontalRow: HorizontalRowRenderer }`
 
-  const baseStyles = {
-    display: 'inline-block',
-    padding: '10px',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    transition: 'all 0.3s ease',
-    userSelect: 'none',
-  };
+#### 5. Create React Renderer Component
 
-  const hoverStyles = {
-    transform: 'scale(1.05)',
-    boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-  };
+`frontend/src/renderers/HorizontalRowRenderer.tsx`:
 
-  const componentStyles = {
-    ...baseStyles,
-    ...colorStyles[color],
-    ...(isHovered ? hoverStyles : {}),
-    ...styles, // User custom styles
+```tsx
+import React from 'react';
+import type { RendererProps } from '../types';
+
+const HorizontalRowRenderer: React.FC<RendererProps> = ({ component }) => {
+  const props = component.props || {};
+  const styles = component.styles || {};
+
+  // Extract props with defaults (must match defineProps())
+  const thickness = (props.thickness as string) || '2px';
+  const lineStyle = (props.lineStyle as string) || 'solid';
+  const width = (props.width as string) || '100%';
+  const alignment = (props.alignment as string) || 'center';
+
+  // Extract styles with defaults (must match defineStyles())
+  const color = (styles.color as string) || '#e0e0e0';
+  const marginTop = (styles.marginTop as string) || '16px';
+  const marginBottom = (styles.marginBottom as string) || '16px';
+
+  const getJustifyContent = (): string => {
+    switch (alignment) {
+      case 'left': return 'flex-start';
+      case 'right': return 'flex-end';
+      default: return 'center';
+    }
   };
 
   return (
-    <div
-      style={componentStyles}
-      onClick={onClick}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      {text}
+    <div style={{
+      width: '100%',
+      display: 'flex',
+      justifyContent: getJustifyContent(),
+      alignItems: 'center',
+      marginTop,
+      marginBottom,
+    }}>
+      <hr style={{
+        width,
+        height: 0,
+        border: 'none',
+        borderTop: `${thickness} ${lineStyle} ${color}`,
+        margin: 0,
+      }} />
     </div>
   );
 };
 
-export default MyComponent;
+export default HorizontalRowRenderer;
+export { HorizontalRowRenderer };
 ```
 
-### 6. Build the Plugin
+#### 6. Create Frontend Bundle Entry Point
+
+`frontend/src/index.ts`:
+
+```typescript
+import type { PluginBundle, RendererComponent } from './types';
+import HorizontalRowRenderer from './renderers/HorizontalRowRenderer';
+
+export const PLUGIN_ID = 'horizontal-row-plugin';
+
+export const renderers: Record<string, RendererComponent> = {
+  HorizontalRow: HorizontalRowRenderer,  // Key MUST match componentId
+};
+
+export const pluginBundle: PluginBundle = {
+  pluginId: PLUGIN_ID,
+  renderers,
+  version: '1.0.0',
+};
+
+export default pluginBundle;
+
+export function registerRenderers(registry: {
+  register: (componentId: string, renderer: RendererComponent, pluginId?: string) => void;
+}): void {
+  Object.entries(renderers).forEach(([componentId, renderer]) => {
+    registry.register(componentId, renderer, PLUGIN_ID);
+  });
+}
+```
+
+#### 7. Build and Deploy
 
 ```bash
-cd plugins/my-component-plugin
+# Build backend JAR
+cd plugins/horizontal-row-plugin
 mvn clean package
+
+# Build frontend bundle
+cd frontend
+npm install
+npm run build
+
+# The frontend bundle is copied to src/main/resources/frontend/ during build
+# Deploy JAR to plugins directory
+cp target/horizontal-row-plugin-1.0.0.jar ../../plugins/
 ```
 
-Output: `target/my-component-plugin-1.0.0.jar`
+Output: `target/horizontal-row-plugin-1.0.0.jar`
 
 ---
 
@@ -1803,6 +1716,57 @@ public interface PluginContext {
     Logger getLogger();
 }
 ```
+
+**4. AbstractUIComponentPlugin (Recommended Base Class)**
+
+For most plugins, extend `AbstractUIComponentPlugin` instead of implementing `UIComponentPlugin` directly. This reduces boilerplate significantly:
+
+```java
+public abstract class AbstractUIComponentPlugin implements UIComponentPlugin {
+
+    // Override these two methods to define your component
+    protected abstract List<PropDefinition> defineProps();
+    protected abstract List<StyleDefinition> defineStyles();
+
+    // Helper methods for creating PropDefinitions
+    protected PropDefinition stringProp(String name, String defaultValue) { ... }
+    protected PropDefinition numberProp(String name, Number defaultValue) { ... }
+    protected PropDefinition booleanProp(String name, boolean defaultValue) { ... }
+    protected PropDefinition selectProp(String name, String defaultValue, List<String> options) { ... }
+    protected PropDefinition colorProp(String name, String defaultValue) { ... }
+
+    // Helper methods for creating StyleDefinitions
+    protected StyleDefinition colorStyle(String property, String defaultValue) { ... }
+    protected StyleDefinition sizeStyle(String property, String defaultValue) { ... }
+    protected StyleDefinition selectStyle(String property, String defaultValue, List<String> options) { ... }
+
+    // Lifecycle methods (override if needed, default implementations provided)
+    @Override
+    public void onLoad(PluginContext context) throws Exception { ... }
+    @Override
+    public void onActivate(PluginContext context) throws Exception { ... }
+    @Override
+    public void onDeactivate(PluginContext context) throws Exception { ... }
+    @Override
+    public void onUninstall(PluginContext context) throws Exception { ... }
+
+    // Automatically builds manifest from @UIComponent annotation and defineProps()/defineStyles()
+    @Override
+    public ComponentManifest getComponentManifest() { ... }
+}
+```
+
+**Helper Method Reference:**
+
+| Method | Creates | Example |
+|--------|---------|---------|
+| `stringProp(name, default)` | Text input | `stringProp("label", "Click me")` |
+| `numberProp(name, default)` | Number input | `numberProp("count", 5)` |
+| `booleanProp(name, default)` | Checkbox | `booleanProp("visible", true)` |
+| `selectProp(name, default, options)` | Dropdown | `selectProp("size", "md", List.of("sm", "md", "lg"))` |
+| `colorProp(name, default)` | Color picker | `colorProp("textColor", "#333333")` |
+| `colorStyle(property, default)` | Color style | `colorStyle("backgroundColor", "#ffffff")` |
+| `sizeStyle(property, default)` | Size with units | `sizeStyle("padding", "16px")` |
 
 #### Component Manifest Builder
 
@@ -2416,251 +2380,6 @@ Check out these example plugins in the repository (see [Chapter 7: Shipped Plugi
    - Multiple typography variants (h1-h6, p, span, caption)
    - Text truncation with ellipsis
    - Configurable alignment and styling
-
----
-
-### Simplified Plugin Development with AbstractUIComponentPlugin
-
-For most UI components, you can use the simplified `AbstractUIComponentPlugin` base class instead of implementing `UIComponentPlugin` directly. This approach significantly reduces boilerplate code.
-
-#### Complete Example: HorizontalRow Plugin
-
-The following is a complete walkthrough of creating a plugin using the simplified approach, using the `horizontal-row-plugin` as a reference.
-
-##### 1. Directory Structure
-
-```
-horizontal-row-plugin/
-├── pom.xml
-├── frontend/
-│   ├── package.json
-│   ├── vite.config.ts
-│   └── src/
-│       ├── index.ts                    # Plugin bundle entry
-│       ├── types.ts                    # TypeScript types
-│       └── renderers/
-│           └── HorizontalRowRenderer.tsx   # React component
-└── src/main/
-    ├── java/dev/mainul35/plugins/ui/
-    │   └── HorizontalRowComponentPlugin.java   # Plugin class
-    └── resources/
-        └── plugin.yml                  # Plugin metadata
-```
-
-##### 2. Plugin Metadata (plugin.yml)
-
-The `plugin.yml` file defines plugin metadata and is read by the PluginManager during startup:
-
-```yaml
-plugin-id: horizontal-row-plugin
-plugin-name: Horizontal Row
-version: 1.0.0
-author: mainul35
-main-class: dev.mainul35.plugins.ui.HorizontalRowComponentPlugin
-plugin-type: ui-component
-ui-component:
-  component-id: HorizontalRow
-  display-name: Horizontal Row
-  category: layout
-  icon: ➖
-  description: A horizontal divider / separator line
-  default-width: 400
-  default-height: 20
-  resizable: true
-```
-
-**Important fields:**
-- `plugin-id`: Unique identifier used for loading frontend bundles
-- `main-class`: Fully qualified class name of the plugin entry point
-- `plugin-type`: Must be `ui-component` for visual components
-- `ui-component.component-id`: Must match the `@UIComponent` annotation and frontend renderer key
-
-##### 3. Java Plugin Class
-
-Using `AbstractUIComponentPlugin`, you only need to define props and styles:
-
-```java
-package dev.mainul35.plugins.ui;
-
-import dev.mainul35.cms.sdk.AbstractUIComponentPlugin;
-import dev.mainul35.cms.sdk.annotation.UIComponent;
-import dev.mainul35.cms.sdk.component.PropDefinition;
-import dev.mainul35.cms.sdk.component.StyleDefinition;
-
-import java.util.List;
-
-@UIComponent(
-    componentId = "HorizontalRow",
-    displayName = "Horizontal Row",
-    category = "ui",
-    icon = "━",
-    description = "A horizontal divider/separator line",
-    defaultWidth = "100%",
-    defaultHeight = "20px",
-    minHeight = "1px",
-    maxHeight = "50px",
-    resizable = true
-)
-public class HorizontalRowComponentPlugin extends AbstractUIComponentPlugin {
-
-    @Override
-    protected List<PropDefinition> defineProps() {
-        return List.of(
-            selectProp("thickness", "2px", List.of("1px", "2px", "3px", "4px", "5px")),
-            selectProp("lineStyle", "solid", List.of("solid", "dashed", "dotted", "double")),
-            selectProp("width", "100%", List.of("25%", "50%", "75%", "100%")),
-            selectProp("alignment", "center", List.of("left", "center", "right"))
-        );
-    }
-
-    @Override
-    protected List<StyleDefinition> defineStyles() {
-        return List.of(
-            colorStyle("color", "#e0e0e0"),
-            sizeStyle("marginTop", "16px"),
-            sizeStyle("marginBottom", "16px")
-        );
-    }
-}
-```
-
-**Understanding the `@UIComponent` annotation:**
-
-The `@UIComponent` annotation provides component metadata that:
-- Gets merged with `plugin.yml` data to create the component manifest
-- Appears in the Component Palette (displayName, icon, description)
-- Defines size constraints for the canvas (defaultWidth, defaultHeight, min/max values)
-- Determines the category for organization in the palette
-
-**Important:** The `componentId` in `@UIComponent` must match:
-1. The `ui-component.component-id` in `plugin.yml`
-2. The key used in the frontend renderer registration
-
-**Helper methods in AbstractUIComponentPlugin:**
-
-| Method | Description | Example |
-|--------|-------------|---------|
-| `stringProp(name, defaultValue)` | Text input property | `stringProp("text", "Hello")` |
-| `numberProp(name, defaultValue)` | Numeric property | `numberProp("count", 5)` |
-| `booleanProp(name, defaultValue)` | Checkbox property | `booleanProp("enabled", true)` |
-| `selectProp(name, defaultValue, options)` | Dropdown select | `selectProp("size", "md", List.of("sm", "md", "lg"))` |
-| `colorProp(name, defaultValue)` | Color picker | `colorProp("textColor", "#333")` |
-| `colorStyle(name, defaultValue)` | Color style | `colorStyle("backgroundColor", "#fff")` |
-| `sizeStyle(name, defaultValue)` | Size with units | `sizeStyle("padding", "10px")` |
-
-##### 4. Frontend Renderer (React Component)
-
-```tsx
-import React from 'react';
-import type { RendererProps } from '../types';
-
-const HorizontalRowRenderer: React.FC<RendererProps> = ({ component }) => {
-  const props = component.props || {};
-  const styles = component.styles || {};
-
-  // Extract props with defaults (must match defineProps())
-  const thickness = (props.thickness as string) || '2px';
-  const lineStyle = (props.lineStyle as string) || 'solid';
-  const width = (props.width as string) || '100%';
-  const alignment = (props.alignment as string) || 'center';
-
-  // Extract styles with defaults (must match defineStyles())
-  const color = (styles.color as string) || '#e0e0e0';
-  const marginTop = (styles.marginTop as string) || '16px';
-  const marginBottom = (styles.marginBottom as string) || '16px';
-
-  const getJustifyContent = (): string => {
-    switch (alignment) {
-      case 'left': return 'flex-start';
-      case 'right': return 'flex-end';
-      default: return 'center';
-    }
-  };
-
-  return (
-    <div style={{
-      width: '100%',
-      display: 'flex',
-      justifyContent: getJustifyContent(),
-      alignItems: 'center',
-      marginTop,
-      marginBottom,
-    }}>
-      <hr style={{
-        width,
-        height: 0,
-        border: 'none',
-        borderTop: `${thickness} ${lineStyle} ${color}`,
-        margin: 0,
-      }} />
-    </div>
-  );
-};
-
-export default HorizontalRowRenderer;
-export { HorizontalRowRenderer };
-```
-
-##### 5. Frontend Bundle Registration (index.ts)
-
-```typescript
-import type { PluginBundle, RendererComponent } from './types';
-import HorizontalRowRenderer from './renderers/HorizontalRowRenderer';
-
-export const PLUGIN_ID = 'horizontal-row-plugin';
-
-export const renderers: Record<string, RendererComponent> = {
-  HorizontalRow: HorizontalRowRenderer,  // Key MUST match componentId
-};
-
-export const pluginBundle: PluginBundle = {
-  pluginId: PLUGIN_ID,
-  renderers,
-  version: '1.0.0',
-};
-
-export default pluginBundle;
-
-export function registerRenderers(registry: {
-  register: (componentId: string, renderer: RendererComponent, pluginId?: string) => void;
-}): void {
-  Object.entries(renderers).forEach(([componentId, renderer]) => {
-    registry.register(componentId, renderer, PLUGIN_ID);
-  });
-}
-```
-
-##### 6. Build and Deploy
-
-```bash
-# Build backend JAR
-cd plugins/horizontal-row-plugin
-mvn clean package
-
-# Build frontend bundle
-cd frontend
-npm install
-npm run build
-
-# Deploy to plugins directory
-cp target/horizontal-row-plugin-1.0.0.jar ../../plugins/
-# Frontend bundle is automatically served from resources/frontend/
-```
-
-#### Common Pitfalls and Important Notes
-
-1. **componentId Mismatch**: The `componentId` must be identical in:
-   - `@UIComponent(componentId = "...")`
-   - `plugin.yml` → `ui-component.component-id`
-   - Frontend `renderers` object key
-
-2. **Plugin ID in Frontend**: The `PLUGIN_ID` in `index.ts` must match `plugin-id` in `plugin.yml` for the plugin loader to find the bundle.
-
-3. **Props/Styles Defaults**: Default values in `defineProps()` and `defineStyles()` should match the defaults in the React renderer for consistency.
-
-4. **Frontend Bundle Location**: The built frontend bundle (`bundle.js`) must be placed in `src/main/resources/frontend/` to be served by the backend.
-
-5. **Hot Reload**: During development with `app.plugin.hot-reload.enabled=true`, changes to the JAR trigger automatic reloading, but frontend changes require rebuilding the bundle.
 
 ---
 
