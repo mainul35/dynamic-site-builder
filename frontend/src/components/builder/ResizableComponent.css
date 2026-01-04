@@ -91,8 +91,26 @@
 }
 
 .resize-handle:hover {
-  transform: scale(1.2);
   background: #0056b3;
+}
+
+/* Scale on hover for corner handles (they don't have translate) */
+.resize-handle-nw:hover,
+.resize-handle-ne:hover,
+.resize-handle-sw:hover,
+.resize-handle-se:hover {
+  transform: scale(1.2);
+}
+
+/* Scale on hover for edge handles (preserve their translate) */
+.resize-handle-n:hover,
+.resize-handle-s:hover {
+  transform: translateX(-50%) scale(1.2);
+}
+
+.resize-handle-e:hover,
+.resize-handle-w:hover {
+  transform: translateY(-50%) scale(1.2);
 }
 
 /* Corner handles */
@@ -210,8 +228,8 @@
   pointer-events: none;
 }
 
-/* Animation when resize handles appear */
-@keyframes handleAppear {
+/* Animation when resize handles appear - corner handles */
+@keyframes handleAppearCorner {
   0% {
     opacity: 0;
     transform: scale(0.5);
@@ -222,10 +240,47 @@
   }
 }
 
+/* Animation when resize handles appear - horizontal edge handles (N/S) */
+@keyframes handleAppearHorizontal {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+}
+
+/* Animation when resize handles appear - vertical edge handles (E/W) */
+@keyframes handleAppearVertical {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+}
+
 /* Animation when resize handles appear (controlled by JS global state) */
 /* Use > to only target direct children, not nested components */
-.resizable-component.resizable.hovered > .resize-handles > .resize-handle {
-  animation: handleAppear 0.2s ease-out;
+.resizable-component.resizable.hovered > .resize-handles > .resize-handle-nw,
+.resizable-component.resizable.hovered > .resize-handles > .resize-handle-ne,
+.resizable-component.resizable.hovered > .resize-handles > .resize-handle-sw,
+.resizable-component.resizable.hovered > .resize-handles > .resize-handle-se {
+  animation: handleAppearCorner 0.2s ease-out;
+}
+
+.resizable-component.resizable.hovered > .resize-handles > .resize-handle-n,
+.resizable-component.resizable.hovered > .resize-handles > .resize-handle-s {
+  animation: handleAppearHorizontal 0.2s ease-out;
+}
+
+.resizable-component.resizable.hovered > .resize-handles > .resize-handle-e,
+.resizable-component.resizable.hovered > .resize-handles > .resize-handle-w {
+  animation: handleAppearVertical 0.2s ease-out;
 }
 
 /* Accessibility - larger hit areas on touch devices */

@@ -39,6 +39,7 @@ export const ResizableComponent: React.FC<ResizableComponentProps> = ({
   const [resizeHandle, setResizeHandle] = useState<ResizeHandle | null>(null);
   const [startSize, setStartSize] = useState<ComponentSize | null>(null);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
+  const [startMinSize, setStartMinSize] = useState<{ childMinWidth: number; childMinHeight: number } | null>(null);
 
   const { resizeComponent, viewMode, hoveredComponentId, findComponent } = useBuilderStore();
 
@@ -59,6 +60,7 @@ export const ResizableComponent: React.FC<ResizableComponentProps> = ({
 
   // Calculate minimum size based on children's dimensions
   // Returns { minWidth, minHeight } that the parent cannot shrink below
+  // Only considers children with explicit pixel widths, not percentage-based widths
   const getMinSizeFromChildren = (): { childMinWidth: number; childMinHeight: number } => {
     if (!componentRef.current) {
       return { childMinWidth: minWidth, childMinHeight: minHeight };
@@ -77,25 +79,43 @@ export const ResizableComponent: React.FC<ResizableComponentProps> = ({
       return { childMinWidth: minWidth, childMinHeight: minHeight };
     }
 
-    let maxRight = 0;
-    let maxBottom = 0;
+    let maxChildWidth = 0;
+    let maxChildHeight = 0;
 
     children.forEach((child) => {
-      const childRect = child.getBoundingClientRect();
-      // Calculate child's right and bottom edges relative to parent's top-left
-      const childRight = childRect.right - parentRect.left;
-      const childBottom = childRect.bottom - parentRect.top;
+      const childEl = child as HTMLElement;
+      const childRect = childEl.getBoundingClientRect();
 
-      maxRight = Math.max(maxRight, childRight);
-      maxBottom = Math.max(maxBottom, childBottom);
+      // Only consider children with explicit pixel widths for min width calculation
+      // Children with 100% or auto width should flow with their parent
+      const computedWidth = window.getComputedStyle(childEl).width;
+      const hasExplicitPixelWidth = computedWidth.endsWith('px') &&
+        !childEl.style.width?.includes('%') &&
+        childEl.style.width !== '100%' &&
+        childEl.style.width !== 'auto';
+
+      if (hasExplicitPixelWidth) {
+        maxChildWidth = Math.max(maxChildWidth, childRect.width);
+      }
+
+      // For height, consider the actual content height
+      // but only if the child has explicit height (not auto)
+      const computedHeight = window.getComputedStyle(childEl).height;
+      const hasExplicitPixelHeight = computedHeight.endsWith('px') &&
+        childEl.style.height !== 'auto';
+
+      if (hasExplicitPixelHeight) {
+        const childBottom = childRect.bottom - parentRect.top;
+        maxChildHeight = Math.max(maxChildHeight, childBottom);
+      }
     });
 
     // Add buffer for padding/margins
     const buffer = 20;
 
     return {
-      childMinWidth: Math.max(minWidth, maxRight + buffer),
-      childMinHeight: Math.max(minHeight, maxBottom + buffer)
+      childMinWidth: Math.max(minWidth, maxChildWidth > 0 ? maxChildWidth + buffer : minWidth),
+      childMinHeight: Math.max(minHeight, maxChildHeight > 0 ? maxChildHeight + buffer : minHeight)
     };
   };
 
@@ -116,6 +136,8 @@ export const ResizableComponent: React.FC<ResizableComponentProps> = ({
       width: `${actualWidth}px`,
       height: `${actualHeight}px`
     });
+    // Cache minimum sizes at resize start to prevent recalculation during drag
+    setStartMinSize(getMinSizeFromChildren());
     setIsResizing(true);
   };
 
@@ -132,6 +154,7 @@ export const ResizableComponent: React.FC<ResizableComponentProps> = ({
     let newHeight = parseSize(startSize.height);
 
     // Calculate new dimensions based on resize handle
+    // Only modify width for handles that affect width (e, w, and corners)
     switch (resizeHandle) {
       case 'e':
       case 'ne':
@@ -143,8 +166,10 @@ export const ResizableComponent: React.FC<ResizableComponentProps> = ({
       case 'sw':
         newWidth -= deltaX;
         break;
+      // 'n' and 's' handles don't affect width - no case needed
     }
 
+    // Only modify height for handles that affect height (n, s, and corners)
     switch (resizeHandle) {
       case 's':
       case 'se':
@@ -156,14 +181,23 @@ export const ResizableComponent: React.FC<ResizableComponentProps> = ({
       case 'nw':
         newHeight -= deltaY;
         break;
+      // 'e' and 'w' handles don't affect height - no case needed
     }
 
-    // Get minimum size based on children (prevents shrinking smaller than children)
-    const { childMinWidth, childMinHeight } = getMinSizeFromChildren();
+    // Use cached minimum sizes from resize start (prevents recalculation during drag)
+    const { childMinWidth, childMinHeight } = startMinSize || { childMinWidth: minWidth, childMinHeight: minHeight };
 
     // Apply constraints - use the larger of default minWidth/minHeight and child-based minimum
-    newWidth = Math.max(minWidth, childMinWidth, newWidth);
-    newHeight = Math.max(minHeight, childMinHeight, newHeight);
+    // Only apply width constraints if this handle affects width
+    const affectsWidth = ['e', 'w', 'ne', 'nw', 'se', 'sw'].includes(resizeHandle);
+    const affectsHeight = ['n', 's', 'ne', 'nw', 'se', 'sw'].includes(resizeHandle);
+
+    if (affectsWidth) {
+      newWidth = Math.max(minWidth, childMinWidth, newWidth);
+    }
+    if (affectsHeight) {
+      newHeight = Math.max(minHeight, childMinHeight, newHeight);
+    }
 
     if (maxWidth) newWidth = Math.min(maxWidth, newWidth);
     if (maxHeight) newHeight = Math.min(maxHeight, newHeight);
@@ -187,6 +221,7 @@ export const ResizableComponent: React.FC<ResizableComponentProps> = ({
 
     setIsResizing(false);
     setResizeHandle(null);
+    setStartMinSize(null);
 
     const finalWidth = componentRef.current.offsetWidth;
     const finalHeight = componentRef.current.offsetHeight;
