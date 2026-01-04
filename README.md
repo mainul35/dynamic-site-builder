@@ -33,11 +33,19 @@ A plugin-based visual site builder platform with drag-and-drop components, live 
 
 - [Chapter 7: Shipped Plugins Reference](#chapter-7-shipped-plugins-reference)
 
+**IDE Tooling**
+
+- [Chapter 8: VSD IntelliJ Plugin](#chapter-8-vsd-intellij-plugin)
+
+**Advanced Plugin Development**
+
+- [Chapter 9: Developing Compound Plugins](#chapter-9-developing-compound-plugins)
+
 **Reference**
 
-- [Chapter 8: Architecture](#chapter-8-architecture)
-- [Chapter 9: API Reference](#chapter-9-api-reference)
-- [Chapter 10: Troubleshooting](#chapter-10-troubleshooting)
+- [Chapter 10: Architecture](#chapter-10-architecture)
+- [Chapter 11: API Reference](#chapter-11-api-reference)
+- [Chapter 12: Troubleshooting](#chapter-12-troubleshooting)
 
 ---
 
@@ -1083,7 +1091,7 @@ The **Repeater** component iterates over arrays and renders children for each it
 | `itemAlias` | string | Variable name for current item (default: "item") |
 | `indexAlias` | string | Variable name for index (default: "index") |
 | `emptyMessage` | string | Message when no items |
-| `layoutType` | string | flex-column, flex-row, grid-2col, etc. |
+| `layoutType` | string | flex-column, flex-row, grid-2col, grid-20-80, etc. |
 
 **Usage:**
 
@@ -1743,24 +1751,238 @@ export interface PluginBundle {
 }
 ```
 
-#### 8. Build and Deploy
+#### 8. Build and Deploy Plugin
+
+This section provides the complete step-by-step process to build, deploy, and verify your plugin. **Follow these steps exactly** to ensure your component appears correctly in the designer with all configurable properties.
+
+##### Step 8.1: Build the Frontend Bundle
+
+The frontend bundle must be built first because it gets included in the JAR file.
 
 ```bash
-# Build backend JAR
-cd plugins/horizontal-row-plugin
-mvn clean package
+# Navigate to plugin frontend directory
+cd plugins/horizontal-row-plugin/frontend
 
-# Build frontend bundle
-cd frontend
+# Install dependencies (first time only)
 npm install
-npm run build
 
-# The frontend bundle is copied to src/main/resources/frontend/ during build
-# Deploy JAR to plugins directory
-cp target/horizontal-row-plugin-1.0.0.jar ../../plugins/
+# Build the bundle
+npm run build
 ```
 
-Output: `target/horizontal-row-plugin-1.0.0.jar`
+**Expected output:** The build creates `bundle.js` and `bundle.js.map` in the `dist/` directory. The Vite configuration copies these to `src/main/resources/frontend/` automatically.
+
+**Verify:** Check that `src/main/resources/frontend/bundle.js` exists and has a recent timestamp.
+
+##### Step 8.2: Build the Plugin JAR
+
+```bash
+# Navigate to plugin root directory
+cd plugins/horizontal-row-plugin
+
+# Build the JAR (includes the frontend bundle from resources)
+mvn clean package
+```
+
+**Expected output:** `target/horizontal-row-plugin-1.0.0.jar`
+
+**Verify the JAR contents:**
+
+```bash
+# List files in JAR to confirm bundle.js is included
+jar tf target/horizontal-row-plugin-1.0.0.jar | grep bundle
+# Should show: frontend/bundle.js and frontend/bundle.js.map
+```
+
+##### Step 8.3: Deploy to Core Plugins Directory
+
+**CRITICAL:** The application loads plugins from `core/plugins/`, NOT from the plugin's target directory.
+
+```bash
+# Copy JAR to the core plugins directory
+# Linux/Mac:
+cp target/horizontal-row-plugin-1.0.0.jar ../../core/plugins/
+
+# Windows:
+copy target\horizontal-row-plugin-1.0.0.jar ..\..\core\plugins\
+```
+
+**Verify:** Check that `core/plugins/horizontal-row-plugin-1.0.0.jar` has the current timestamp.
+
+##### Step 8.4: Update Built-in Manifests (For Core Components Only)
+
+**IMPORTANT:** If your plugin is a **core built-in component** (like Container, Button, Label, Image, etc.), you must also update the frontend's built-in manifest file. This file contains hardcoded component configurations used by the Properties Panel.
+
+Edit `frontend/src/data/builtInManifests.ts` and add/update your component's manifest with all configurable properties.
+
+**Why is this needed?**
+The Properties Panel uses these built-in manifests to render property editors. If your component's options are not in this file, they won't appear in the designer even if the backend has them.
+
+**Example:** If you add a new `layoutMode` option to the Container component:
+
+1. Update `ContainerLayoutPlugin.java` with the new option
+2. Update `ContainerRenderer.tsx` (plugin frontend) to handle the new layout
+3. **Also update** `builtInManifests.ts` → `containerManifest.configurableProps` to include the new option
+4. **CRITICAL:** Update `BuilderCanvas.tsx` → `getLayoutStyles()` function to handle the new layout (see Step 8.4.1 below)
+
+```typescript
+// In frontend/src/data/builtInManifests.ts
+{
+  name: 'layoutMode',
+  type: PropType.SELECT,
+  label: 'Layout Mode',
+  defaultValue: 'flex-column',
+  options: [
+    'flex-column',
+    'flex-row',
+    // ... add your new options here
+  ],
+  helpText: 'How child components are arranged',
+},
+```
+
+**Note:** Third-party plugins that are NOT core built-ins do NOT need this step. Their manifests are loaded dynamically from the backend.
+
+##### Step 8.4.1: Update BuilderCanvas Layout Styles (For Container Layout Changes)
+
+**CRITICAL:** When adding new layout modes to the Container component, you must also update the `getLayoutStyles()` function in `frontend/src/components/builder/BuilderCanvas.tsx`. This function is responsible for applying CSS layout styles to container children in edit mode.
+
+**Why is this needed?**
+The `BuilderCanvas` component renders container children directly in edit mode (not through the plugin's renderer). If the layout option is missing from `getLayoutStyles()`, children will fall through to the default `flex-column` layout even though the parent container has the correct `layoutMode` prop set.
+
+**Files that need layout style updates:**
+
+| File | Function | Purpose |
+| ---- | -------- | ------- |
+| `frontend/src/components/builder/BuilderCanvas.tsx` | `getLayoutStyles()` | Edit mode rendering |
+| `frontend/src/services/thymeleafExportService.ts` | `getLayoutStyles()` | Thymeleaf export |
+| `frontend/src/services/thymeleafExportService.ts` | `getRepeaterLayoutStyles()` | Repeater export |
+| `frontend/src/services/staticExportService.ts` | `getContainerLayoutStyles()` | Static HTML export |
+
+**Example:** Adding `grid-20-80` layout to `BuilderCanvas.tsx`:
+
+```typescript
+// In frontend/src/components/builder/BuilderCanvas.tsx
+const getLayoutStyles = (layoutType: string = 'flex-column'): React.CSSProperties => {
+  switch (layoutType) {
+    // ... existing cases ...
+    case 'grid-20-80':
+      return {
+        display: 'grid',
+        gridTemplateColumns: '20% 80%',
+        alignItems: 'start',
+        alignContent: 'start',
+      };
+    // ... add similar cases for other asymmetric layouts ...
+    case 'flex-column':
+    default:
+      return {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+      };
+  }
+};
+```
+
+**Symptom of missing layout styles:** Child components appear stacked vertically (100% width each) instead of side-by-side with the specified column widths.
+
+##### Step 8.5: Rebuild Main Frontend (If Built-in Manifests Changed)
+
+If you updated `builtInManifests.ts` in Step 8.4:
+
+```bash
+cd frontend
+npm run build
+```
+
+##### Step 8.6: Restart the Backend Server
+
+The plugin manifest is loaded and registered in the database when the Spring Boot server starts. You must restart the server after deploying a new/updated JAR.
+
+```bash
+# Stop the running server (Ctrl+C)
+
+# Start again
+cd core
+mvn spring-boot:run
+
+# Or from IDE: restart the Spring Boot application
+```
+
+##### Step 8.7: Hard Refresh the Browser
+
+Clear browser cache to ensure the latest frontend code is loaded:
+
+- **Chrome/Edge:** `Ctrl+Shift+R` (Windows/Linux) or `Cmd+Shift+R` (Mac)
+- **Firefox:** `Ctrl+Shift+R` or `Ctrl+F5`
+- **Safari:** `Cmd+Option+R`
+
+Alternatively, open DevTools (F12) → Right-click the refresh button → "Empty Cache and Hard Reload"
+
+##### Step 8.8: Verify Deployment
+
+1. **Check Component Palette:** Your component should appear in the correct category
+2. **Drag to Canvas:** The component should render correctly
+3. **Check Properties Panel:** All configurable properties should appear
+4. **Test Each Property:** Changing values should update the component preview
+
+##### Troubleshooting Checklist
+
+If your component or properties don't appear correctly:
+
+| Issue                              | Likely Cause                      | Solution                                                        |
+| ---------------------------------- | --------------------------------- | --------------------------------------------------------------- |
+| Component not in Palette           | JAR not in `core/plugins/`        | Copy JAR to correct directory                                   |
+| Component not rendering            | Bundle not in JAR                 | Rebuild frontend, then rebuild JAR                              |
+| Properties not showing             | Built-in manifest not updated     | Update `builtInManifests.ts` and rebuild frontend               |
+| Changes not visible                | Browser cache                     | Hard refresh (Ctrl+Shift+R)                                     |
+| Old options still showing          | Server using old manifest         | Restart Spring Boot server                                      |
+| API shows old manifest             | Database not updated              | Restart server to re-register component                         |
+| Layout not applied to children     | `BuilderCanvas.tsx` not updated   | Add layout case to `getLayoutStyles()` (see Step 8.4.1)         |
+| Export layout incorrect            | Export services not updated       | Update `thymeleafExportService.ts` and `staticExportService.ts` |
+
+##### Complete Build Script Example
+
+For convenience, here's a complete build script:
+
+```bash
+#!/bin/bash
+# build-plugin.sh - Complete plugin build and deploy script
+
+PLUGIN_NAME="horizontal-row-plugin"
+PLUGIN_DIR="plugins/$PLUGIN_NAME"
+CORE_PLUGINS_DIR="core/plugins"
+
+echo "=== Building $PLUGIN_NAME ==="
+
+# Step 1: Build frontend
+echo "Step 1: Building frontend bundle..."
+cd "$PLUGIN_DIR/frontend"
+npm install
+npm run build
+cd ../../..
+
+# Step 2: Build JAR
+echo "Step 2: Building JAR..."
+cd "$PLUGIN_DIR"
+mvn clean package -q
+cd ../..
+
+# Step 3: Deploy JAR
+echo "Step 3: Deploying to $CORE_PLUGINS_DIR..."
+cp "$PLUGIN_DIR/target/$PLUGIN_NAME-1.0.0.jar" "$CORE_PLUGINS_DIR/"
+
+# Verify
+echo "=== Deployment Complete ==="
+echo "JAR location: $CORE_PLUGINS_DIR/$PLUGIN_NAME-1.0.0.jar"
+ls -la "$CORE_PLUGINS_DIR/$PLUGIN_NAME-1.0.0.jar"
+
+echo ""
+echo "NEXT STEPS:"
+echo "1. Restart Spring Boot server"
+echo "2. Hard refresh browser (Ctrl+Shift+R)"
+```
 
 ---
 
@@ -2504,7 +2726,8 @@ Check out these example plugins in the repository (see [Chapter 7: Shipped Plugi
 
 2. **container-layout-plugin** - Layout component
    - Supports child components
-   - Flexible layout modes (flex-column, flex-row, grid-2col, grid-3col, etc.)
+   - Flexible layout modes (flex-column, flex-row, grid-2col, grid-3col, grid-auto)
+   - Asymmetric 2-column layouts (grid-20-80, grid-33-67, grid-40-60, etc.)
    - Dynamic sizing with constraints
 
 3. **label-component-plugin** - Text display component
@@ -3574,10 +3797,18 @@ A flexible container supporting both Flexbox and CSS Grid layouts for organizing
 | `flex-column` | Vertical flex layout (default) |
 | `flex-row` | Horizontal flex layout |
 | `flex-wrap` | Wrapping flex layout |
-| `grid-2col` | 2-column grid |
-| `grid-3col` | 3-column grid |
-| `grid-4col` | 4-column grid |
+| `grid-2col` | 2-column equal grid |
+| `grid-3col` | 3-column equal grid |
+| `grid-4col` | 4-column equal grid |
 | `grid-auto` | Responsive auto-fit grid |
+| `grid-20-80` | Asymmetric 2-column (20% / 80%) |
+| `grid-25-75` | Asymmetric 2-column (25% / 75%) |
+| `grid-33-67` | Asymmetric 2-column (33% / 67%) |
+| `grid-40-60` | Asymmetric 2-column (40% / 60%) |
+| `grid-60-40` | Asymmetric 2-column (60% / 40%) |
+| `grid-67-33` | Asymmetric 2-column (67% / 33%) |
+| `grid-75-25` | Asymmetric 2-column (75% / 25%) |
+| `grid-80-20` | Asymmetric 2-column (80% / 20%) |
 
 **Configurable Styles:**
 
@@ -3687,7 +3918,7 @@ A component that iterates over data arrays and renders children for each item.
 | `itemAlias` | STRING | "item" | Variable name for current item in template |
 | `indexAlias` | STRING | "index" | Variable name for current index |
 | `emptyMessage` | STRING | "No items" | Message when array is empty |
-| `layoutType` | SELECT | "flex-column" | Layout: flex-column, flex-row, grid-2col, grid-3col |
+| `layoutType` | SELECT | "flex-column" | Layout: flex-column, flex-row, grid-2col, grid-3col, grid-20-80, etc. |
 
 **Usage:**
 
@@ -4510,7 +4741,658 @@ If these don't match, the ComponentRenderer will fail to find the plugin-specifi
 
 ---
 
-## Chapter 8: Architecture
+## Chapter 8: VSD IntelliJ Plugin
+
+The VSD IntelliJ Plugin provides IDE support for developing Visual Site Builder plugins. It enhances the developer experience with auto-generated TypeScript types, code completion, and cross-plugin import support.
+
+### What is the VSD IntelliJ Plugin?
+
+The VSD IntelliJ Plugin is an IDE extension that:
+
+1. **Generates TypeScript Types** - Automatically creates typed interfaces for all plugin components from the component manifest
+2. **Enables Cross-Plugin Imports** - Provides `@vsd/plugin-id` import aliases for using components from other plugins
+3. **Provides Code Completion** - Offers IntelliSense for component props, styles, and factory functions
+4. **Watches for Changes** - Automatically regenerates types when plugin renderers or manifests change
+
+### How It Works
+
+```mermaid
+flowchart TB
+    subgraph "Plugin Sources"
+        A[plugin-1/frontend/src/renderers/*.tsx]
+        B[plugin-2/frontend/src/renderers/*.tsx]
+        C[component-manifest.json]
+    end
+
+    subgraph "VSD IntelliJ Plugin"
+        D[ManifestLoaderStartupActivity<br/>Initializes on project open]
+        E[ComponentManifestService<br/>Loads & caches manifest]
+        F[TypesGeneratorService<br/>Generates TypeScript types]
+        G[File Watcher<br/>Monitors changes]
+    end
+
+    subgraph "Generated Output"
+        H[generated-types/plugins/plugin-1/index.ts]
+        I[generated-types/plugins/plugin-1/types.ts]
+        J[generated-types/plugins/index.ts]
+        K[generated-types/tsconfig.paths.json]
+        L[generated-types/vite.aliases.ts]
+    end
+
+    A --> G
+    B --> G
+    C --> E
+    D --> E
+    D --> F
+    G --> F
+    E --> F
+    F --> H
+    F --> I
+    F --> J
+    F --> K
+    F --> L
+```
+
+### Generated Files
+
+When the plugin runs, it creates the following structure:
+
+```
+generated-types/
+├── plugins/
+│   ├── index.ts                    # Re-exports all renderers and types
+│   ├── label-component-plugin/
+│   │   ├── index.ts                # Plugin exports (renderers + types)
+│   │   └── types.ts                # TypeScript interfaces
+│   ├── button-component-plugin/
+│   │   ├── index.ts
+│   │   └── types.ts
+│   └── ... (other plugins)
+├── tsconfig.paths.json             # TypeScript path mappings
+└── vite.aliases.ts                 # Vite resolver aliases
+```
+
+### Generated Type Definitions
+
+For each plugin renderer, the plugin generates:
+
+```typescript
+// generated-types/plugins/label-component-plugin/types.ts
+
+/** Props for Label component */
+export interface LabelProps {
+  /** Label text */
+  text?: string;
+  /** Text alignment */
+  textAlign?: 'left' | 'center' | 'right';
+  /** Font weight */
+  fontWeight?: 'normal' | 'bold' | 'light';
+}
+
+/** Styles for Label */
+export interface LabelStyles {
+  color?: string;
+  fontSize?: string;
+  backgroundColor?: string;
+}
+
+/** Typed ComponentInstance for Label - use this for full prop suggestions */
+export interface LabelComponentInstance {
+  instanceId: string;
+  pluginId: 'label-component-plugin';
+  componentId: 'Label';
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+  props: LabelProps;
+  styles: LabelStyles;
+}
+
+/** Create a Label ComponentInstance */
+export function createLabelComponent(
+  props: LabelProps,
+  styles: LabelStyles = {},
+  instanceId = `label-component-plugin-label-${Date.now()}`
+): LabelComponentInstance {
+  return {
+    instanceId,
+    pluginId: 'label-component-plugin',
+    componentId: 'Label',
+    position: { x: 0, y: 0 },
+    size: { width: 0, height: 0 },
+    props,
+    styles,
+  };
+}
+```
+
+### Using Cross-Plugin Imports
+
+With the generated types, you can import components from other plugins using the `@vsd/` alias:
+
+```typescript
+// In newsletter-form-plugin/frontend/src/renderers/NewsletterFormRenderer.tsx
+
+import { LabelRenderer } from '@vsd/label-component-plugin';
+import { ButtonRenderer } from '@vsd/button-component-plugin';
+import { TextboxRenderer } from '@vsd/textbox-component-plugin';
+
+// TypeScript provides full IntelliSense for these components
+```
+
+### Setting Up the Plugin
+
+#### 1. Install the Plugin
+
+1. Build the plugin: `./gradlew buildPlugin` in `vsd-intellij-plugin/`
+2. In IntelliJ: **Settings** → **Plugins** → **⚙️** → **Install Plugin from Disk**
+3. Select `build/distributions/vsd-intellij-plugin-*.zip`
+4. Restart IntelliJ
+
+#### 2. Configure Your Project
+
+The plugin activates automatically when it detects a `plugins/` directory in your project. Ensure your project has:
+
+```
+your-project/
+├── plugins/                          # Plugin sources
+│   ├── my-component-plugin/
+│   │   └── frontend/src/renderers/   # Renderer files
+│   └── ...
+└── generated-types/                  # Created by the plugin
+    └── component-manifest.json       # Optional: provides prop metadata
+```
+
+#### 3. Configure Vite Aliases
+
+Add the generated aliases to your Vite config:
+
+```typescript
+// vite.config.ts
+import { createVsdAliases } from './generated-types/vite.aliases';
+
+export default defineConfig({
+  resolve: {
+    alias: {
+      ...createVsdAliases(__dirname),
+    },
+  },
+});
+```
+
+#### 4. Configure TypeScript Paths
+
+Extend your `tsconfig.json` with the generated paths:
+
+```json
+{
+  "extends": "./generated-types/tsconfig.paths.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    // ... your other options
+  }
+}
+```
+
+### How to Register Custom Components for Indexing
+
+The VSD IntelliJ Plugin discovers components automatically by:
+
+1. **Scanning Renderer Files** - Looks for `*.ts` and `*.tsx` files in `plugins/*/frontend/src/renderers/`
+2. **Reading Component Manifest** - Loads prop and style definitions from `generated-types/component-manifest.json` or `src/generated/component-manifest.json`
+
+#### Creating the Component Manifest
+
+The component manifest provides metadata for type generation. It's typically generated by the backend when plugins load:
+
+```json
+{
+  "plugins": [
+    {
+      "pluginId": "my-component-plugin",
+      "components": [
+        {
+          "componentId": "MyComponent",
+          "displayName": "My Component",
+          "category": "ui",
+          "props": [
+            {
+              "name": "title",
+              "type": "STRING",
+              "label": "Title",
+              "defaultValue": "Hello",
+              "required": false
+            },
+            {
+              "name": "variant",
+              "type": "SELECT",
+              "label": "Variant",
+              "defaultValue": "primary",
+              "options": ["primary", "secondary", "outline"]
+            }
+          ],
+          "styles": [
+            {
+              "property": "backgroundColor",
+              "label": "Background Color",
+              "type": "color",
+              "defaultValue": "#ffffff"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### Supported Prop Types
+
+| PropType | TypeScript Output |
+|----------|-------------------|
+| `STRING` | `string` |
+| `NUMBER` | `number` |
+| `BOOLEAN` | `boolean` |
+| `SELECT` | Union of option strings (e.g., `'primary' \| 'secondary'`) |
+| `COLOR` | `string` |
+| `CODE` | `string` |
+| `OBJECT` | `Record<string, unknown>` |
+| `ARRAY` | `unknown[]` |
+| `URL` | `string` |
+| `JSON` | `string \| Record<string, unknown>` |
+
+### Triggering Type Regeneration
+
+Types are regenerated automatically when:
+
+- The project opens (startup activity)
+- Renderer files (`*.ts`, `*.tsx`) in `plugins/*/frontend/src/renderers/` change
+- The `component-manifest.json` file changes
+
+You can also manually trigger regeneration via the IDE action (if configured).
+
+---
+
+## Chapter 9: Developing Compound Plugins
+
+Compound plugins are components that compose multiple simpler components together to create reusable, higher-level UI elements. This pattern allows you to build complex forms, cards, and layouts by combining existing components like Labels, Textboxes, and Buttons.
+
+### Overview
+
+A compound plugin:
+
+1. **Imports Existing Renderers** - Uses `@vsd/plugin-id` aliases to import components from other plugins
+2. **Composes Child Components** - Arranges them in a meaningful layout
+3. **Manages Internal State** - Handles state coordination between child components
+4. **Exposes Unified Props** - Provides a simplified API for the composite component
+
+### Example: Newsletter Form Plugin
+
+The Newsletter Form plugin demonstrates compound component development. It combines:
+
+- **LabelRenderer** from `@vsd/label-component-plugin` - Form title
+- **TextboxRenderer** from `@vsd/textbox-component-plugin` - Email input
+- **ButtonRenderer** from `@vsd/button-component-plugin` - Subscribe button
+
+#### Plugin Directory Structure
+
+```
+newsletter-form-plugin/
+├── pom.xml
+├── frontend/
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── src/
+│       ├── index.ts
+│       ├── types.ts
+│       └── renderers/
+│           └── NewsletterFormRenderer.tsx
+└── src/main/
+    ├── java/dev/mainul35/plugins/ui/
+    │   └── NewsletterFormPlugin.java
+    └── resources/
+        ├── plugin.yml
+        └── frontend/
+            └── bundle.js
+```
+
+#### 1. Plugin Java Class
+
+```java
+package dev.mainul35.plugins.ui;
+
+import dev.mainul35.cms.sdk.AbstractUIComponentPlugin;
+import dev.mainul35.cms.sdk.annotation.UIComponent;
+import dev.mainul35.cms.sdk.component.PropDefinition;
+import dev.mainul35.cms.sdk.component.StyleDefinition;
+
+import java.util.List;
+
+/**
+ * Newsletter Form - A compound component composed of Label, Textbox, and Button.
+ */
+@UIComponent(
+    componentId = "NewsletterForm",
+    displayName = "Newsletter Form",
+    category = "form",
+    icon = "mail",
+    description = "Newsletter subscription form with email input and customizable styling",
+    defaultWidth = "400px",
+    defaultHeight = "auto",
+    minWidth = "280px",
+    maxWidth = "800px",
+    minHeight = "120px",
+    maxHeight = "500px",
+    resizable = true
+)
+public class NewsletterFormPlugin extends AbstractUIComponentPlugin {
+
+    @Override
+    protected List<PropDefinition> defineProps() {
+        return List.of(
+            stringProp("title", "Subscribe to our Newsletter"),
+            stringProp("buttonText", "Subscribe"),
+            stringProp("placeholder", "Enter your email"),
+            selectProp("buttonVariant", "primary",
+                List.of("primary", "secondary", "success", "outline")),
+            selectProp("layout", "vertical",
+                List.of("vertical", "horizontal", "inline"))
+        );
+    }
+
+    @Override
+    protected List<StyleDefinition> defineStyles() {
+        return List.of(
+            colorStyle("backgroundColor", "#f8f9fa"),
+            colorStyle("titleColor", "#333333"),
+            colorStyle("buttonColor", "#007bff"),
+            sizeStyle("padding", "24px"),
+            sizeStyle("borderRadius", "8px"),
+            sizeStyle("gap", "16px")
+        );
+    }
+}
+```
+
+#### 2. Plugin Configuration (`plugin.yml`)
+
+```yaml
+plugin-id: newsletter-form-plugin
+plugin-name: Newsletter Form
+version: 1.0.0
+author: Mainul35
+description: A newsletter subscription form with email input and subscribe button
+main-class: dev.mainul35.plugins.ui.NewsletterFormPlugin
+plugin-type: ui-component
+
+ui-component:
+  component-id: NewsletterForm
+  display-name: Newsletter Form
+  category: form
+  icon: mail
+  description: Newsletter subscription form with email input and customizable styling
+  default-width: 400px
+  default-height: auto
+  resizable: true
+  min-width: 280px
+  max-width: 800px
+  min-height: 120px
+  max-height: 500px
+  react-component-path: /components/NewsletterForm.jsx
+```
+
+#### 3. React Renderer Component
+
+```tsx
+// frontend/src/renderers/NewsletterFormRenderer.tsx
+
+import React, { useState } from 'react';
+import type { RendererProps } from '../types';
+
+// Import renderers from other plugins using @vsd/ aliases
+import { LabelRenderer } from '@vsd/label-component-plugin';
+import { ButtonRenderer } from '@vsd/button-component-plugin';
+import { TextboxRenderer } from '@vsd/textbox-component-plugin';
+
+/**
+ * NewsletterFormRenderer - A compound component using direct props API
+ *
+ * This demonstrates how to compose multiple plugin components together
+ * to create a higher-level, reusable UI element.
+ */
+const NewsletterFormRenderer: React.FC<RendererProps> = ({
+  component,
+  isEditMode = false
+}) => {
+  const [email, setEmail] = useState('');
+  const props = component?.props || {};
+  const styles = component?.styles || {};
+
+  // Extract compound component props
+  const title = (props.title as string) || 'Subscribe to our Newsletter';
+  const buttonText = (props.buttonText as string) || 'Subscribe';
+  const placeholder = (props.placeholder as string) || 'Enter your email';
+  const buttonVariant = (props.buttonVariant as string) || 'primary';
+  const layout = (props.layout as string) || 'vertical';
+
+  // Extract styles
+  const backgroundColor = (styles.backgroundColor as string) || '#f8f9fa';
+  const titleColor = (styles.titleColor as string) || '#333333';
+  const buttonColor = (styles.buttonColor as string) || '#007bff';
+  const padding = (styles.padding as string) || '24px';
+  const borderRadius = (styles.borderRadius as string) || '8px';
+  const gap = (styles.gap as string) || '16px';
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    setEmail(e.target.value);
+  };
+
+  const handleSubmit = () => {
+    if (!isEditMode && email) {
+      console.log('Newsletter subscription:', email);
+      alert(`Thank you for subscribing with: ${email}`);
+      setEmail('');
+    }
+  };
+
+  const isHorizontal = layout === 'horizontal' || layout === 'inline';
+
+  const containerStyle: React.CSSProperties = {
+    backgroundColor,
+    padding,
+    borderRadius,
+    display: 'flex',
+    flexDirection: isHorizontal ? 'row' : 'column',
+    gap,
+    alignItems: isHorizontal ? 'center' : 'stretch',
+    flexWrap: isHorizontal ? 'wrap' : 'nowrap',
+    width: '100%',
+    boxSizing: 'border-box',
+  };
+
+  const inputContainerStyle: React.CSSProperties = {
+    flex: isHorizontal ? '1 1 200px' : undefined,
+    minWidth: isHorizontal ? '200px' : undefined,
+  };
+
+  return (
+    <div style={containerStyle} className="newsletter-form-container">
+      {/* Title Label - using direct props API */}
+      <LabelRenderer
+        text={title}
+        textAlign="center"
+        fontWeight="bold"
+        styles={{
+          color: titleColor,
+          fontSize: '18px',
+          marginBottom: isHorizontal ? '0' : '8px'
+        }}
+      />
+
+      {/* Email Input - using direct props API */}
+      <div style={inputContainerStyle}>
+        <TextboxRenderer
+          placeholder={placeholder}
+          value={email}
+          onChange={handleInputChange}
+          inputType="email"
+          styles={{
+            width: '100%',
+            padding: '12px',
+            borderRadius: '4px',
+            border: '1px solid #ddd',
+          }}
+        />
+      </div>
+
+      {/* Subscribe Button - using direct props API */}
+      <ButtonRenderer
+        text={buttonText}
+        variant={buttonVariant}
+        onClick={handleSubmit}
+        disabled={isEditMode}
+        styles={{
+          backgroundColor: buttonColor,
+          padding: '12px 24px',
+          borderRadius: '4px',
+          fontWeight: 'bold',
+        }}
+      />
+    </div>
+  );
+};
+
+export default NewsletterFormRenderer;
+export { NewsletterFormRenderer };
+```
+
+#### 4. Direct Props API
+
+Notice that the child renderers are used with **direct props** rather than a `component` object:
+
+```tsx
+// Direct props API (preferred for compound components)
+<LabelRenderer
+  text={title}
+  textAlign="center"
+  fontWeight="bold"
+  styles={{ color: titleColor }}
+/>
+
+// vs. Component instance API (for canvas rendering)
+<LabelRenderer
+  component={labelComponentInstance}
+  isEditMode={false}
+/>
+```
+
+For this to work, the child renderer must support both APIs:
+
+```tsx
+// In LabelRenderer.tsx
+const LabelRenderer: React.FC<RendererProps> = ({
+  component,
+  isEditMode = false,
+  // Direct props (optional, for compound component usage)
+  text: directText,
+  textAlign: directTextAlign,
+  fontWeight: directFontWeight,
+  styles: directStyles,
+}) => {
+  // Prefer direct props, fall back to component props
+  const props = component?.props || {};
+  const text = directText ?? props.text ?? 'Label';
+  const textAlign = directTextAlign ?? props.textAlign ?? 'left';
+  // ... etc
+};
+```
+
+#### 5. Vite Configuration for Cross-Plugin Imports
+
+```typescript
+// frontend/vite.config.ts
+
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import { resolve } from 'path';
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      // Cross-plugin imports using @vsd/ aliases
+      '@vsd/label-component-plugin': resolve(
+        __dirname, '../../../label-component-plugin/frontend/src/renderers/LabelRenderer'
+      ),
+      '@vsd/button-component-plugin': resolve(
+        __dirname, '../../../button-component-plugin/frontend/src/renderers/ButtonRenderer'
+      ),
+      '@vsd/textbox-component-plugin': resolve(
+        __dirname, '../../../textbox-component-plugin/frontend/src/renderers/TextboxRenderer'
+      ),
+    },
+  },
+  build: {
+    lib: {
+      entry: resolve(__dirname, 'src/index.ts'),
+      name: 'NewsletterFormPlugin',
+      fileName: 'bundle',
+      formats: ['es'],
+    },
+    rollupOptions: {
+      external: ['react', 'react-dom'],
+      output: {
+        globals: {
+          react: 'React',
+          'react-dom': 'ReactDOM',
+        },
+      },
+    },
+    outDir: 'dist',
+  },
+});
+```
+
+#### 6. Build and Deploy
+
+```bash
+# 1. Build frontend bundle
+cd plugins/newsletter-form-plugin/frontend
+npm install
+npm run build
+
+# 2. Build plugin JAR
+cd ..
+mvn clean package
+
+# 3. Deploy to plugins directory
+cp target/newsletter-form-plugin-1.0.0.jar ../../core/plugins/
+```
+
+### Best Practices for Compound Plugins
+
+1. **Use Direct Props API** - Makes compound components cleaner and easier to use
+2. **Manage State Internally** - Handle coordination between child components within the compound
+3. **Expose Unified Props** - Don't expose individual child props; provide a simplified API
+4. **Support Both APIs** - Child renderers should support both direct props and component instance
+5. **Use Consistent Styling** - Apply consistent spacing, colors, and typography through styles
+6. **Handle Edit Mode** - Disable interactions in edit mode to prevent accidental triggers
+
+### Comparison: Simple vs. Compound Plugins
+
+| Aspect | Simple Plugin (HorizontalRow) | Compound Plugin (NewsletterForm) |
+|--------|-------------------------------|----------------------------------|
+| **Dependencies** | None | Other plugin renderers |
+| **Vite Config** | Standard | Cross-plugin aliases required |
+| **State** | Stateless or minimal | Coordinates multiple child states |
+| **Props** | Direct component props | Unified props distributed to children |
+| **Rendering** | Single DOM structure | Composes multiple renderers |
+| **Use Case** | Basic UI elements | Forms, cards, complex layouts |
+
+---
+
+## Chapter 10: Architecture
 
 ### System Overview
 
@@ -4605,7 +5487,7 @@ If these don't match, the ComponentRenderer will fail to find the plugin-specifi
 
 ---
 
-## Chapter 9: API Reference
+## Chapter 11: API Reference
 
 ### Component Registry API
 
@@ -4699,7 +5581,7 @@ logging.level.org.springframework.web=INFO
 
 ---
 
-## Chapter 10: Troubleshooting
+## Chapter 12: Troubleshooting
 
 ### Plugin Not Loading
 

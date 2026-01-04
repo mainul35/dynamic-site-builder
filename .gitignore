@@ -144,3 +144,6 @@ nul
 
 # Package lock files in plugins (regenerated)
 plugins/*/frontend/package-lock.json
+
+# Generated types for cross-plugin imports (run: node scripts/generate-dsb-types.js)
+generated-types/
