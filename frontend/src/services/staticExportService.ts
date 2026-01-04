@@ -87,6 +87,39 @@ function getContainerLayoutStyles(props: Record<string, any>): Record<string, st
       styles.display = 'grid';
       styles.gridTemplateColumns = 'repeat(auto-fit, minmax(200px, 1fr))';
       break;
+    // Asymmetric 2-column layouts
+    case 'grid-20-80':
+      styles.display = 'grid';
+      styles.gridTemplateColumns = '20% 80%';
+      break;
+    case 'grid-25-75':
+      styles.display = 'grid';
+      styles.gridTemplateColumns = '25% 75%';
+      break;
+    case 'grid-33-67':
+      styles.display = 'grid';
+      styles.gridTemplateColumns = '33.33% 66.67%';
+      break;
+    case 'grid-40-60':
+      styles.display = 'grid';
+      styles.gridTemplateColumns = '40% 60%';
+      break;
+    case 'grid-60-40':
+      styles.display = 'grid';
+      styles.gridTemplateColumns = '60% 40%';
+      break;
+    case 'grid-67-33':
+      styles.display = 'grid';
+      styles.gridTemplateColumns = '66.67% 33.33%';
+      break;
+    case 'grid-75-25':
+      styles.display = 'grid';
+      styles.gridTemplateColumns = '75% 25%';
+      break;
+    case 'grid-80-20':
+      styles.display = 'grid';
+      styles.gridTemplateColumns = '80% 20%';
+      break;
     case 'flex-column':
     default:
       styles.display = 'flex';
