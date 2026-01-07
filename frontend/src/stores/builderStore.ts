@@ -39,6 +39,9 @@ interface BuilderState {
   // Error state
   error: string | null;
 
+  // Renderer version - incremented when plugins are reloaded to force re-render
+  rendererVersion: number;
+
   // Actions
   setCurrentPage: (page: PageDefinition) => void;
   selectComponent: (componentId: string | null) => void;
@@ -74,6 +77,7 @@ interface BuilderState {
   reparentComponent: (componentId: string, newParentId: string | null, insertIndex?: number) => void;
   reorderComponent: (componentId: string, direction: 'up' | 'down' | 'top' | 'bottom') => void;
   moveComponentToIndex: (componentId: string, newIndex: number) => void;
+  incrementRendererVersion: () => void;
 }
 
 /**
@@ -100,6 +104,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   viewMode: 'edit',
   isLoading: false,
   error: null,
+  rendererVersion: 0,
 
   /**
    * Set the current page
@@ -833,5 +838,13 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
     set({ currentPage: updatedPage });
     get().saveSnapshot(`Moved component ${componentId} to index ${newIndex}`);
+  },
+
+  /**
+   * Increment renderer version to force canvas components to re-render
+   * Called when plugin bundles are reloaded
+   */
+  incrementRendererVersion: () => {
+    set((state) => ({ rendererVersion: state.rendererVersion + 1 }));
   }
 }));

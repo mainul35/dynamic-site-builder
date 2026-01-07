@@ -124,11 +124,11 @@ class ComponentAdminService {
   /**
    * Upload a plugin JAR file
    */
-  async uploadPlugin(file: File): Promise<{ message: string; filename: string }> {
+  async uploadPlugin(file: File): Promise<{ message: string; filename: string; pluginId: string; version: string }> {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await api.post<{ message: string; filename: string }>(
+    const response = await api.post<{ message: string; filename: string; pluginId: string; version: string }>(
       `${this.basePath}/upload`,
       formData,
       {

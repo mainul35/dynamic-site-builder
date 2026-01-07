@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { ModalBase, ModalSection, ModalActions, ModalButton } from '../modals/ModalBase';
 import { componentAdminService } from '../../services/componentAdminService';
+import { reloadPlugin, isPluginLoaded } from '../../services/pluginLoaderService';
 import './ComponentUploadModal.css';
 
 export interface ComponentUploadModalProps {
@@ -120,6 +121,13 @@ export const ComponentUploadModal: React.FC<ComponentUploadModalProps> = ({
       const result = await componentAdminService.uploadPlugin(selectedFile);
       setUploadState('success');
       setSuccessMessage(`Plugin "${result.filename}" uploaded and activated successfully`);
+
+      // If the plugin was already loaded, force reload it to get the new version
+      const pluginId = result.pluginId;
+      if (pluginId && isPluginLoaded(pluginId)) {
+        console.log(`[ComponentUploadModal] Plugin ${pluginId} was updated, reloading frontend bundle...`);
+        await reloadPlugin(pluginId);
+      }
 
       // Notify parent of success after a brief delay
       setTimeout(() => {

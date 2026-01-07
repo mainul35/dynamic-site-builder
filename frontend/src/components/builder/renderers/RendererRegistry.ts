@@ -221,6 +221,28 @@ class RendererRegistryClass {
   }
 
   /**
+   * Unregister all renderers from a specific plugin
+   * Used when reloading a plugin to ensure fresh renderers are registered
+   */
+  unregisterByPlugin(pluginId: string): void {
+    const keysToRemove: string[] = [];
+
+    for (const key of this.renderers.keys()) {
+      // Keys are in format "pluginId:componentId" or just "componentId"
+      if (key.startsWith(`${pluginId}:`)) {
+        keysToRemove.push(key);
+      }
+    }
+
+    keysToRemove.forEach(key => {
+      this.renderers.delete(key);
+      this.loadingPromises.delete(key);
+    });
+
+    console.log(`[RendererRegistry] Unregistered ${keysToRemove.length} renderers for plugin: ${pluginId}`);
+  }
+
+  /**
    * Build a registry key from componentId and optional pluginId
    */
   private buildKey(componentId: string, pluginId?: string): RendererKey {

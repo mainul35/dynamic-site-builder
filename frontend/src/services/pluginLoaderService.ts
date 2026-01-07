@@ -429,6 +429,168 @@ export function isPluginLoaded(pluginId: string): boolean {
 }
 
 /**
+ * Load a plugin with forced cache busting (used for reloads after JAR update)
+ */
+async function loadPluginWithCacheBust(pluginId: string): Promise<boolean> {
+  // Check if this is a virtual plugin
+  if (VIRTUAL_PLUGIN_MAPPINGS[pluginId]) {
+    const actualPluginIds = VIRTUAL_PLUGIN_MAPPINGS[pluginId];
+    console.log(`[PluginLoader] Reload virtual plugin ${pluginId} -> [${actualPluginIds.join(', ')}]`);
+
+    const results = await Promise.all(
+      actualPluginIds.map(async (actualPluginId) => {
+        const success = await loadActualPluginWithCacheBust(actualPluginId);
+        if (success) {
+          registerRenderersUnderAlias(actualPluginId, pluginId);
+        }
+        return success;
+      })
+    );
+
+    const anyLoaded = results.some(Boolean);
+    if (anyLoaded) {
+      loadedPlugins.add(pluginId);
+    }
+    return anyLoaded;
+  }
+
+  return loadActualPluginWithCacheBust(pluginId);
+}
+
+/**
+ * Load an actual plugin with forced cache busting
+ */
+async function loadActualPluginWithCacheBust(pluginId: string): Promise<boolean> {
+  try {
+    const cacheBuster = `?t=${Date.now()}`;
+
+    // Check if the plugin has frontend assets (with cache bust)
+    const response = await fetch(`${PLUGIN_API_BASE}/${pluginId}/has-frontend${cacheBuster}`);
+    if (!response.ok) {
+      console.debug(`[PluginLoader] Plugin ${pluginId} has no frontend bundle`);
+      return false;
+    }
+
+    const frontendInfo: PluginFrontendInfo = await response.json();
+
+    if (!frontendInfo.hasBundleJs) {
+      console.debug(`[PluginLoader] Plugin ${pluginId} has no frontend bundle`);
+      return false;
+    }
+
+    // Load CSS with cache bust
+    if (frontendInfo.hasBundleCss) {
+      const styleId = `plugin-styles-${pluginId}`;
+      const existingStyle = document.getElementById(styleId);
+      if (existingStyle) {
+        existingStyle.remove();
+      }
+
+      const link = document.createElement('link');
+      link.id = styleId;
+      link.rel = 'stylesheet';
+      link.href = `${PLUGIN_API_BASE}/${pluginId}/bundle.css${cacheBuster}`;
+      document.head.appendChild(link);
+    }
+
+    // Load JavaScript bundle with cache bust
+    const bundleUrl = `${PLUGIN_API_BASE}/${pluginId}/bundle.js${cacheBuster}`;
+    const globalName = getPluginGlobalName(pluginId);
+
+    await new Promise<void>((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = bundleUrl;
+      script.id = `plugin-script-${pluginId}`;
+      script.async = true;
+
+      script.onload = () => {
+        console.log(`[PluginLoader] Script reloaded for ${pluginId}`);
+        resolve();
+      };
+
+      script.onerror = () => {
+        reject(new Error(`Failed to reload script for ${pluginId}`));
+      };
+
+      document.head.appendChild(script);
+    });
+
+    // Get the plugin from the global variable
+    const pluginBundle: PluginBundle = (window as Record<string, unknown>)[globalName] as PluginBundle;
+
+    if (!pluginBundle) {
+      console.warn(`[PluginLoader] Plugin global not found after reload: window.${globalName}`);
+      return false;
+    }
+
+    // Register renderers
+    if (typeof pluginBundle.registerRenderers === 'function') {
+      pluginBundle.registerRenderers(RendererRegistry);
+    } else if (pluginBundle.renderers) {
+      Object.entries(pluginBundle.renderers).forEach(([componentId, renderer]) => {
+        RendererRegistry.register(componentId, renderer, pluginBundle.pluginId || pluginId);
+      });
+    }
+
+    loadedPlugins.add(pluginId);
+    console.log(`[PluginLoader] Reloaded bundle for ${pluginId}:`, Object.keys(pluginBundle.renderers || {}));
+    return true;
+  } catch (error) {
+    console.error(`[PluginLoader] Failed to reload bundle for ${pluginId}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Force reload a plugin by unloading and reloading it.
+ * Useful after a plugin JAR has been updated.
+ *
+ * @param pluginId The plugin ID to reload
+ * @returns true if the plugin was reloaded successfully
+ */
+export async function reloadPlugin(pluginId: string): Promise<boolean> {
+  console.log(`[PluginLoader] Force reloading plugin: ${pluginId}`);
+
+  // Unload the plugin first
+  unloadPlugin(pluginId);
+
+  // Unregister all renderers for this plugin
+  RendererRegistry.unregisterByPlugin(pluginId);
+
+  // Small delay to ensure cleanup
+  await new Promise(resolve => setTimeout(resolve, 100));
+
+  // Force reload with cache busting
+  const success = await loadPluginWithCacheBust(pluginId);
+
+  if (success) {
+    console.log(`[PluginLoader] Plugin ${pluginId} reloaded successfully. Remove and re-add components to see updates.`);
+  }
+
+  return success;
+}
+
+/**
+ * Force reload all loaded plugins.
+ * Useful after multiple plugin JARs have been updated.
+ *
+ * @returns Map of pluginId to success status
+ */
+export async function reloadAllPlugins(): Promise<Map<string, boolean>> {
+  const currentlyLoaded = Array.from(loadedPlugins);
+  console.log(`[PluginLoader] Force reloading all plugins:`, currentlyLoaded);
+
+  // Unload all plugins
+  currentlyLoaded.forEach(pluginId => unloadPlugin(pluginId));
+
+  // Small delay to ensure cleanup
+  await new Promise(resolve => setTimeout(resolve, 100));
+
+  // Reload all plugins
+  return loadPlugins(currentlyLoaded);
+}
+
+/**
  * Get list of loaded plugins
  */
 export function getLoadedPlugins(): string[] {
@@ -487,6 +649,8 @@ export default {
   loadPlugins,
   loadAllPlugins,
   unloadPlugin,
+  reloadPlugin,
+  reloadAllPlugins,
   isPluginLoaded,
   getLoadedPlugins,
   preloadPlugins,

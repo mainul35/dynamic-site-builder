@@ -107,12 +107,14 @@ public class ComponentAdminController {
 
             // Install and activate the plugin
             File jarFile = tempFile.toFile();
-            pluginManager.installAndActivatePlugin(jarFile);
+            var plugin = pluginManager.installAndActivatePlugin(jarFile);
 
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(Map.of(
                             "message", "Plugin uploaded and activated successfully",
-                            "filename", originalFilename
+                            "filename", originalFilename,
+                            "pluginId", plugin.getPluginId(),
+                            "version", plugin.getVersion()
                     ));
         } catch (Exception e) {
             log.error("Failed to upload plugin: {}", originalFilename, e);
