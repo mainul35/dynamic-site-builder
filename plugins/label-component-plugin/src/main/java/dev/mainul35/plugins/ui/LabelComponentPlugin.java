@@ -21,7 +21,7 @@ import java.util.Map;
     componentId = "label",
     displayName = "Label",
     category = "ui",
-    icon = "Label",
+    icon = "L",
     resizable = true,
     defaultWidth = "200px",
     defaultHeight = "auto",
@@ -113,14 +113,15 @@ public class LabelComponentPlugin implements UIComponentPlugin {
     }
 
     /**
-     * Build the complete component manifest
+     * Build the complete component manifest from @UIComponent annotation
      */
     private ComponentManifest buildComponentManifest() {
+        UIComponent ann = getClass().getAnnotation(UIComponent.class);
         return ComponentManifest.builder()
-                .componentId("label")
-                .displayName("Label")
-                .category("ui")
-                .icon("T")
+                .componentId(ann.componentId())
+                .displayName(ann.displayName())
+                .category(ann.category())
+                .icon(ann.icon())
                 .description("Text label component for displaying headings, paragraphs, or any text content")
                 .pluginId("label-component-plugin")
                 .pluginVersion("1.0.0")
