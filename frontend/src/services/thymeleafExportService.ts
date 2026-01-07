@@ -11,7 +11,7 @@ import { ExportTemplateRegistry } from './ExportTemplateRegistry';
 let imageUrlMap: Map<string, string> = new Map();
 
 /**
- * Represents an API endpoint configuration detected from Repeater components
+ * Represents an API endpoint configuration detected from data components
  */
 interface ApiEndpointConfig {
   endpoint: string;      // Full endpoint path (e.g., "/api/sample/products")
@@ -200,10 +200,6 @@ function generateThymeleafComponent(component: ComponentInstance, depth: number 
     case 'Container':
     case 'ScrollableContainer':
       return generateThymeleafContainer(component, id, indent, depth);
-    case 'Repeater':
-      return generateThymeleafRepeater(component, id, indent, depth);
-    case 'DataList':
-      return generateThymeleafDataList(component, id, indent, depth);
     case 'Navbar':
     case 'NavbarDefault':
     case 'NavbarCentered':
@@ -659,258 +655,6 @@ function collectComponentDataSources(components: ComponentInstance[]): Record<st
 
   components.forEach(comp => traverse(comp));
   return dataSources;
-}
-
-/**
- * Generate Thymeleaf Repeater (th:each)
- * Handles both dataSourceRef (page-level) and component-level dataSource.staticData
- * Replicates RepeaterRenderer.tsx layout behavior (lines 159-205, 397-405)
- */
-function generateThymeleafRepeater(component: ComponentInstance, id: string, indent: string, depth: number): string {
-  const { props, styles, children, iteratorConfig, dataSourceRef, dataSource, instanceId } = component;
-
-  // Get layout props matching RepeaterRenderer (lines 48-49)
-  const layoutType = (props.layoutType as string) || 'flex-column';
-  const gap = (props.gap as string) || '16px';
-
-  // Get layout styles matching RepeaterRenderer (lines 159-205)
-  const getRepeaterLayoutStyles = (): Record<string, string> => {
-    const baseStyles: Record<string, string> = {
-      width: '100%',
-      gap: gap,
-    };
-
-    switch (layoutType) {
-      case 'flex-row':
-        return {
-          ...baseStyles,
-          display: 'flex',
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-        };
-      case 'grid-2col':
-        return {
-          ...baseStyles,
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-        };
-      case 'grid-3col':
-        return {
-          ...baseStyles,
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-        };
-      case 'grid-4col':
-        return {
-          ...baseStyles,
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-        };
-      case 'grid-auto':
-        return {
-          ...baseStyles,
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-        };
-      // Asymmetric 2-column layouts
-      case 'grid-20-80':
-        return {
-          ...baseStyles,
-          display: 'grid',
-          gridTemplateColumns: '20% 80%',
-        };
-      case 'grid-25-75':
-        return {
-          ...baseStyles,
-          display: 'grid',
-          gridTemplateColumns: '25% 75%',
-        };
-      case 'grid-33-67':
-        return {
-          ...baseStyles,
-          display: 'grid',
-          gridTemplateColumns: '33.33% 66.67%',
-        };
-      case 'grid-40-60':
-        return {
-          ...baseStyles,
-          display: 'grid',
-          gridTemplateColumns: '40% 60%',
-        };
-      case 'grid-60-40':
-        return {
-          ...baseStyles,
-          display: 'grid',
-          gridTemplateColumns: '60% 40%',
-        };
-      case 'grid-67-33':
-        return {
-          ...baseStyles,
-          display: 'grid',
-          gridTemplateColumns: '66.67% 33.33%',
-        };
-      case 'grid-75-25':
-        return {
-          ...baseStyles,
-          display: 'grid',
-          gridTemplateColumns: '75% 25%',
-        };
-      case 'grid-80-20':
-        return {
-          ...baseStyles,
-          display: 'grid',
-          gridTemplateColumns: '80% 20%',
-        };
-      case 'flex-column':
-      default:
-        return {
-          ...baseStyles,
-          display: 'flex',
-          flexDirection: 'column',
-        };
-    }
-  };
-
-  // Container styles matching RepeaterRenderer (lines 397-405)
-  const layoutStyles = getRepeaterLayoutStyles();
-  const containerStyles: Record<string, any> = {
-    ...layoutStyles,
-    backgroundColor: styles?.backgroundColor || 'transparent',
-    padding: styles?.padding || '0',
-    borderRadius: styles?.borderRadius || '0',
-    border: styles?.border || 'none',
-    boxSizing: 'border-box',
-  };
-
-  const inlineStyle = generateInlineStyle(containerStyles);
-  const styleAttr = inlineStyle ? ` style="${inlineStyle}"` : '';
-
-  const itemAlias = iteratorConfig?.itemAlias || props.itemAlias || 'item';
-  const indexAlias = iteratorConfig?.indexAlias || props.indexAlias || 'index';
-  const dataPath = iteratorConfig?.dataPath || props.dataPath || '';
-
-  // Build the th:each expression - use ${...} syntax
-  // e.g., th:each="item, iterStat : ${dataSources['products'].items}"
-  // For th:if, we need the expression WITHOUT ${} wrapper since th:if expects a raw expression
-  let dataSourceExpr = '';
-  let dataSourceExprRaw = ''; // For use in th:if
-
-  if (dataSourceRef) {
-    // Page-level named data source
-    dataSourceExprRaw = dataPath
-      ? `dataSources['${dataSourceRef}'].${dataPath}`
-      : `dataSources['${dataSourceRef}']`;
-    dataSourceExpr = `\${${dataSourceExprRaw}}`;
-  } else if (dataSource?.type === 'static' && dataSource?.staticData) {
-    // Component-level static data - use instanceId as the data source key
-    const dataSourceKey = `repeater_${instanceId}`;
-    dataSourceExprRaw = `dataSources['${dataSourceKey}']`;
-    dataSourceExpr = `\${${dataSourceExprRaw}}`;
-  } else if (dataPath) {
-    dataSourceExprRaw = dataPath;
-    dataSourceExpr = `\${${dataPath}}`;
-  } else {
-    dataSourceExprRaw = 'items';
-    dataSourceExpr = '${items}';
-  }
-
-  const thEach = `${itemAlias}, ${indexAlias}Stat : ${dataSourceExpr}`;
-
-  // Generate children with item context
-  // Each child in the repeater becomes a grid/flex item
-  // We render children at depth 0 to preserve their full styling (borders, backgrounds, etc.)
-  // since they are the "root" of each repeated item
-  const childrenHtml = (children || [])
-    .map(child => {
-      // Convert template bindings for children
-      const modifiedChild = { ...child };
-      if (modifiedChild.templateBindings) {
-        // Template bindings will be converted in child generation
-      }
-      // Use depth 0 for repeater children so they keep their card-like styling
-      return generateThymeleafComponent(modifiedChild, 0);
-    })
-    .join('\n');
-
-  const emptyMessage = props.emptyMessage || 'No items to display';
-
-  // For grid/flex layouts, we need the th:each directly on the item wrapper
-  // so each iteration creates a proper grid cell
-  // Structure: outer container has grid, each th:each item is a grid cell
-  // Add proper constraints matching RepeaterRenderer (lines 301-314)
-  const itemWrapperStyle = 'max-width: 100%; box-sizing: border-box; overflow: hidden;';
-
-  return `${indent}<div id="${id}" class="component repeater"${styleAttr}>
-${indent}    <div th:each="${thEach}" class="repeater-item" style="${itemWrapperStyle}">
-${childrenHtml || `${indent}        <div th:text="\${${itemAlias}}">Item</div>`}
-${indent}    </div>
-${indent}    <div th:if="\${${dataSourceExprRaw} == null or #lists.isEmpty(${dataSourceExprRaw})}" style="grid-column: 1 / -1; text-align: center; padding: 20px; color: #999;">
-${indent}        ${emptyMessage}
-${indent}    </div>
-${indent}</div>`;
-}
-
-/**
- * Generate Thymeleaf DataList (pre-styled table/cards)
- */
-function generateThymeleafDataList(component: ComponentInstance, id: string, indent: string, depth: number): string {
-  const { props, styles, dataSourceRef, iteratorConfig } = component;
-
-  const inlineStyle = generateInlineStyle(styles);
-  const styleAttr = inlineStyle ? ` style="${inlineStyle}"` : '';
-
-  const listStyle = props.listStyle || 'cards';
-  const itemAlias = iteratorConfig?.itemAlias || 'item';
-  const dataPath = iteratorConfig?.dataPath || '';
-
-  let dataSourceExpr = '';
-  if (dataSourceRef) {
-    dataSourceExpr = dataPath
-      ? `\${dataSources['${dataSourceRef}'].${dataPath}}`
-      : `\${dataSources['${dataSourceRef}']}`;
-  } else {
-    dataSourceExpr = '${items}';
-  }
-
-  if (listStyle === 'table') {
-    const columns = props.columns || [];
-    const headerRow = columns.map((col: any) =>
-      `${indent}            <th>${escapeHtml(col.header || col.field)}</th>`
-    ).join('\n');
-    const dataRow = columns.map((col: any) =>
-      `${indent}            <td th:text="\${${itemAlias}.${col.field}}"></td>`
-    ).join('\n');
-
-    return `${indent}<div id="${id}" class="component datalist table-style"${styleAttr}>
-${indent}    <table class="data-table">
-${indent}        <thead>
-${indent}            <tr>
-${headerRow}
-${indent}            </tr>
-${indent}        </thead>
-${indent}        <tbody>
-${indent}            <tr th:each="${itemAlias} : ${dataSourceExpr}">
-${dataRow}
-${indent}            </tr>
-${indent}        </tbody>
-${indent}    </table>
-${indent}</div>`;
-  }
-
-  // Default: cards style
-  const imageField = props.imageField || 'image';
-  const titleField = props.titleField || 'title';
-  const descField = props.descriptionField || 'description';
-
-  return `${indent}<div id="${id}" class="component datalist cards-style"${styleAttr}>
-${indent}    <div class="datalist-grid" th:each="${itemAlias} : ${dataSourceExpr}">
-${indent}        <div class="card">
-${indent}            <img th:if="\${${itemAlias}.${imageField}}" th:src="\${${itemAlias}.${imageField}}" class="card-image" />
-${indent}            <h3 th:text="\${${itemAlias}.${titleField}}" class="card-title"></h3>
-${indent}            <p th:text="\${${itemAlias}.${descField}}" class="card-description"></p>
-${indent}        </div>
-${indent}    </div>
-${indent}</div>`;
 }
 
 /**
@@ -1688,13 +1432,6 @@ body {
   color: inherit;
 }
 
-/* DataList grid layout helper */
-.datalist-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
-}
-
 /* Table reset */
 .data-table {
   width: 100%;
@@ -1723,9 +1460,6 @@ body {
     display: flex;
   }
 
-  .datalist-grid {
-    grid-template-columns: 1fr;
-  }
 }
 `;
 }
@@ -1844,15 +1578,15 @@ image repository/CMS server.
 }
 
 /**
- * Collect all API endpoints used by Repeater components across all pages
+ * Collect all API endpoints used by data components across all pages
  * Analyzes dataSource configurations to identify API-based data sources
  */
 function collectApiEndpoints(pages: PageExportData[]): ApiEndpointConfig[] {
   const endpointsMap = new Map<string, ApiEndpointConfig>();
 
   const processComponent = (component: ComponentInstance) => {
-    // Check if this is a Repeater with API data source
-    if (component.componentId === 'Repeater' && component.dataSource?.type === 'api') {
+    // Check if this component has an API data source
+    if (component.dataSource?.type === 'api') {
       const apiConfig = component.dataSource;
       const endpoint = apiConfig.apiEndpoint || apiConfig.endpoint || '';
 
@@ -2201,7 +1935,7 @@ The following API endpoints were detected in your page designs:
 ${endpointsList}
 
 These endpoints are handled by \`ApiDataController.java\`. The controller includes
-sample data that matches the structure expected by your Repeater components.
+sample data that matches the structure expected by your data components.
 
 **To connect to your actual data source:**
 1. Modify \`ApiDataController.java\` to call your service layer
@@ -2572,7 +2306,7 @@ export async function exportAsThymeleafProject(
   imageUrlMap = await collectAndAddImages(pages, zip);
   console.log(`[Thymeleaf Export] Collected ${imageUrlMap.size} images`);
 
-  // Collect API endpoints used by Repeater components
+  // Collect API endpoints used by data components
   console.log('[Thymeleaf Export] Analyzing API data sources...');
   const apiEndpoints = collectApiEndpoints(pages);
   console.log(`[Thymeleaf Export] Found ${apiEndpoints.length} API endpoints`);
@@ -2635,7 +2369,7 @@ export async function exportAsThymeleafProject(
     const templateName = page.pageName.toLowerCase().replace(/[^a-z0-9]/g, '-');
     zip.file(`src/main/resources/templates/${templateName}.html`, generateThymeleafTemplate(page));
 
-    // Collect component-level data sources (e.g., Repeater static data)
+    // Collect component-level data sources (e.g., static data from data components)
     const componentDataSources = collectComponentDataSources(page.definition.components);
 
     // Merge page-level and component-level data sources

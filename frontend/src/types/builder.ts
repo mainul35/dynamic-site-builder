@@ -57,7 +57,7 @@ export interface DataSourceConfig {
 }
 
 /**
- * Iterator configuration for Repeater/DataList components
+ * Iterator configuration for data iteration components
  */
 export interface IteratorConfig {
   /** Path to array in data (e.g., "items", "data.products") */
@@ -202,7 +202,7 @@ export interface ComponentInstance {
   dataSource?: DataSourceConfig;
   /** Template bindings for dynamic content (e.g., { "text": "{{user.name}}" }) */
   templateBindings?: TemplateBindings;
-  /** Iterator configuration for Repeater/DataList components */
+  /** Iterator configuration for data iteration components */
   iteratorConfig?: IteratorConfig;
   /** Reference to a named data source in PageDataContext */
   dataSourceRef?: string;
@@ -231,6 +231,59 @@ export interface PageDefinition {
 }
 
 /**
+ * Component capabilities that drive behavior in the builder
+ *
+ * Instead of hardcoding component IDs in the core application,
+ * capabilities allow plugins to declare their behavior declaratively.
+ * The core application reads these capabilities and adapts accordingly.
+ */
+export interface ComponentCapabilities {
+  /**
+   * Component can contain child components (enables drag-drop children)
+   * When true, the component is treated as a container in the builder UI
+   */
+  canHaveChildren?: boolean;
+
+  /**
+   * Component supports data source configuration
+   * When true, shows the Data Source Editor in the Properties Panel
+   */
+  hasDataSource?: boolean;
+
+  /**
+   * Component should use auto-height sizing
+   * When true, height adjusts automatically to content
+   */
+  autoHeight?: boolean;
+
+  /**
+   * Component is a layout container (affects drag-drop behavior)
+   * When true, other components can be dropped inside
+   */
+  isContainer?: boolean;
+
+  /**
+   * Component supports data iteration (like repeating over arrays)
+   * When true, enables iteration-specific features
+   */
+  supportsIteration?: boolean;
+
+  /**
+   * Component is resizable by the user
+   * When false, resize handles are hidden
+   * @default true
+   */
+  isResizable?: boolean;
+
+  /**
+   * Component supports template bindings ({{variable}} syntax)
+   * When true, enables template variable resolution
+   * @default true
+   */
+  supportsTemplateBindings?: boolean;
+}
+
+/**
  * Component manifest from plugin
  */
 export interface ComponentManifest {
@@ -248,7 +301,20 @@ export interface ComponentManifest {
   sizeConstraints: SizeConstraints;
   pluginId: string;
   pluginVersion: string;
+
+  /**
+   * Component capabilities that drive behavior in the builder
+   * This replaces hardcoded componentId checks in the core application
+   */
+  capabilities?: ComponentCapabilities;
+
+  /**
+   * @deprecated Use capabilities.canHaveChildren instead
+   * Kept for backward compatibility
+   */
   canHaveChildren?: boolean;
+
+  /** Allowed child component types (if canHaveChildren is true) */
   allowedChildTypes?: string[];
 }
 

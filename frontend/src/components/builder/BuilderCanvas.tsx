@@ -7,6 +7,7 @@ import { DraggableComponent } from './DraggableComponent';
 import { ResizableComponent } from './ResizableComponent';
 import { ComponentRenderer } from './renderers';
 import { CanvasContextMenu } from './CanvasContextMenu';
+import { capabilityService } from '../../services/componentCapabilityService';
 import './BuilderCanvas.css';
 
 interface CanvasContextMenuState {
@@ -232,15 +233,12 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
       // Find parent layout based on drop position
       let parentLayout: ComponentInstance | null = null;
 
-      // Get all container components (layout and data containers like Repeater)
+      // Get all container components (using capability service)
       const getAllContainerComponents = (components: ComponentInstance[]): ComponentInstance[] => {
         const containers: ComponentInstance[] = [];
         components.forEach(comp => {
-          const isLayoutComp = comp.componentCategory?.toLowerCase() === 'layout';
-          const isDataContainer = comp.componentCategory?.toLowerCase() === 'data' &&
-            (comp.componentId === 'Repeater' || comp.componentId === 'DataList');
-
-          if (isLayoutComp || isDataContainer) {
+          // Use capability service to check if component is a container
+          if (capabilityService.isContainer(comp)) {
             containers.push(comp);
             if (comp.children && comp.children.length > 0) {
               containers.push(...getAllContainerComponents(comp.children));
@@ -581,26 +579,18 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
 
   // Render component using the ComponentRenderer system
   const renderComponent = (component: ComponentInstance) => {
-    const isLayout = component.componentCategory?.toLowerCase() === 'layout';
+    // Use capability service to check if component is a container
+    const isContainer = capabilityService.isContainer(component);
+    // Check if component is a data container (like Repeater) - has data source capability
+    const isDataContainerComponent = capabilityService.hasDataSource(component);
     const hasChildren = component.children && component.children.length > 0;
     const isEditMode = viewMode === 'edit';
 
-    // Check if this is a data component that can have children (like Repeater)
-    // These components need to show the same drag-drop UI as layout components
-    const isDataContainerComponent = component.componentCategory?.toLowerCase() === 'data' &&
-      (component.componentId === 'Repeater' || component.componentId === 'DataList');
-
-    // For layout components and data container components, render container with children
-    if (isLayout || isDataContainerComponent) {
+    // For container components, render container with children
+    if (isContainer) {
       // Get layout type from component props - layoutMode is primary (set by UI), layoutType is fallback
       const layoutType = component.props?.layoutMode || component.props?.layoutType || 'flex-column';
       const layoutStyles = getLayoutStyles(layoutType);
-
-      // In preview mode, data container components (Repeater, DataList) need to use ComponentRenderer
-      // so they can fetch data and resolve template variables in children
-      if (!isEditMode && isDataContainerComponent) {
-        return <ComponentRenderer component={component} isEditMode={false} />;
-      }
 
       // In preview mode, render clean layout without builder chrome
       if (!isEditMode) {

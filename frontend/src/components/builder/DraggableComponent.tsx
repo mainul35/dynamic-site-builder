@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { ComponentInstance } from '../../types/builder';
 import { useBuilderStore } from '../../stores/builderStore';
 import { ComponentContextMenu } from './ComponentContextMenu';
+import { capabilityService } from '../../services/componentCapabilityService';
 import './DraggableComponent.css';
 
 interface ContextMenuState {
@@ -364,10 +365,7 @@ export const DraggableComponent: React.FC<DraggableComponentProps> = ({
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
         data-component-id={component.instanceId}
-        data-is-container={component.componentCategory?.toLowerCase() === 'layout' ||
-          (component.componentCategory?.toLowerCase() === 'data' &&
-           (component.componentId === 'Repeater' || component.componentId === 'DataList'))
-          ? 'true' : undefined}
+        data-is-container={capabilityService.isContainer(component) ? 'true' : undefined}
       >
         {/* Selection Overlay */}
         {isSelected && canDrag && (

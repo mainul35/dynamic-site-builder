@@ -79,6 +79,14 @@ const labelManifest: ComponentManifest = {
   pluginId: 'label-component-plugin',
   pluginVersion: '1.0.0',
   canHaveChildren: false,
+  capabilities: {
+    canHaveChildren: false,
+    isContainer: false,
+    hasDataSource: false,
+    autoHeight: false,
+    isResizable: true,
+    supportsTemplateBindings: true,
+  },
 };
 
 /**
@@ -148,6 +156,14 @@ const buttonManifest: ComponentManifest = {
   pluginId: 'button-component-plugin',
   pluginVersion: '1.0.0',
   canHaveChildren: false,
+  capabilities: {
+    canHaveChildren: false,
+    isContainer: false,
+    hasDataSource: false,
+    autoHeight: false,
+    isResizable: true,
+    supportsTemplateBindings: true,
+  },
 };
 
 /**
@@ -255,6 +271,14 @@ const containerManifest: ComponentManifest = {
   pluginId: 'container-layout-plugin',
   pluginVersion: '1.0.0',
   canHaveChildren: true,
+  capabilities: {
+    canHaveChildren: true,
+    isContainer: true,
+    hasDataSource: false,
+    autoHeight: true,
+    isResizable: true,
+    supportsTemplateBindings: true,
+  },
 };
 
 /**
@@ -366,6 +390,14 @@ const textboxManifest: ComponentManifest = {
   pluginId: 'textbox-component-plugin',
   pluginVersion: '1.0.0',
   canHaveChildren: false,
+  capabilities: {
+    canHaveChildren: false,
+    isContainer: false,
+    hasDataSource: false,
+    autoHeight: false,
+    isResizable: true,
+    supportsTemplateBindings: true,
+  },
 };
 
 /**
@@ -447,6 +479,14 @@ const navbarDefaultManifest: ComponentManifest = {
   pluginId: 'navbar-component-plugin',
   pluginVersion: '1.0.0',
   canHaveChildren: false,
+  capabilities: {
+    canHaveChildren: false,
+    isContainer: false,
+    hasDataSource: false,
+    autoHeight: false,
+    isResizable: true,
+    supportsTemplateBindings: true,
+  },
 };
 
 /**
@@ -528,6 +568,14 @@ const navbarCenteredManifest: ComponentManifest = {
   pluginId: 'navbar-component-plugin',
   pluginVersion: '1.0.0',
   canHaveChildren: false,
+  capabilities: {
+    canHaveChildren: false,
+    isContainer: false,
+    hasDataSource: false,
+    autoHeight: false,
+    isResizable: true,
+    supportsTemplateBindings: true,
+  },
 };
 
 /**
@@ -609,6 +657,14 @@ const navbarDarkManifest: ComponentManifest = {
   pluginId: 'navbar-component-plugin',
   pluginVersion: '1.0.0',
   canHaveChildren: false,
+  capabilities: {
+    canHaveChildren: false,
+    isContainer: false,
+    hasDataSource: false,
+    autoHeight: false,
+    isResizable: true,
+    supportsTemplateBindings: true,
+  },
 };
 
 /**
@@ -690,6 +746,14 @@ const navbarMinimalManifest: ComponentManifest = {
   pluginId: 'navbar-component-plugin',
   pluginVersion: '1.0.0',
   canHaveChildren: false,
+  capabilities: {
+    canHaveChildren: false,
+    isContainer: false,
+    hasDataSource: false,
+    autoHeight: false,
+    isResizable: true,
+    supportsTemplateBindings: true,
+  },
 };
 
 /**
@@ -771,6 +835,14 @@ const navbarGlassManifest: ComponentManifest = {
   pluginId: 'navbar-component-plugin',
   pluginVersion: '1.0.0',
   canHaveChildren: false,
+  capabilities: {
+    canHaveChildren: false,
+    isContainer: false,
+    hasDataSource: false,
+    autoHeight: false,
+    isResizable: true,
+    supportsTemplateBindings: true,
+  },
 };
 
 /**
@@ -853,6 +925,14 @@ const navbarStickyManifest: ComponentManifest = {
   pluginId: 'navbar-component-plugin',
   pluginVersion: '1.0.0',
   canHaveChildren: false,
+  capabilities: {
+    canHaveChildren: false,
+    isContainer: false,
+    hasDataSource: false,
+    autoHeight: false,
+    isResizable: true,
+    supportsTemplateBindings: true,
+  },
 };
 
 /**
@@ -988,180 +1068,14 @@ const imageManifest: ComponentManifest = {
   pluginId: 'image-component-plugin',
   pluginVersion: '1.0.0',
   canHaveChildren: false,
-};
-
-/**
- * Repeater component manifest
- */
-const repeaterManifest: ComponentManifest = {
-  componentId: 'Repeater',
-  displayName: 'Repeater',
-  category: 'data',
-  icon: '🔁',
-  description: 'Iterate over array data and render children for each item',
-  defaultProps: {
-    dataPath: '',
-    itemAlias: 'item',
-    indexAlias: 'index',
-    emptyMessage: 'No items to display',
-    layoutType: 'flex-column',
-    gap: '16px',
+  capabilities: {
+    canHaveChildren: false,
+    isContainer: false,
+    hasDataSource: false,
+    autoHeight: false,
+    isResizable: true,
+    supportsTemplateBindings: true,
   },
-  defaultStyles: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
-  },
-  reactComponentPath: 'renderers/RepeaterRenderer',
-  configurableProps: [
-    {
-      name: 'dataPath',
-      type: PropType.STRING,
-      label: 'Data Path',
-      defaultValue: '',
-      helpText: "Path to the array in the data source (e.g., 'items', 'data.products'). Leave empty if data is already an array.",
-    },
-    {
-      name: 'itemAlias',
-      type: PropType.STRING,
-      label: 'Item Variable',
-      defaultValue: 'item',
-      helpText: 'Variable name for current item (use {{item.field}} in children)',
-    },
-    {
-      name: 'indexAlias',
-      type: PropType.STRING,
-      label: 'Index Variable',
-      defaultValue: 'index',
-      helpText: 'Variable name for current index',
-    },
-    {
-      name: 'emptyMessage',
-      type: PropType.STRING,
-      label: 'Empty Message',
-      defaultValue: 'No items to display',
-      helpText: 'Message shown when data array is empty',
-    },
-    {
-      name: 'layoutType',
-      type: PropType.SELECT,
-      label: 'Layout Type',
-      defaultValue: 'flex-column',
-      options: ['flex-column', 'flex-row', 'flex-wrap', 'grid-2col', 'grid-3col', 'grid-4col'],
-      helpText: 'How repeated items are arranged',
-    },
-    {
-      name: 'gap',
-      type: PropType.STRING,
-      label: 'Gap',
-      defaultValue: '16px',
-      helpText: 'Space between repeated items (e.g., 16px, 1rem)',
-    },
-  ],
-  configurableStyles: [],
-  sizeConstraints: {
-    minWidth: 100,
-    minHeight: 50,
-    maxWidth: 3000,
-    maxHeight: 5000,
-  },
-  pluginId: 'repeater-component-plugin',
-  pluginVersion: '1.0.0',
-  canHaveChildren: true,
-};
-
-/**
- * DataList component manifest
- */
-const dataListManifest: ComponentManifest = {
-  componentId: 'DataList',
-  displayName: 'Data List',
-  category: 'data',
-  icon: '📋',
-  description: 'Pre-styled list for displaying data as cards, table, or list',
-  defaultProps: {
-    listStyle: 'cards',
-    dataPath: '',
-    titleField: 'title',
-    descriptionField: 'description',
-    imageField: 'image',
-    pagination: false,
-    pageSize: 10,
-    emptyMessage: 'No items to display',
-  },
-  defaultStyles: {
-    gap: '24px',
-  },
-  reactComponentPath: 'renderers/DataListRenderer',
-  configurableProps: [
-    {
-      name: 'listStyle',
-      type: PropType.SELECT,
-      label: 'List Style',
-      defaultValue: 'cards',
-      options: ['cards', 'table', 'list', 'grid'],
-      helpText: 'Visual style for displaying data',
-    },
-    {
-      name: 'dataPath',
-      type: PropType.STRING,
-      label: 'Data Path',
-      defaultValue: 'items',
-      helpText: 'Path to the array in the data source',
-    },
-    {
-      name: 'titleField',
-      type: PropType.STRING,
-      label: 'Title Field',
-      defaultValue: 'title',
-      helpText: 'Field name for item title',
-    },
-    {
-      name: 'descriptionField',
-      type: PropType.STRING,
-      label: 'Description Field',
-      defaultValue: 'description',
-      helpText: 'Field name for item description',
-    },
-    {
-      name: 'imageField',
-      type: PropType.STRING,
-      label: 'Image Field',
-      defaultValue: 'image',
-      helpText: 'Field name for item image URL',
-    },
-    {
-      name: 'pagination',
-      type: PropType.BOOLEAN,
-      label: 'Enable Pagination',
-      defaultValue: false,
-      helpText: 'Show pagination controls',
-    },
-    {
-      name: 'pageSize',
-      type: PropType.NUMBER,
-      label: 'Page Size',
-      defaultValue: 10,
-      helpText: 'Items per page when pagination is enabled',
-    },
-    {
-      name: 'emptyMessage',
-      type: PropType.STRING,
-      label: 'Empty Message',
-      defaultValue: 'No items to display',
-      helpText: 'Message shown when data array is empty',
-    },
-  ],
-  configurableStyles: [],
-  sizeConstraints: {
-    minWidth: 200,
-    minHeight: 100,
-    maxWidth: 3000,
-    maxHeight: 5000,
-  },
-  pluginId: 'datalist-component-plugin',
-  pluginVersion: '1.0.0',
-  canHaveChildren: false,
 };
 
 /**
@@ -1262,6 +1176,14 @@ const sidebarNavManifest: ComponentManifest = {
   pluginId: 'navbar-component-plugin',
   pluginVersion: '1.0.0',
   canHaveChildren: false,
+  capabilities: {
+    canHaveChildren: false,
+    isContainer: false,
+    hasDataSource: false,
+    autoHeight: false,
+    isResizable: true,
+    supportsTemplateBindings: true,
+  },
 };
 
 /**
@@ -1339,6 +1261,14 @@ const topHeaderBarManifest: ComponentManifest = {
   pluginId: 'navbar-component-plugin',
   pluginVersion: '1.0.0',
   canHaveChildren: false,
+  capabilities: {
+    canHaveChildren: false,
+    isContainer: false,
+    hasDataSource: false,
+    autoHeight: false,
+    isResizable: true,
+    supportsTemplateBindings: true,
+  },
 };
 
 /**
@@ -1399,6 +1329,14 @@ const loginFormManifest: ComponentManifest = {
   pluginId: 'auth-component-plugin',
   pluginVersion: '1.0.0',
   canHaveChildren: false,
+  capabilities: {
+    canHaveChildren: false,
+    isContainer: false,
+    hasDataSource: false,
+    autoHeight: false,
+    isResizable: true,
+    supportsTemplateBindings: true,
+  },
 };
 
 /**
@@ -1468,6 +1406,14 @@ const registerFormManifest: ComponentManifest = {
   pluginId: 'auth-component-plugin',
   pluginVersion: '1.0.0',
   canHaveChildren: false,
+  capabilities: {
+    canHaveChildren: false,
+    isContainer: false,
+    hasDataSource: false,
+    autoHeight: false,
+    isResizable: true,
+    supportsTemplateBindings: true,
+  },
 };
 
 /**
@@ -1525,6 +1471,14 @@ const socialLoginButtonsManifest: ComponentManifest = {
   pluginId: 'auth-component-plugin',
   pluginVersion: '1.0.0',
   canHaveChildren: false,
+  capabilities: {
+    canHaveChildren: false,
+    isContainer: false,
+    hasDataSource: false,
+    autoHeight: false,
+    isResizable: true,
+    supportsTemplateBindings: true,
+  },
 };
 
 /**
@@ -1573,6 +1527,14 @@ const forgotPasswordFormManifest: ComponentManifest = {
   pluginId: 'auth-component-plugin',
   pluginVersion: '1.0.0',
   canHaveChildren: false,
+  capabilities: {
+    canHaveChildren: false,
+    isContainer: false,
+    hasDataSource: false,
+    autoHeight: false,
+    isResizable: true,
+    supportsTemplateBindings: true,
+  },
 };
 
 /**
@@ -1688,6 +1650,14 @@ const newsletterFormManifest: ComponentManifest = {
   pluginId: 'newsletter-form-plugin',
   pluginVersion: '1.0.0',
   canHaveChildren: false,
+  capabilities: {
+    canHaveChildren: false,
+    isContainer: false,
+    hasDataSource: false,
+    autoHeight: false,
+    isResizable: true,
+    supportsTemplateBindings: true,
+  },
 };
 
 /**
@@ -1740,6 +1710,14 @@ const logoutButtonManifest: ComponentManifest = {
   pluginId: 'auth-component-plugin',
   pluginVersion: '1.0.0',
   canHaveChildren: false,
+  capabilities: {
+    canHaveChildren: false,
+    isContainer: false,
+    hasDataSource: false,
+    autoHeight: false,
+    isResizable: true,
+    supportsTemplateBindings: true,
+  },
 };
 
 /**
@@ -1759,10 +1737,6 @@ export const builtInManifests: Record<string, ComponentManifest> = {
   'core-ui:Container': containerManifest,
   'core-ui:Textbox': textboxManifest,
   'core-ui:Image': imageManifest,
-
-  // Data components
-  'repeater-component-plugin:Repeater': repeaterManifest,
-  'datalist-component-plugin:DataList': dataListManifest,
 
   // Navbar components
   'navbar-component-plugin:NavbarDefault': navbarDefaultManifest,

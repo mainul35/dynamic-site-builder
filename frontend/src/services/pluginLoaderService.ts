@@ -42,19 +42,16 @@ const PLUGIN_API_BASE = '/api/plugins';
 
 /**
  * Maps plugin IDs to their global variable names (used by IIFE bundles)
+ *
+ * NOTE: This mapping is only needed for plugins that don't follow the naming convention.
+ * The convention is: 'my-plugin-name' -> 'MyPluginName' (kebab-case to PascalCase)
+ *
+ * Only add entries here if a plugin has an unconventional global variable name.
+ * New plugins should follow the convention and won't need an entry here.
  */
 const PLUGIN_GLOBAL_NAMES: Record<string, string> = {
-  'navbar-component-plugin': 'NavbarComponentPlugin',
-  'label-component-plugin': 'LabelComponentPlugin',
-  'button-component-plugin': 'ButtonComponentPlugin',
-  'textbox-component-plugin': 'TextboxComponentPlugin',
-  'container-layout-plugin': 'ContainerLayoutPlugin',
-  'scrollable-container-plugin': 'ScrollableContainerPlugin',
-  'image-component-plugin': 'ImageComponentPlugin',
-  'auth-component-plugin': 'AuthComponentPlugin',
-  'repeater-component-plugin': 'RepeaterComponentPlugin',
-  'horizontal-row-plugin': 'HorizontalRowComponentPlugin',
-  'newsletter-form-plugin': 'NewsletterFormPlugin',
+  // Add plugin entries here only if they don't follow the naming convention
+  // Example: 'my-custom-plugin': 'MyCustomPluginWithDifferentName'
 };
 
 /**
@@ -72,22 +69,33 @@ const VIRTUAL_PLUGIN_MAPPINGS: Record<string, string[]> = {
   'core-navbar': [
     'navbar-component-plugin',
   ],
-  'core-components': [
-    'repeater-component-plugin',
+  'core-layout': [
+    'container-layout-plugin',
   ],
 };
 
 /**
  * Maps componentId to the actual plugin that provides it
- * Used for registering renderers under alias plugin IDs
+ * Used for registering renderers under alias plugin IDs (virtual plugins like 'core-ui')
+ *
+ * NOTE: This mapping enables virtual plugins to work. When a virtual plugin like 'core-ui'
+ * is loaded, the system needs to know which componentIds belong to which actual plugins
+ * so it can register renderers under the virtual plugin ID as aliases.
+ *
+ * CONVENTION: New plugins should be added to their appropriate virtual plugin group
+ * in VIRTUAL_PLUGIN_MAPPINGS and have their componentIds added here.
+ *
+ * FUTURE: This could be made dynamic by having plugins export their componentIds
+ * in their bundle metadata, allowing automatic discovery.
  */
 const COMPONENT_TO_PLUGIN_MAPPING: Record<string, string> = {
+  // Core UI components
   'Label': 'label-component-plugin',
   'Button': 'button-component-plugin',
   'Container': 'container-layout-plugin',
   'Textbox': 'textbox-component-plugin',
   'Image': 'image-component-plugin',
-  'Repeater': 'repeater-component-plugin',
+  // Form components
   'NewsletterForm': 'newsletter-form-plugin',
 };
 

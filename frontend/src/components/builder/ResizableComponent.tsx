@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { ComponentInstance, ComponentSize } from '../../types/builder';
 import { useBuilderStore } from '../../stores/builderStore';
+import { capabilityService } from '../../services/componentCapabilityService';
 import './ResizableComponent.css';
 
 type ResizeHandle = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw';
@@ -330,15 +331,13 @@ export const ResizableComponent: React.FC<ResizableComponentProps> = ({
     );
   };
 
-  // Check if this is a layout component
-  const isLayoutComponent = component.componentCategory?.toLowerCase() === 'layout';
-  // Check if this is a data container component (Repeater, DataList)
-  const isDataContainerComponent = component.componentCategory?.toLowerCase() === 'data' &&
-    (component.componentId === 'Repeater' || component.componentId === 'DataList');
-  // Layout components use auto height only if explicitly set to 'auto', otherwise use stored height
-  // Data container components (Repeater, DataList) always use auto height to wrap children
+  // Use capability service to check if component should auto-height
   const hasExplicitHeight = component.size.height && component.size.height !== 'auto';
-  const shouldAutoHeight = (isLayoutComponent && !hasExplicitHeight) || isDataContainerComponent;
+  const shouldAutoHeight = capabilityService.shouldAutoHeight(component) && !hasExplicitHeight;
+  // Check if component is a layout container
+  const isLayoutComponent = capabilityService.isContainer(component);
+  // Check if component is a data container (like Repeater) - has data source capability
+  const isDataContainerComponent = capabilityService.hasDataSource(component);
 
   // Child components (with parentId) should size naturally within parent's grid/flex layout
   const isChildComponent = !!component.parentId;
