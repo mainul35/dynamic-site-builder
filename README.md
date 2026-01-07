@@ -5346,13 +5346,16 @@ The VSD IntelliJ Plugin provides IDE support for developing Visual Site Builder 
 
 ### What is the VSD IntelliJ Plugin?
 
-The VSD IntelliJ Plugin is an IDE extension that:
+The VSD IntelliJ Plugin (also known as **VSD Component Helper**) is an IDE extension that:
 
 1. **Build & Deploy Plugins** - One-click build and deployment to your VSD installation
-2. **Generates TypeScript Types** - Automatically creates typed interfaces for all plugin components from the component manifest
-3. **Enables Cross-Plugin Imports** - Provides `@vsd/plugin-id` import aliases for using components from other plugins
-4. **Provides Code Completion** - Offers IntelliSense for component props, styles, and factory functions
-5. **Watches for Changes** - Automatically regenerates types when plugin renderers or manifests change
+2. **Component Explorer** - Browse all available components in a dedicated tool window
+3. **Generates TypeScript Types** - Automatically creates typed interfaces for all plugin components
+4. **Enables Cross-Plugin Imports** - Provides `@vsd/plugin-id` import aliases for using components from other plugins
+5. **Code Completion** - IntelliSense for component props, styles, and factory functions (TypeScript & Java)
+6. **Maven Module Auto-Import** - Automatically imports plugin Maven modules for navigation and completion
+7. **Quick Documentation** - Hover documentation for component IDs, props, and styles
+8. **Watches for Changes** - Automatically regenerates types when plugin renderers or manifests change
 
 ### How It Works
 
@@ -5533,46 +5536,64 @@ Extend your `tsconfig.json` with the generated paths:
 }
 ```
 
-#### 5. Configure Build & Deploy (New in v1.1.0)
+#### 5. Configure Build & Deploy with Hot-Reload (v1.2.0)
 
-Set up one-click plugin deployment:
+Set up one-click plugin deployment with optional CMS hot-reload:
 
 1. Go to **Settings > Tools > VSD Plugin Deployment**
 2. Set the **Target Plugins Directory** to your VSD installation's `plugins/` folder
    - Example: `C:\path\to\dynamic-site-builder\plugins`
-3. Optionally enable **Restart Reminder** to be reminded to restart the backend
+3. (Optional) Configure **CMS Hot-Reload API**:
+   - **CMS API URL**: Base URL of your running CMS (e.g., `http://localhost:8080`)
+   - **Auth Token**: JWT Bearer token for admin authentication
 
 ### Build & Deploy Workflow
 
-The VSD IntelliJ Plugin streamlines the plugin development cycle:
+The VSD IntelliJ Plugin streamlines the plugin development cycle with optional hot-reload:
 
 ```mermaid
 flowchart LR
     A[Edit Plugin Code] --> B[Build & Deploy]
     B --> C[JAR copied to plugins/]
-    C --> D[Restart Backend]
-    D --> E[Test in Browser]
-    E --> A
+    C --> D{Hot-Reload Configured?}
+    D -->|Yes| E[Upload to CMS API]
+    E --> F[Plugin Hot-Reloaded]
+    F --> G[Test in Browser]
+    D -->|No| H[Restart Backend]
+    H --> G
+    G --> A
 ```
 
 **Using Build & Deploy:**
 
-1. **From Menu:** Tools > VSD > Build & Deploy Plugin
-2. **From Context Menu:** Right-click on plugin folder > "Build & Deploy VSD Plugin"
+1. **From Component Explorer:** Select a plugin in the tree → Click **Build** button
+2. **From Menu:** Tools > VSD > Build & Deploy Plugin
+3. **From Context Menu:** Right-click on plugin folder > "Build & Deploy VSD Plugin"
 
 **What It Does:**
 
 1. Detects the plugin directory (looks for `pom.xml` and `plugin.yml`)
-2. Runs `mvn package -DskipTests` to build the JAR
+2. Runs `mvn clean package -DskipTests` to build a fresh JAR
 3. Copies the JAR to your configured plugins directory
-4. Shows a success notification with deployment details
+4. If CMS API is configured, uploads the JAR for hot-reload (no restart needed)
+5. Shows a success notification with deployment details
 
-**Example Workflow:**
+**Example Workflow (with Hot-Reload):**
 
 ```bash
 # 1. Make changes to your plugin (e.g., label-component-plugin)
-# 2. In IntelliJ, right-click on the plugin folder
-# 3. Select "Build & Deploy VSD Plugin"
+# 2. In IntelliJ, select the plugin in Component Explorer
+# 3. Click the "Build" button
+# 4. Plugin is automatically hot-reloaded in the running CMS
+# 5. Refresh browser and verify changes immediately!
+```
+
+**Example Workflow (without Hot-Reload):**
+
+```bash
+# 1. Make changes to your plugin (e.g., label-component-plugin)
+# 2. In IntelliJ, select the plugin in Component Explorer
+# 3. Click the "Build" button
 # 4. Restart the VSD backend:
 cd core
 mvn spring-boot:run
@@ -5647,6 +5668,214 @@ The component manifest provides metadata for type generation. It's typically gen
 | `URL` | `string` |
 | `JSON` | `string \| Record<string, unknown>` |
 
+### Plugin Development Workflow
+
+The VSD IntelliJ Plugin streamlines the entire plugin development lifecycle:
+
+```mermaid
+flowchart LR
+    A[1. Create Plugin<br/>in plugins/ folder] --> B[2. IDE Auto-Registers<br/>Plugin Module]
+    B --> C[3. Develop Code<br/>with Completion]
+    C --> D[4. Build Plugin<br/>via IDE Tool Window]
+    D --> E[5. Upload JAR<br/>in Web CMS UI]
+    E --> F[6. Plugin Active<br/>Instantly]
+
+    style A fill:#e1f5ff
+    style F fill:#d4edda
+```
+
+#### Step 1: Create Plugin Structure
+
+Create a new folder in the `plugins/` directory with the standard convention:
+
+```
+plugins/
+└── my-component-plugin/
+    ├── pom.xml                              # Maven build config
+    ├── frontend/
+    │   ├── package.json
+    │   ├── vite.config.ts
+    │   └── src/
+    │       ├── index.ts
+    │       └── renderers/
+    │           └── MyComponentRenderer.tsx
+    └── src/main/
+        ├── java/dev/mainul35/plugins/ui/
+        │   └── MyComponentPlugin.java
+        └── resources/
+            └── plugin.yml                   # Plugin manifest
+```
+
+#### Step 2: IDE Auto-Registration
+
+Once you create the plugin folder with `pom.xml`:
+
+- The **Maven Module Auto-Import** feature detects the new module
+- IntelliJ adds it to the Maven project manager automatically
+- Code completion, navigation, and refactoring become available
+- The plugin appears in the **Component Explorer** tool window
+
+#### Step 3: Develop with IDE Support
+
+Write your plugin code with full IDE assistance:
+
+- **Java completion** for `PropDefinition`, `StyleDefinition`, helper methods
+- **TypeScript completion** for renderer props and cross-plugin imports
+- **Quick documentation** on hover for component APIs
+- **Error highlighting** and type checking
+
+#### Step 4: Build Plugin via IDE
+
+Use the **Build Plugin** feature in the VSD tool window (left sidebar):
+
+1. Select your plugin in the Component Explorer
+2. Click **Build** or use **Tools > VSD > Build & Deploy Plugin**
+3. The IDE runs `mvn package -DskipTests`
+4. Progress and results shown in notifications
+
+The built JAR is created at: `plugins/my-component-plugin/target/my-component-plugin-1.0.0.jar`
+
+#### Step 5: Upload to Web CMS
+
+1. Open the VSD Web CMS UI in your browser
+2. Navigate to **Settings > Plugin Management** (or similar admin section)
+3. Click **Upload Plugin**
+4. Select the built JAR file from the plugin's `target/` directory
+5. The plugin is uploaded and registered
+
+#### Step 6: Instant Activation
+
+Once uploaded, the plugin:
+
+- Registers in the component registry immediately
+- Appears in the Component Palette
+- Is ready to drag-and-drop onto pages
+- No backend restart required
+
+### Build & Deploy Configuration
+
+For local development, you can also configure direct deployment:
+
+**Setup:**
+
+1. Configure the target directory: **Settings > Tools > VSD Plugin Deployment**
+2. Set the path to your VSD plugins directory (e.g., `C:\path\to\dynamic-site-builder\plugins`)
+3. Optionally enable "Show restart reminder after deployment"
+
+**Usage Options:**
+
+- **Menu**: Tools > VSD > Build & Deploy Plugin
+- **Context Menu**: Right-click on plugin folder > Build & Deploy VSD Plugin
+- **Keyboard Shortcut**: Configure in Settings > Keymap > VSD
+
+**What gets deployed:**
+
+- The plugin reads `plugin.yml` to get the plugin-id and version
+- Builds `target/{plugin-id}-{version}.jar`
+- Copies to `{target-directory}/{plugin-id}-{version}.jar`
+
+### Component Explorer Tool Window
+
+The Component Explorer provides a visual browser for all registered VSD components:
+
+**Features:**
+- **Tree View** - Plugins and components displayed hierarchically
+- **Props & Styles** - Expandable nodes showing all props and styles for each component
+- **Search** - Filter components by name or description
+- **Details View** - Double-click any component to see full documentation
+
+**Opening the Tool Window:**
+- View > Tool Windows > Component Explorer
+- Or click the "Component Explorer" tab in the bottom/side panel
+
+**Tree Structure:**
+```
+VSD Components
+├── label-component-plugin
+│   └── Label
+│       ├── Props (4)
+│       │   ├── text: STRING
+│       │   ├── variant: SELECT
+│       │   └── ...
+│       └── Styles (3)
+│           ├── color: color
+│           └── ...
+├── button-component-plugin
+│   └── Button
+└── ...
+```
+
+### Code Completion
+
+#### TypeScript/JavaScript Completion
+
+```typescript
+// Type getRenderer(' and press Ctrl+Space
+const LabelRenderer = getRenderer('Label', 'label-component-plugin');
+
+// Inside props block, press Ctrl+Space for prop suggestions
+const instance = {
+  componentId: 'Label',
+  props: {
+    // Ctrl+Space here shows: text, variant, htmlTag, textAlign, etc.
+  }
+};
+
+// Cross-plugin imports
+import { ButtonRenderer } from '@vsd/button-component-plugin';
+```
+
+#### Java Completion
+
+```java
+@Override
+protected List<PropDefinition> defineProps() {
+    return List.of(
+        // Type 'string' and press Ctrl+Space for helper methods
+        stringProp("name", "default"),
+        selectProp("variant", "primary", List.of("primary", "secondary")),
+        booleanProp("disabled", false),
+
+        // Type 'PropDefinition.builder' for full template
+        PropDefinition.builder()
+            .name("custom")
+            .type(PropDefinition.PropType.STRING) // Ctrl+Space after PropType.
+            .build()
+    );
+}
+```
+
+### Maven Module Auto-Import
+
+The plugin automatically detects and imports plugin Maven modules:
+
+- Scans the `plugins/` directory for `pom.xml` files
+- Adds them to IntelliJ's Maven project manager
+- Enables code completion, navigation, and refactoring in plugin Java code
+- Works automatically when the project opens
+
+### Quick Documentation
+
+Hover over component IDs, plugin IDs, or prop names and press `Ctrl+Q` (or `F1` on Mac) to see:
+
+- Component description and metadata
+- Prop types, defaults, and requirements
+- Style properties and categories
+- Usage examples
+
+### IDE Actions
+
+Access via **Tools > VSD** menu:
+
+| Action | Description |
+|--------|-------------|
+| **Build & Deploy Plugin** | Build and deploy current plugin to VSD |
+| **Configure Deployment** | Open deployment settings |
+| **Scan Plugins** | Run the component scanner CLI |
+| **Refresh Manifest** | Reload the component manifest |
+| **Insert Component** | Insert a component instance at cursor |
+| **Generate Plugin Types** | Regenerate TypeScript types |
+
 ### Triggering Type Regeneration
 
 Types are regenerated automatically when:
@@ -5655,7 +5884,7 @@ Types are regenerated automatically when:
 - Renderer files (`*.ts`, `*.tsx`) in `plugins/*/frontend/src/renderers/` change
 - The `component-manifest.json` file changes
 
-You can also manually trigger regeneration via the IDE action (if configured).
+You can also manually trigger regeneration via **Tools > VSD > Generate Plugin Types**.
 
 ---
 
