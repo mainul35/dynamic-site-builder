@@ -22,6 +22,9 @@ interface ComponentState {
   // Cached manifests
   manifestCache: Map<string, ComponentManifest>;
 
+  // Refresh trigger - increment to signal palette should reload
+  refreshTrigger: number;
+
   // Actions
   setComponents: (components: ComponentRegistryEntry[]) => void;
   addComponent: (component: ComponentRegistryEntry) => void;
@@ -36,6 +39,7 @@ interface ComponentState {
   getFilteredComponents: () => ComponentRegistryEntry[];
   getCategories: () => string[];
   clearCache: () => void;
+  triggerRefresh: () => void;
 }
 
 /**
@@ -49,6 +53,7 @@ export const useComponentStore = create<ComponentState>((set, get) => ({
   selectedCategory: null,
   searchQuery: '',
   manifestCache: new Map(),
+  refreshTrigger: 0,
 
   /**
    * Set all components and rebuild category map
@@ -254,5 +259,13 @@ export const useComponentStore = create<ComponentState>((set, get) => ({
       isLoading: false,
       error: null
     });
+  },
+
+  /**
+   * Trigger a refresh of the component list
+   * Call this after admin actions (delete, activate, deactivate) to sync the palette
+   */
+  triggerRefresh: () => {
+    set((state) => ({ refreshTrigger: state.refreshTrigger + 1 }));
   }
 }));

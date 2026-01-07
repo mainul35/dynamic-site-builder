@@ -1,0 +1,353 @@
+/* Component Upload Modal Styles - Using cup- prefix to avoid conflicts */
+
+.cup-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cup-description {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+/* Drop Zone */
+.cup-dropzone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  padding: 24px;
+  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+  background-color: #f9fafb;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cup-dropzone:hover {
+  border-color: #9ca3af;
+  background-color: #f3f4f6;
+}
+
+.cup-dropzone.active {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+  border-style: solid;
+}
+
+.cup-dropzone.has-file {
+  border-color: #10b981;
+  background-color: #ecfdf5;
+  border-style: solid;
+}
+
+.cup-dropzone.error {
+  border-color: #ef4444;
+  background-color: #fef2f2;
+}
+
+.cup-file-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Dropzone Content (idle state) */
+.cup-dropzone-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.cup-dropzone-icon {
+  color: #9ca3af;
+}
+
+.cup-dropzone.active .cup-dropzone-icon {
+  color: #3b82f6;
+}
+
+.cup-dropzone-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cup-dropzone-primary {
+  font-size: 16px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.cup-dropzone-secondary {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.cup-browse-link {
+  color: #3b82f6;
+  font-weight: 500;
+  text-decoration: underline;
+}
+
+.cup-dropzone-hint {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* File Preview */
+.cup-file-preview {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 12px 16px;
+  background-color: white;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+}
+
+.cup-file-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: white;
+  letter-spacing: 0.5px;
+}
+
+.cup-file-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.cup-file-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cup-file-size {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.cup-file-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 18px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cup-file-remove:hover {
+  background-color: #fee2e2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+/* Uploading State */
+.cup-uploading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #6b7280;
+}
+
+.cup-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: cup-spin 0.8s linear infinite;
+}
+
+@keyframes cup-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Messages */
+.cup-message {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.cup-message-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.cup-error {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+}
+
+.cup-error .cup-message-icon {
+  background-color: #dc2626;
+  color: white;
+}
+
+.cup-success {
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #059669;
+}
+
+.cup-success .cup-message-icon {
+  background-color: #059669;
+  color: white;
+}
+
+/* Requirements List */
+.cup-requirements {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.8;
+}
+
+.cup-requirements code {
+  background-color: #f3f4f6;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 12px;
+  color: #374151;
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .cup-description {
+    color: #9ca3af;
+  }
+
+  .cup-dropzone {
+    border-color: #4b5563;
+    background-color: #1f2937;
+  }
+
+  .cup-dropzone:hover {
+    border-color: #6b7280;
+    background-color: #374151;
+  }
+
+  .cup-dropzone.active {
+    border-color: #60a5fa;
+    background-color: #1e3a5f;
+  }
+
+  .cup-dropzone.has-file {
+    border-color: #34d399;
+    background-color: #064e3b;
+  }
+
+  .cup-dropzone.error {
+    border-color: #f87171;
+    background-color: #450a0a;
+  }
+
+  .cup-dropzone-primary {
+    color: #f9fafb;
+  }
+
+  .cup-dropzone-secondary {
+    color: #9ca3af;
+  }
+
+  .cup-browse-link {
+    color: #60a5fa;
+  }
+
+  .cup-dropzone-hint {
+    color: #6b7280;
+  }
+
+  .cup-file-preview {
+    background-color: #374151;
+    border-color: #4b5563;
+  }
+
+  .cup-file-name {
+    color: #f9fafb;
+  }
+
+  .cup-file-size {
+    color: #9ca3af;
+  }
+
+  .cup-file-remove {
+    border-color: #4b5563;
+    color: #9ca3af;
+  }
+
+  .cup-file-remove:hover {
+    background-color: #450a0a;
+    border-color: #f87171;
+    color: #f87171;
+  }
+
+  .cup-error {
+    background-color: #450a0a;
+    border-color: #7f1d1d;
+    color: #f87171;
+  }
+
+  .cup-success {
+    background-color: #064e3b;
+    border-color: #065f46;
+    color: #34d399;
+  }
+
+  .cup-requirements {
+    color: #9ca3af;
+  }
+
+  .cup-requirements code {
+    background-color: #374151;
+    color: #d1d5db;
+  }
+}

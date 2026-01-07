@@ -3,6 +3,7 @@ import { ModalBase, ModalSection, ModalActions, ModalButton } from './ModalBase'
 import { useUIPreferencesStore } from '../../stores/uiPreferencesStore';
 import { useAuthStore } from '../../stores/authStore';
 import { PublicApiPatternsSection } from '../admin/PublicApiPatternsSection';
+import { ComponentManagementTab } from '../settings/ComponentManagementTab';
 import './SettingsModal.css';
 
 export interface SettingsModalProps {
@@ -10,7 +11,7 @@ export interface SettingsModalProps {
   onClose: () => void;
 }
 
-type SettingsTab = 'general' | 'editor' | 'keyboard' | 'security';
+type SettingsTab = 'general' | 'editor' | 'keyboard' | 'security' | 'components';
 
 /**
  * SettingsModal - Application settings modal
@@ -20,12 +21,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const uiPreferences = useUIPreferencesStore();
   const { isAdmin } = useAuthStore();
 
-  // Build tabs list - Security tab only visible to admins
+  // Build tabs list - Security and Components tabs only visible to admins
   const tabs: { id: SettingsTab; label: string }[] = [
     { id: 'general', label: 'General' },
     { id: 'editor', label: 'Editor' },
     { id: 'keyboard', label: 'Shortcuts' },
-    ...(isAdmin() ? [{ id: 'security' as SettingsTab, label: 'Security' }] : []),
+    ...(isAdmin() ? [
+      { id: 'security' as SettingsTab, label: 'Security' },
+      { id: 'components' as SettingsTab, label: 'Components' },
+    ] : []),
   ];
 
   const footer = (
@@ -261,6 +265,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         {activeTab === 'security' && isAdmin() && (
           <div className="settings-panel">
             <PublicApiPatternsSection />
+          </div>
+        )}
+
+        {activeTab === 'components' && isAdmin() && (
+          <div className="settings-panel">
+            <ComponentManagementTab />
           </div>
         )}
       </div>

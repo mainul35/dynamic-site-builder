@@ -19,6 +19,7 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({ onComponentD
     searchQuery,
     isLoading,
     error,
+    refreshTrigger,
     setComponents,
     setSelectedCategory,
     setSearchQuery,
@@ -30,10 +31,10 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({ onComponentD
 
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
-  // Load components on mount
+  // Load components on mount and when refreshTrigger changes (from admin panel actions)
   useEffect(() => {
     loadComponents();
-  }, []);
+  }, [refreshTrigger]);
 
   const loadComponents = async () => {
     setLoading(true);

@@ -1,0 +1,332 @@
+/* Manifest Editor Modal Styles - Using mem- prefix to avoid conflicts */
+
+.mem-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Mode Toggle */
+.mem-mode-toggle {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background-color: #f3f4f6;
+  border-radius: 8px;
+  width: fit-content;
+}
+
+.mem-mode-btn {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.mem-mode-btn:hover:not(:disabled) {
+  color: #374151;
+}
+
+.mem-mode-btn.active {
+  background-color: white;
+  color: #111827;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.mem-mode-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Messages */
+.mem-message {
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.mem-error {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+}
+
+.mem-success {
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #059669;
+}
+
+/* Form Grid */
+.mem-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.mem-form-grid-4 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 640px) {
+  .mem-form-grid,
+  .mem-form-grid-4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Inputs */
+.mem-input,
+.mem-select {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background-color: white;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.mem-input:focus,
+.mem-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.mem-input:disabled,
+.mem-select:disabled {
+  background-color: #f9fafb;
+  cursor: not-allowed;
+}
+
+.mem-input-icon {
+  width: 60px;
+  text-align: center;
+  font-size: 18px;
+}
+
+/* Checkboxes */
+.mem-checkbox-row {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.mem-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
+}
+
+.mem-checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+/* JSON Editor */
+.mem-json-editor {
+  position: relative;
+}
+
+.mem-json-textarea {
+  width: 100%;
+  min-height: 300px;
+  padding: 16px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background-color: #f9fafb;
+  resize: vertical;
+  tab-size: 2;
+}
+
+.mem-json-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.mem-json-textarea.error {
+  border-color: #ef4444;
+}
+
+.mem-json-textarea.error:focus {
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+.mem-json-textarea:disabled {
+  background-color: #e5e7eb;
+  cursor: not-allowed;
+}
+
+.mem-json-error {
+  margin-top: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  color: #dc2626;
+}
+
+/* Preview Card */
+.mem-preview-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.mem-preview-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background-color: #e5e7eb;
+  border-radius: 8px;
+  font-size: 24px;
+}
+
+.mem-preview-info {
+  flex: 1;
+}
+
+.mem-preview-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.mem-preview-meta {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.mem-preview-id {
+  font-family: monospace;
+  background-color: #e5e7eb;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.mem-preview-category {
+  text-transform: capitalize;
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .mem-mode-toggle {
+    background-color: #374151;
+  }
+
+  .mem-mode-btn {
+    color: #9ca3af;
+  }
+
+  .mem-mode-btn:hover:not(:disabled) {
+    color: #e5e7eb;
+  }
+
+  .mem-mode-btn.active {
+    background-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .mem-error {
+    background-color: #450a0a;
+    border-color: #7f1d1d;
+    color: #f87171;
+  }
+
+  .mem-success {
+    background-color: #064e3b;
+    border-color: #065f46;
+    color: #34d399;
+  }
+
+  .mem-input,
+  .mem-select {
+    background-color: #1f2937;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .mem-input:focus,
+  .mem-select:focus {
+    border-color: #60a5fa;
+  }
+
+  .mem-input:disabled,
+  .mem-select:disabled {
+    background-color: #374151;
+  }
+
+  .mem-checkbox-label {
+    color: #d1d5db;
+  }
+
+  .mem-json-textarea {
+    background-color: #1f2937;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .mem-json-textarea:focus {
+    border-color: #60a5fa;
+  }
+
+  .mem-json-textarea.error {
+    border-color: #f87171;
+  }
+
+  .mem-json-textarea:disabled {
+    background-color: #374151;
+  }
+
+  .mem-json-error {
+    background-color: #450a0a;
+    border-color: #7f1d1d;
+    color: #f87171;
+  }
+
+  .mem-preview-card {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .mem-preview-icon {
+    background-color: #374151;
+  }
+
+  .mem-preview-name {
+    color: #f9fafb;
+  }
+
+  .mem-preview-meta {
+    color: #9ca3af;
+  }
+
+  .mem-preview-id {
+    background-color: #374151;
+    color: #d1d5db;
+  }
+}
