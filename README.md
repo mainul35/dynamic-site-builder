@@ -5536,7 +5536,7 @@ Extend your `tsconfig.json` with the generated paths:
 }
 ```
 
-#### 5. Configure Build & Deploy with Hot-Reload (v1.2.0)
+#### 5. Configure Build & Deploy with Hot-Reload (v1.3.0)
 
 Set up one-click plugin deployment with optional CMS hot-reload:
 
@@ -5549,7 +5549,7 @@ Set up one-click plugin deployment with optional CMS hot-reload:
 
 ### Build & Deploy Workflow
 
-The VSD IntelliJ Plugin streamlines the plugin development cycle with optional hot-reload:
+The VSD IntelliJ Plugin streamlines the plugin development cycle with full-stack builds and optional hot-reload:
 
 ```mermaid
 flowchart LR
@@ -5573,10 +5573,14 @@ flowchart LR
 **What It Does:**
 
 1. Detects the plugin directory (looks for `pom.xml` and `plugin.yml`)
-2. Runs `mvn clean package -DskipTests` to build a fresh JAR
-3. Copies the JAR to your configured plugins directory
-4. If CMS API is configured, uploads the JAR for hot-reload (no restart needed)
-5. Shows a success notification with deployment details
+2. Builds frontend (if `frontend/` folder exists): runs `npm install` and `npm run build`
+3. Runs `mvn clean package -DskipTests` to build a fresh JAR with frontend bundle
+4. Copies the JAR to your configured plugins directory
+5. If CMS API is configured, uploads the JAR for hot-reload (no restart needed)
+6. CMS automatically reloads the plugin frontend bundle with cache-busting
+7. Shows a success notification with deployment details
+
+**Note:** After hot-reload, existing components on the canvas will use the old renderer until you remove and re-add them. New components dragged from the palette will use the updated renderer immediately.
 
 **Example Workflow (with Hot-Reload):**
 
