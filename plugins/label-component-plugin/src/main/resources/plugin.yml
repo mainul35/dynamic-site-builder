@@ -24,7 +24,7 @@ ui-component:
   component-id: label
   display-name: Label
   category: ui
-  icon: T
+  icon: Label
   description: Text label component for displaying headings, paragraphs, or any text content
 
   # Default dimensions

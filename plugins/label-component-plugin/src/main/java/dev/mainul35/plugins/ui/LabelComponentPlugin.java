@@ -21,7 +21,7 @@ import java.util.Map;
     componentId = "label",
     displayName = "Label",
     category = "ui",
-    icon = "T",
+    icon = "Label",
     resizable = true,
     defaultWidth = "200px",
     defaultHeight = "auto",
