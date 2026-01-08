@@ -5580,7 +5580,7 @@ flowchart LR
 6. CMS automatically reloads the plugin frontend bundle with cache-busting
 7. Shows a success notification with deployment details
 
-**Note:** After hot-reload, existing components on the canvas will use the old renderer until you remove and re-add them. New components dragged from the palette will use the updated renderer immediately.
+**Note:** After hot-reload, all components automatically update to use the new renderer code without requiring a browser refresh. The CMS uses cache-busting and direct JAR reading to ensure the latest plugin bundle is served immediately.
 
 **Example Workflow (with Hot-Reload):**
 
