@@ -30,8 +30,9 @@ export interface ComponentInstance {
 }
 
 export interface RendererProps {
-  component: ComponentInstance;
-  isEditMode: boolean;
+  component?: ComponentInstance;
+  isEditMode?: boolean;
+  [key: string]: unknown;
 }
 
 export type RendererComponent = React.FC<RendererProps>;
