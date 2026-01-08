@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { ComponentInstance } from '../../../types/builder';
 import { RendererRegistry, RendererComponent, RendererProps } from './RendererRegistry';
 import { loadPlugin, isPluginLoaded } from '../../../services/pluginLoaderService';
+import { useBuilderStore } from '../../../stores/builderStore';
 
 // Re-export types for convenience
 export type { RendererProps, RendererComponent };
@@ -91,18 +92,31 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({ component,
   const [DynamicRenderer, setDynamicRenderer] = useState<RendererComponent | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Try to get renderer from registry
-  const Renderer = RendererRegistry.get(component.componentId, component.pluginId);
+  // Subscribe to rendererVersion to force re-render when plugins are reloaded
+  const rendererVersion = useBuilderStore((state) => state.rendererVersion);
 
-  // Debug logging - disabled to reduce console spam
-  // Uncomment for debugging component resolution issues:
-  // if (import.meta.env.DEV && !Renderer) {
-  //   console.log('[ComponentRenderer] Lookup (not found):', {
-  //     componentId: component.componentId,
-  //     pluginId: component.pluginId,
-  //     registeredKeys: RendererRegistry.debugGetAllKeys(),
-  //   });
-  // }
+  // Get renderer from registry - useMemo ensures we re-fetch when rendererVersion changes
+  const Renderer = useMemo(() => {
+    return RendererRegistry.get(component.componentId, component.pluginId);
+  }, [component.componentId, component.pluginId, rendererVersion]);
+
+  // When rendererVersion changes (plugin reloaded), clear dynamic renderer to get fresh one
+  useEffect(() => {
+    if (rendererVersion > 0) {
+      setDynamicRenderer(null);
+    }
+  }, [rendererVersion]);
+
+  // Debug logging for component resolution
+  if (import.meta.env.DEV) {
+    console.log('[ComponentRenderer] Lookup:', {
+      componentId: component.componentId,
+      pluginId: component.pluginId,
+      found: !!Renderer,
+      rendererVersion,
+      registeredKeys: RendererRegistry.debugGetAllKeys(),
+    });
+  }
 
   // If no renderer found, try loading the plugin dynamically
   useEffect(() => {
@@ -150,7 +164,8 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({ component,
   const FinalRenderer = Renderer || DynamicRenderer;
 
   if (FinalRenderer) {
-    return <FinalRenderer component={component} isEditMode={isEditMode} />;
+    // Use rendererVersion in key to force remount when plugin is reloaded
+    return <FinalRenderer key={`${component.instanceId}-v${rendererVersion}`} component={component} isEditMode={isEditMode} />;
   }
 
   // Loading state

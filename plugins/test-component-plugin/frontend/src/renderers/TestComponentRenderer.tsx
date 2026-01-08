@@ -5,12 +5,13 @@ const TestComponentRenderer: React.FC<RendererProps> = ({ component, isEditMode 
   const props = component?.props || {};
   const styles = component?.styles || {};
 
-  const text = (props.text as string) || 'Hello Mainul';
+  const text = (props.text as string) || 'Hello Syed Hasan';
   const backgroundColor = (styles.backgroundColor as string) || '#ffffff';
   const color = (styles.color as string) || '#333333';
   const padding = (styles.padding as string) || '16px';
 
   const containerStyle: React.CSSProperties = {
+    fontWeight: "bold",
     backgroundColor,
     color,
     padding,

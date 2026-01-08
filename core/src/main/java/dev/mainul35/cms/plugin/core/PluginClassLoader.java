@@ -8,6 +8,8 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 /**
  * Custom ClassLoader for loading plugin classes in isolation.
@@ -18,6 +20,7 @@ public class PluginClassLoader extends URLClassLoader {
 
     private final String pluginId;
     private final List<String> restrictedPackages;
+    private final File jarFile;
 
     /**
      * Create a new PluginClassLoader
@@ -27,10 +30,24 @@ public class PluginClassLoader extends URLClassLoader {
      * @param parent    Parent ClassLoader (typically the application ClassLoader)
      */
     public PluginClassLoader(String pluginId, URL[] urls, ClassLoader parent) {
+        this(pluginId, urls, parent, null);
+    }
+
+    /**
+     * Create a new PluginClassLoader with JAR file reference for direct resource access.
+     *
+     * @param pluginId  Unique identifier for the plugin
+     * @param urls      JAR files and directories to load classes from
+     * @param parent    Parent ClassLoader (typically the application ClassLoader)
+     * @param jarFile   The JAR file for direct resource access (bypasses URLClassLoader caching)
+     */
+    public PluginClassLoader(String pluginId, URL[] urls, ClassLoader parent, File jarFile) {
         super(urls, parent);
         this.pluginId = pluginId;
+        this.jarFile = jarFile;
         this.restrictedPackages = initializeRestrictedPackages();
-        log.debug("Created PluginClassLoader for plugin: {}", pluginId);
+        log.debug("Created PluginClassLoader for plugin: {} (jarFile={})", pluginId,
+                jarFile != null ? jarFile.getName() : "null");
     }
 
     /**
@@ -133,21 +150,66 @@ public class PluginClassLoader extends URLClassLoader {
 
     /**
      * Check if a resource exists in the plugin JAR.
+     * When jarFile is available, checks directly in the JAR to bypass URLClassLoader caching.
      *
      * @param resourcePath Path to the resource within the JAR
      * @return true if the resource exists
      */
     public boolean hasPluginResource(String resourcePath) {
+        String normalizedPath = resourcePath.startsWith("/") ? resourcePath.substring(1) : resourcePath;
+
+        // If we have a direct JAR file reference, check directly
+        if (jarFile != null && jarFile.exists()) {
+            try (JarFile jar = new JarFile(jarFile)) {
+                JarEntry entry = jar.getJarEntry(normalizedPath);
+                return entry != null;
+            } catch (IOException e) {
+                log.warn("Failed to check resource in JAR: {} for plugin: {}", normalizedPath, pluginId);
+                // Fall through to URLClassLoader check
+            }
+        }
+
         return getPluginResourceUrl(resourcePath) != null;
     }
 
     /**
      * Get the content of a resource as a byte array.
+     * When jarFile is available, reads directly from the JAR to bypass URLClassLoader caching.
+     * This is critical for hot-reload scenarios where the plugin JAR is updated.
      *
      * @param resourcePath Path to the resource within the JAR
-     * @return byte array of the resource content, or null if not found
+     * @return byte array of the resource content, or empty array if not found
      */
     public byte[] getPluginResourceBytes(String resourcePath) {
+        String normalizedPath = resourcePath.startsWith("/") ? resourcePath.substring(1) : resourcePath;
+
+        // If we have a direct JAR file reference, read directly from it to bypass caching
+        if (jarFile != null && jarFile.exists()) {
+            log.info("Reading resource '{}' directly from JAR: {} (lastModified={})",
+                    normalizedPath, jarFile.getAbsolutePath(), jarFile.lastModified());
+            try (JarFile jar = new JarFile(jarFile)) {
+                JarEntry entry = jar.getJarEntry(normalizedPath);
+                if (entry == null) {
+                    log.debug("Resource not found in JAR: {} for plugin: {}", normalizedPath, pluginId);
+                    return new byte[0];
+                }
+                try (java.io.InputStream is = jar.getInputStream(entry)) {
+                    byte[] bytes = is.readAllBytes();
+                    log.info("Read {} bytes directly from JAR for resource: {} (plugin: {}, entryTime={})",
+                            bytes.length, normalizedPath, pluginId, entry.getTime());
+                    return bytes;
+                }
+            } catch (IOException e) {
+                log.error("Failed to read resource directly from JAR: {} for plugin: {}",
+                        normalizedPath, pluginId, e);
+                return new byte[0];
+            }
+        } else {
+            log.warn("No direct JAR file reference for plugin: {} (jarFile={}, exists={}). Using URLClassLoader fallback.",
+                    pluginId, jarFile, jarFile != null ? jarFile.exists() : "N/A");
+        }
+
+        // Fallback to URLClassLoader resource loading
         try (java.io.InputStream is = getPluginResourceAsStream(resourcePath)) {
             if (is == null) {
                 return new byte[0];
@@ -169,7 +231,9 @@ public class PluginClassLoader extends URLClassLoader {
     }
 
     /**
-     * Create a PluginClassLoader from a plugin JAR file
+     * Create a PluginClassLoader from a plugin JAR file.
+     * Stores the JAR file reference for direct resource access to bypass URLClassLoader caching,
+     * which is critical for hot-reload scenarios.
      *
      * @param pluginId    Unique plugin identifier
      * @param jarFile     Plugin JAR file
@@ -183,7 +247,8 @@ public class PluginClassLoader extends URLClassLoader {
         }
 
         URL[] urls = new URL[]{jarFile.toURI().toURL()};
-        return new PluginClassLoader(pluginId, urls, parent);
+        // Pass the JAR file for direct resource access (bypasses caching)
+        return new PluginClassLoader(pluginId, urls, parent, jarFile);
     }
 
     /**

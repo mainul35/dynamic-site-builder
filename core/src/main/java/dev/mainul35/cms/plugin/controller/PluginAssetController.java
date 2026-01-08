@@ -85,7 +85,7 @@ public class PluginAssetController {
      */
     @GetMapping("/{pluginId}/bundle.js")
     public ResponseEntity<byte[]> getMainBundle(@PathVariable String pluginId) {
-        log.debug("Fetching main bundle for plugin: {}", pluginId);
+        log.info("Fetching main bundle for plugin: {}", pluginId);
 
         Optional<byte[]> bundle = pluginAssetService.getMainBundle(pluginId);
 
@@ -93,6 +93,11 @@ public class PluginAssetController {
             log.warn("Main bundle not found for plugin: {}", pluginId);
             return ResponseEntity.notFound().build();
         }
+
+        byte[] bundleBytes = bundle.get();
+        // Log bundle size and a hash for debugging hot-reload issues
+        int hash = java.util.Arrays.hashCode(bundleBytes);
+        log.info("Serving bundle for plugin {}: {} bytes, hash={}", pluginId, bundleBytes.length, hash);
 
         var responseBuilder = ResponseEntity.ok()
                 .cacheControl(getCacheControl())
@@ -104,7 +109,7 @@ public class PluginAssetController {
             responseBuilder.eTag(etag);
         }
 
-        return responseBuilder.body(bundle.get());
+        return responseBuilder.body(bundleBytes);
     }
 
     /**

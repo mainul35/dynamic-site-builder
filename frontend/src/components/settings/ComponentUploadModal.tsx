@@ -122,11 +122,21 @@ export const ComponentUploadModal: React.FC<ComponentUploadModalProps> = ({
       setUploadState('success');
       setSuccessMessage(`Plugin "${result.filename}" uploaded and activated successfully`);
 
-      // If the plugin was already loaded, force reload it to get the new version
+      // Force reload the plugin to get the new version
       const pluginId = result.pluginId;
-      if (pluginId && isPluginLoaded(pluginId)) {
-        console.log(`[ComponentUploadModal] Plugin ${pluginId} was updated, reloading frontend bundle...`);
-        await reloadPlugin(pluginId);
+      if (pluginId) {
+        if (isPluginLoaded(pluginId)) {
+          console.log(`[ComponentUploadModal] Plugin ${pluginId} was updated, reloading frontend bundle...`);
+          await reloadPlugin(pluginId);
+          console.log(`[ComponentUploadModal] Plugin ${pluginId} reload complete`);
+        } else {
+          console.log(`[ComponentUploadModal] Plugin ${pluginId} not previously loaded, loading now...`);
+          const { loadPlugin } = await import('../../services/pluginLoaderService');
+          await loadPlugin(pluginId);
+          console.log(`[ComponentUploadModal] Plugin ${pluginId} loaded`);
+        }
+      } else {
+        console.warn(`[ComponentUploadModal] No pluginId returned from upload`);
       }
 
       // Notify parent of success after a brief delay

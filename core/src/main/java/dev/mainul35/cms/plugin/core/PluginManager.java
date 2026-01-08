@@ -317,15 +317,48 @@ public class PluginManager {
 
         log.info("Installing plugin: {} v{}", manifest.getPluginName(), manifest.getVersion());
 
-        // 3. Check if plugin is already installed
+        // 3. Check if plugin is already installed - close any existing classloader to release file locks
         Optional<Plugin> existingPlugin = pluginRepository.findByPluginId(pluginId);
         if (existingPlugin.isPresent()) {
             Plugin existing = existingPlugin.get();
             log.info("Plugin {} already installed (version {}), will upgrade to version {}",
                     pluginId, existing.getVersion(), manifest.getVersion());
-            // Deactivate existing plugin before upgrade
+
+            // IMPORTANT: Close existing classloader first to release file locks on Windows
+            // This must happen BEFORE we try to copy/overwrite the JAR file
+            PluginClassLoader existingClassLoader = pluginClassLoaders.remove(pluginId);
+            if (existingClassLoader != null) {
+                log.info("Closing existing classloader for plugin {} to release file locks", pluginId);
+                try {
+                    existingClassLoader.close();
+                    // Give Windows a moment to release the file lock
+                    Thread.sleep(100);
+                } catch (Exception e) {
+                    log.warn("Error closing existing classloader for plugin {}: {}", pluginId, e.getMessage());
+                }
+            }
+
+            // Remove from loaded plugins map
+            loadedPlugins.remove(pluginId);
+
+            // Deactivate existing plugin before upgrade (if still marked as active)
             if (existing.isActive()) {
-                deactivatePlugin(pluginId);
+                try {
+                    // Use internal deactivation logic without trying to close classloader again
+                    if (pluginControllerRegistrar.hasRegisteredControllers(pluginId)) {
+                        pluginControllerRegistrar.unregisterControllers(pluginId);
+                    }
+                    if (pluginEntityRegistrar.hasRegisteredEntities(pluginId)) {
+                        pluginEntityRegistrar.unregisterEntities(pluginId);
+                    }
+                    if (pluginContextManager.hasPluginContext(pluginId)) {
+                        pluginContextManager.destroyPluginContext(pluginId);
+                    }
+                    existing.deactivate();
+                    pluginRepository.save(existing);
+                } catch (Exception e) {
+                    log.warn("Error during plugin deactivation cleanup for {}: {}", pluginId, e.getMessage());
+                }
             }
         }
 
@@ -352,10 +385,39 @@ public class PluginManager {
         String targetJarName = pluginId + "-" + manifest.getVersion() + ".jar";
         File targetJar = new File(pluginDir, targetJarName);
 
-        // Always copy the file (replaces existing if upgrading)
-        Files.copy(jarFile.toPath(), targetJar.toPath(),
-                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-        log.info("Copied plugin JAR to: {}", targetJar.getAbsolutePath());
+        // Copy the file with retry logic for Windows file locking issues
+        int maxRetries = 5;
+        int retryDelayMs = 200;
+        Exception lastException = null;
+
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                Files.copy(jarFile.toPath(), targetJar.toPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                log.info("Copied plugin JAR to: {}", targetJar.getAbsolutePath());
+                lastException = null;
+                break;
+            } catch (Exception e) {
+                lastException = e;
+                if (attempt < maxRetries) {
+                    log.warn("Failed to copy JAR (attempt {}/{}), retrying in {}ms: {}",
+                            attempt, maxRetries, retryDelayMs, e.getMessage());
+                    try {
+                        Thread.sleep(retryDelayMs);
+                        // Suggest garbage collection to help release file handles
+                        System.gc();
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw new RuntimeException("Interrupted while waiting to retry file copy", ie);
+                    }
+                }
+            }
+        }
+
+        if (lastException != null) {
+            throw new RuntimeException("Failed to copy plugin JAR after " + maxRetries +
+                    " attempts. File may be locked by another process: " + lastException.getMessage(), lastException);
+        }
 
         // 6. Create or update Plugin entity in database
         Plugin plugin = existingPlugin.orElse(new Plugin());

@@ -22,7 +22,7 @@ public class TestComponentComponentPlugin extends AbstractUIComponentPlugin {
     @Override
     protected List<PropDefinition> defineProps() {
         return List.of(
-            prop("text", "Text", "Hello Mainul Hasan")
+            prop("text", "Text", "Hello Hasan San")
         );
     }
 

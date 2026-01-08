@@ -9,6 +9,7 @@
  */
 
 import { RendererRegistry, RendererComponent } from '../components/builder/renderers/RendererRegistry';
+import { useBuilderStore } from '../stores/builderStore';
 
 /**
  * Plugin bundle structure expected from dynamically loaded plugins
@@ -458,14 +459,27 @@ async function loadPluginWithCacheBust(pluginId: string): Promise<boolean> {
 }
 
 /**
- * Load an actual plugin with forced cache busting
+ * Load an actual plugin with forced cache busting.
+ * Uses fetch with no-store cache mode and direct code execution to bypass browser caching.
  */
 async function loadActualPluginWithCacheBust(pluginId: string): Promise<boolean> {
   try {
-    const cacheBuster = `?t=${Date.now()}`;
+    const cacheBuster = `?t=${Date.now()}&r=${Math.random()}`;
+    const globalName = getPluginGlobalName(pluginId);
+
+    // Remove any existing script tag before loading new version
+    const existingScript = document.getElementById(`plugin-script-${pluginId}`);
+    if (existingScript) {
+      existingScript.remove();
+      console.log(`[PluginLoader] Removed existing script for ${pluginId}`);
+    }
+
+    // Delete the global variable to ensure we get fresh code
+    delete (window as Record<string, unknown>)[globalName];
+    console.log(`[PluginLoader] Cleared window.${globalName}`);
 
     // Check if the plugin has frontend assets (with cache bust)
-    const response = await fetch(`${PLUGIN_API_BASE}/${pluginId}/has-frontend${cacheBuster}`);
+    const response = await fetch(`${PLUGIN_API_BASE}/${pluginId}/has-frontend${cacheBuster}`, { cache: 'no-store' });
     if (!response.ok) {
       console.debug(`[PluginLoader] Plugin ${pluginId} has no frontend bundle`);
       return false;
@@ -493,27 +507,36 @@ async function loadActualPluginWithCacheBust(pluginId: string): Promise<boolean>
       document.head.appendChild(link);
     }
 
-    // Load JavaScript bundle with cache bust
+    // Load JavaScript bundle using fetch + direct execution to bypass browser caching
     const bundleUrl = `${PLUGIN_API_BASE}/${pluginId}/bundle.js${cacheBuster}`;
-    const globalName = getPluginGlobalName(pluginId);
+    console.log(`[PluginLoader] Fetching fresh bundle: ${bundleUrl}`);
 
-    await new Promise<void>((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = bundleUrl;
-      script.id = `plugin-script-${pluginId}`;
-      script.async = true;
-
-      script.onload = () => {
-        console.log(`[PluginLoader] Script reloaded for ${pluginId}`);
-        resolve();
-      };
-
-      script.onerror = () => {
-        reject(new Error(`Failed to reload script for ${pluginId}`));
-      };
-
-      document.head.appendChild(script);
+    // Use fetch with cache: 'no-store' to bypass all caching
+    const bundleResponse = await fetch(bundleUrl, {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+      },
     });
+
+    if (!bundleResponse.ok) {
+      throw new Error(`Failed to fetch bundle: ${bundleResponse.status}`);
+    }
+
+    const bundleCode = await bundleResponse.text();
+    // Log bundle size and a preview to help debug hot-reload issues
+    const bundleHash = bundleCode.split('').reduce((a, b) => ((a << 5) - a + b.charCodeAt(0)) | 0, 0);
+    console.log(`[PluginLoader] Received bundle for ${pluginId}:`, {
+      size: bundleCode.length,
+      hash: bundleHash,
+      preview: bundleCode.substring(0, 200) + '...',
+    });
+
+    // Execute the bundle code directly (IIFE will set window global)
+    const executeBundle = new Function(bundleCode);
+    executeBundle();
+    console.log(`[PluginLoader] Executed fresh bundle for ${pluginId}`);
 
     // Get the plugin from the global variable
     const pluginBundle: PluginBundle = (window as Record<string, unknown>)[globalName] as PluginBundle;
@@ -522,6 +545,12 @@ async function loadActualPluginWithCacheBust(pluginId: string): Promise<boolean>
       console.warn(`[PluginLoader] Plugin global not found after reload: window.${globalName}`);
       return false;
     }
+
+    console.log(`[PluginLoader] Found window.${globalName}:`, {
+      hasRenderers: !!pluginBundle.renderers,
+      rendererKeys: pluginBundle.renderers ? Object.keys(pluginBundle.renderers) : [],
+      hasRegisterRenderers: typeof pluginBundle.registerRenderers === 'function',
+    });
 
     // Register renderers
     if (typeof pluginBundle.registerRenderers === 'function') {
@@ -564,7 +593,18 @@ export async function reloadPlugin(pluginId: string): Promise<boolean> {
   const success = await loadPluginWithCacheBust(pluginId);
 
   if (success) {
-    console.log(`[PluginLoader] Plugin ${pluginId} reloaded successfully. Remove and re-add components to see updates.`);
+    console.log(`[PluginLoader] Plugin ${pluginId} reloaded successfully.`);
+
+    // Increment renderer version to force all components to re-render with new renderers
+    const prevVersion = useBuilderStore.getState().rendererVersion;
+    useBuilderStore.getState().incrementRendererVersion();
+    const newVersion = useBuilderStore.getState().rendererVersion;
+    console.log(`[PluginLoader] Incremented renderer version: ${prevVersion} -> ${newVersion}`);
+
+    // Log all registered renderers after reload for debugging
+    console.log(`[PluginLoader] Registered renderers after reload:`, RendererRegistry.debugGetAllKeys());
+  } else {
+    console.warn(`[PluginLoader] Plugin ${pluginId} reload failed!`);
   }
 
   return success;
