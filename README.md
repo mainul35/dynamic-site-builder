@@ -5690,7 +5690,56 @@ flowchart LR
 
 #### Step 1: Create Plugin Structure
 
-Create a new folder in the `plugins/` directory with the standard convention:
+**Option A: Use the "+ New Plugin" Button (Recommended)**
+
+The VSD IntelliJ Plugin provides a one-click plugin creation feature:
+
+1. Open the **Component Explorer** tool window (View > Tool Windows > Component Explorer)
+2. Click the **"+ New Plugin"** button in the toolbar
+3. Enter a plugin name (e.g., `my-component-plugin`)
+   - The plugin will automatically add `-plugin` suffix if missing
+4. Click OK - the IDE creates the complete plugin structure automatically
+
+**What "+ New Plugin" Creates:**
+
+```
+plugins/
+└── my-component-plugin/
+    ├── pom.xml                              # Maven build with SDK dependency
+    ├── frontend/
+    │   ├── package.json                     # npm dependencies
+    │   ├── vite.config.ts                   # Vite bundler configuration
+    │   ├── tsconfig.json                    # TypeScript configuration
+    │   └── src/
+    │       ├── index.ts                     # Plugin entry point with exports
+    │       ├── types.ts                     # TypeScript type definitions
+    │       └── renderers/
+    │           └── MyComponentRenderer.tsx  # React renderer component
+    └── src/main/
+        ├── java/dev/mainul35/plugins/ui/
+        │   └── MyComponentPlugin.java       # Java plugin with @UIComponent
+        └── resources/
+            └── plugin.yml                   # Plugin manifest
+```
+
+**Auto-Generated Files Include:**
+- **pom.xml** - Pre-configured Maven build with SDK dependency, Lombok, and resource copying
+- **plugin.yml** - Plugin manifest with component metadata
+- **MyComponentPlugin.java** - Java class extending `AbstractUIComponentPlugin` with sample props/styles
+- **MyComponentRenderer.tsx** - React component with typed props and styles
+- **vite.config.ts** - Vite configuration for building the frontend bundle
+- **tsconfig.json** - TypeScript configuration with proper module resolution
+- **package.json** - Dependencies for React, TypeScript, and Vite
+- **index.ts** - Plugin entry point exporting renderers for the plugin bundle
+
+After creation, the IDE automatically:
+- Imports the new Maven module into IntelliJ
+- Refreshes the Component Explorer to show the new plugin
+- Enables code completion and navigation
+
+**Option B: Create Manually**
+
+Alternatively, create the structure manually following this convention:
 
 ```
 plugins/
@@ -5730,22 +5779,111 @@ Write your plugin code with full IDE assistance:
 
 #### Step 4: Build Plugin via IDE
 
-Use the **Build Plugin** feature in the VSD tool window (left sidebar):
+Use the **Build** button in the Component Explorer toolbar to build your plugin with full-stack support:
 
-1. Select your plugin in the Component Explorer
-2. Click **Build** or use **Tools > VSD > Build & Deploy Plugin**
-3. The IDE runs `mvn package -DskipTests`
-4. Progress and results shown in notifications
+1. Select your plugin in the Component Explorer tree view
+2. Click the **Build** button in the toolbar
+3. The IDE performs a complete build:
+
+**Build Process (Full-Stack):**
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        Build Process Flow                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  1. Frontend Build (if frontend/ folder exists)                          │
+│     ├── npm install     → Install dependencies                          │
+│     └── npm run build   → Bundle React components via Vite              │
+│         Output: frontend/dist/bundle.js                                  │
+│                                                                          │
+│  2. Maven Build                                                          │
+│     └── mvn clean package -DskipTests                                    │
+│         - Compiles Java code                                            │
+│         - Copies frontend/dist/* to resources/frontend/                 │
+│         - Creates plugin JAR with embedded bundle                       │
+│         Output: target/my-component-plugin-1.0.0.jar                     │
+│                                                                          │
+│  3. Deployment (if configured)                                           │
+│     └── Copies JAR to target plugins directory                          │
+│                                                                          │
+│  4. Hot-Reload (if CMS API configured)                                   │
+│     └── Uploads JAR to CMS for instant activation                       │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Alternative Access Methods:**
+
+- **Menu**: Tools > VSD > Build & Deploy Plugin
+- **Context Menu**: Right-click on plugin folder > Build & Deploy VSD Plugin
+
+**Build Output:**
 
 The built JAR is created at: `plugins/my-component-plugin/target/my-component-plugin-1.0.0.jar`
 
-#### Step 5: Upload to Web CMS
+The JAR contains:
+- Compiled Java classes
+- `plugin.yml` manifest
+- `frontend/bundle.js` - The Vite-bundled React renderer
 
-1. Open the VSD Web CMS UI in your browser
-2. Navigate to **Settings > Plugin Management** (or similar admin section)
-3. Click **Upload Plugin**
-4. Select the built JAR file from the plugin's `target/` directory
-5. The plugin is uploaded and registered
+**Build Progress:**
+
+During the build, the IDE shows progress notifications:
+- "Installing frontend dependencies (npm install)..."
+- "Building frontend (npm run build)..."
+- "Running Maven build..."
+- "Build completed successfully" or error details on failure
+
+#### Step 5: Upload JAR to CMS UI
+
+Upload your built plugin JAR through the web-based CMS administration interface:
+
+1. Open the VSD Web CMS UI in your browser (e.g., `http://localhost:8080`)
+2. Click the **Settings** icon (gear) in the top toolbar
+3. Navigate to the **Components** tab (admin-only)
+4. Click the **Upload Plugin** button
+
+**Upload Plugin Modal:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Upload Plugin JAR                             │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Upload a plugin JAR file to register new components.            │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │                                                             │ │
+│  │        ⬆️ Drag and drop a JAR file here                     │ │
+│  │           or click to browse                                │ │
+│  │                                                             │ │
+│  │        Accepts .jar files up to 50MB                        │ │
+│  │                                                             │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+│                                                                  │
+│  Requirements:                                                   │
+│  • JAR file must contain a valid plugin.yml manifest            │
+│  • Plugin must extend the component SDK interfaces               │
+│  • Component IDs must be unique (not already registered)         │
+│                                                                  │
+│                                    [Cancel] [Upload Plugin]      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Upload Methods:**
+
+- **Drag & Drop**: Drag the JAR file directly onto the upload zone
+- **Browse**: Click the upload zone to open a file picker
+- Select the JAR from `plugins/my-component-plugin/target/my-component-plugin-1.0.0.jar`
+
+**After Upload:**
+
+- The plugin is validated (checks for `plugin.yml`, unique component IDs)
+- Components are registered in the database
+- Frontend bundle is extracted and cached
+- Plugin appears in the Component Palette immediately
+- If the plugin was already loaded, its frontend bundle is hot-reloaded
 
 #### Step 6: Instant Activation
 
@@ -5755,6 +5893,75 @@ Once uploaded, the plugin:
 - Appears in the Component Palette
 - Is ready to drag-and-drop onto pages
 - No backend restart required
+
+#### Managing Components in CMS
+
+The Components tab in Settings provides full component lifecycle management:
+
+**Component List Features:**
+
+- **Search & Filter**: Filter by category, status (Active/Inactive), or search by name
+- **Statistics**: View total, active, and inactive component counts
+- **Per-Component Actions**: Each component row has action buttons
+
+**Available Actions:**
+
+| Action | Description |
+|--------|-------------|
+| **Usage** | View which pages use this component |
+| **Activate** | Enable an inactive component (appears in palette) |
+| **Deactivate** | Disable a component (hides from palette, warns if in use) |
+| **Delete** | Permanently remove component (blocked if in use) |
+
+**Deactivating Components:**
+
+When you deactivate a component:
+
+1. Component is hidden from the Component Palette
+2. Existing pages with the component still render it
+3. You cannot add more instances of the component
+4. If pages use it, a warning shows affected pages before confirmation
+
+**Deleting Components:**
+
+Components can only be deleted when not in use:
+
+1. Click **Delete** on a component
+2. System checks usage in both server pages and local storage
+3. If in use, deletion is blocked with a list of affected pages
+4. You must remove the component from all pages first
+5. Once unused, confirm deletion to permanently remove
+
+**Delete Blocked Example:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Cannot Delete: Label                                       [X]   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Deletion Blocked: This component cannot be deleted because     │
+│  it is currently used in 3 page(s). You must remove the         │
+│  component from all pages before it can be deleted.              │
+│                                                                  │
+│  This component is used in 3 page(s):                           │
+│  • Home Page (/home) in My Website                    [Server]  │
+│  • About Us (/about) in My Website                    [Server]  │
+│  • Contact (/contact) in Local Storage                [Local]   │
+│                                                                  │
+│  Open each page in the builder and remove this component,       │
+│  then try deleting again.                                        │
+│                                                                  │
+│                                              [Understood]        │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Manual Registration:**
+
+For advanced users, the **Manual Register** button allows registering components via JSON manifest without uploading a JAR. This is useful for:
+
+- Registering built-in components
+- Testing component definitions
+- Migrating component metadata
 
 ### Build & Deploy Configuration
 
