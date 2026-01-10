@@ -12,14 +12,15 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.flashcard</groupId>
-    <artifactId>flashcard-parent</artifactId>
+    <groupId>dev.mainul35</groupId>
+    <artifactId>vsd-parent</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <name>Flashcard CMS Parent</name>
-    <description>Parent POM for Flashcard CMS Platform</description>
+    <name>Visual Site Designer (VSD) Parent</name>
+    <description>Parent POM for Visual Site Designer (VSD) CMS Platform</description>
 
     <modules>
+        <module>vsd-cms-bom</module>
         <module>flashcard-cms-plugin-sdk</module>
         <module>site-runtime</module>
         <module>core</module>

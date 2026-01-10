@@ -6,8 +6,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.flashcard</groupId>
-        <artifactId>flashcard-parent</artifactId>
+        <groupId>dev.mainul35</groupId>
+        <artifactId>vsd-parent</artifactId>
         <version>1.0.0-SNAPSHOT</version>
     </parent>
 
@@ -21,8 +21,8 @@
     <dependencies>
         <!-- SDK for interfaces and DTOs -->
         <dependency>
-            <groupId>com.flashcard</groupId>
-            <artifactId>flashcard-cms-plugin-sdk</artifactId>
+            <groupId>dev.mainul35</groupId>
+            <artifactId>vsd-cms-plugin-sdk</artifactId>
             <version>${project.version}</version>
         </dependency>
 

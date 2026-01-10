@@ -1,24 +1,65 @@
 # Git
 .git
 .gitignore
+.gitattributes
+
+# Docker
+docker-compose*.yml
+Dockerfile
+.dockerignore
+
+# Documentation
+README.md
+DEPLOYMENT.md
+*.md
 
 # IDE
 .idea
-*.iml
 .vscode
+*.iml
+*.ipr
+*.iws
 
-# Build artifacts
+# Node
+node_modules
+frontend/node_modules
+frontend/.next
+frontend/build
+frontend/dist
+
+# Maven
 target/
-frontend/dist/
-frontend/node_modules/
-frontend/.vite/
+!core/target/*.jar
+!plugins/*/target/*.jar
 
-# Data
+# Data and logs
 data/
-
-# Logs
+logs/
 *.log
+
+# Certificates and configs
+certbot/
+nginx/
+init-letsencrypt.sh
+
+# Environment
+.env
+.env.local
+.env.*.local
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Runtime plugin directory
+plugins-runtime/

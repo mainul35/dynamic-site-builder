@@ -19,44 +19,52 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <!-- Import VSD CMS BOM for dependency version management -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>dev.mainul35</groupId>
+                <artifactId>vsd-cms-bom</artifactId>
+                <version>1.0.0-SNAPSHOT</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
-        <!-- Plugin SDK (includes Spring Web, Spring Data JPA, Hibernate) -->
+        <!-- Plugin SDK - version managed by BOM -->
         <dependency>
-            <groupId>com.flashcard</groupId>
-            <artifactId>flashcard-cms-plugin-sdk</artifactId>
-            <version>1.0.0-SNAPSHOT</version>
+            <groupId>dev.mainul35</groupId>
+            <artifactId>vsd-cms-plugin-sdk</artifactId>
             <scope>provided</scope>
         </dependency>
 
-        <!-- Spring Boot Starter Web (provided by core at runtime) -->
+        <!-- Spring Boot Starter Web - version managed by BOM -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
-            <version>3.4.1</version>
             <scope>provided</scope>
         </dependency>
 
-        <!-- Spring Boot Starter Data JPA (provided by core at runtime) -->
+        <!-- Spring Boot Starter Data JPA - version managed by BOM -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
-            <version>3.4.1</version>
             <scope>provided</scope>
         </dependency>
 
-        <!-- Lombok -->
+        <!-- Lombok - version managed by BOM -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.36</version>
             <scope>provided</scope>
         </dependency>
 
-        <!-- SLF4J API -->
+        <!-- SLF4J API - version managed by BOM -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>2.0.16</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>

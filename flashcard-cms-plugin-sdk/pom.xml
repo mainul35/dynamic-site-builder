@@ -6,15 +6,15 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.flashcard</groupId>
-        <artifactId>flashcard-parent</artifactId>
+        <groupId>dev.mainul35</groupId>
+        <artifactId>vsd-parent</artifactId>
         <version>1.0.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>flashcard-cms-plugin-sdk</artifactId>
+    <artifactId>vsd-cms-plugin-sdk</artifactId>
     <packaging>jar</packaging>
-    <name>Flashcard CMS Plugin SDK</name>
-    <description>SDK for developing plugins for the Flashcard CMS platform</description>
+    <name>Visual Site Designer (VSD) CMS Plugin SDK</name>
+    <description>SDK for developing plugins for the Visual Site Designer (VSD) CMS platform</description>
 
     <dependencies>
         <!-- Spring Boot Starter Web (for @RestController, @RequestMapping, etc.) -->
