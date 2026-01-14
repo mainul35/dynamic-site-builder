@@ -55,15 +55,6 @@
   overflow: visible;
 }
 
-/* Leaf components (non-layout) should clip text overflow to prevent escape */
-/* This ensures Labels, Buttons, etc. don't overflow their parent container */
-.resizable-component.child-component .resizable-content .component-placeholder {
-  overflow: hidden;
-  /* Ensure text wraps within the container */
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-
 /* Layout containers nested as children should grow with their content */
 /* Use auto height so flex-column containers expand to fit child labels, etc. */
 .resizable-component.child-component.auto-height-container .resizable-content {
