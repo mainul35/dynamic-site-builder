@@ -95,10 +95,13 @@ const LabelRenderer: React.FC<LabelProps> = (props) => {
   const labelStyles: React.CSSProperties = {
     margin: 0,
     padding: 0,
+    width: '100%',
+    maxWidth: '100%',
     textAlign: textAlign as React.CSSProperties['textAlign'],
     color: '#333333',
     wordWrap: 'break-word',
     overflowWrap: 'break-word',
+    wordBreak: 'break-word',
     ...variantDefaults[elementType],
     // Apply custom styles but exclude gradient-related ones if using gradient text
     ...Object.fromEntries(
@@ -125,7 +128,19 @@ const LabelRenderer: React.FC<LabelProps> = (props) => {
 
   const Element = elementType as keyof React.JSX.IntrinsicElements;
 
-  return <Element style={labelStyles}>{text as string}</Element>;
+  // Container styles to prevent text from overflowing parent bounds
+  const containerStyles: React.CSSProperties = {
+    width: '100%',
+    height: '100%',
+    overflow: 'hidden',
+    boxSizing: 'border-box',
+  };
+
+  return (
+    <div style={containerStyles}>
+      <Element style={labelStyles}>{text as string}</Element>
+    </div>
+  );
 };
 
 export default LabelRenderer;
