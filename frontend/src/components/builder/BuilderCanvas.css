@@ -336,34 +336,42 @@
 }
 
 /* For grid layouts, children should fill their grid cells completely */
-.children-container.grid-layout > .draggable-component {
+/* Exclude Image components - they should respect their resized dimensions */
+.children-container.grid-layout > .draggable-component:not([data-component-id^="Image-"]) {
   width: 100% !important; /* Override inline width to fill grid cell */
   max-width: 100% !important; /* Ensure it doesn't exceed grid cell */
   min-width: 0 !important; /* CRITICAL: Allow grid items to shrink below content width */
 }
 
-.children-container.grid-layout > .draggable-component.child-component {
+.children-container.grid-layout > .draggable-component.child-component:not([data-component-id^="Image-"]) {
   width: 100% !important; /* Also target child-component class explicitly */
   max-width: 100% !important;
   min-width: 0 !important; /* Allow shrinking below content */
 }
 
-.children-container.grid-layout > .draggable-component > .component-content {
+.children-container.grid-layout > .draggable-component:not([data-component-id^="Image-"]) > .component-content {
   width: 100%;
   min-width: 0; /* Allow shrinking */
 }
 
 /* Propagate width constraints through the entire wrapper chain for grid layouts */
-.children-container.grid-layout > .draggable-component .resizable-component {
+/* Exclude Image components to allow them to be resized independently */
+.children-container.grid-layout > .draggable-component:not([data-component-id^="Image-"]) .resizable-component {
   width: 100% !important;
   max-width: 100% !important;
   min-width: 0 !important;
 }
 
-.children-container.grid-layout > .draggable-component .resizable-content {
+.children-container.grid-layout > .draggable-component:not([data-component-id^="Image-"]) .resizable-content {
   width: 100% !important;
   max-width: 100% !important;
   min-width: 0 !important;
+}
+
+/* Image components in grid layouts - allow resizing but constrain to grid cell */
+.children-container.grid-layout > .draggable-component[data-component-id^="Image-"] {
+  max-width: 100%; /* Don't overflow grid cell */
+  min-width: 0; /* Allow shrinking */
 }
 
 /* For flex-row layouts, children should use their stored widths as flex-basis */
