@@ -648,12 +648,39 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
               // Check if child is also a layout component
               const childIsLayout = child.componentCategory?.toLowerCase() === 'layout';
 
-              // For non-layout children, just render them directly without wrapper
+              // For non-layout children (Image, Label, Navbar, etc.)
               if (!childIsLayout) {
+                // Helper to check if a dimension is an explicit pixel value (from resize)
+                const isPixelValue = (value: string | undefined): boolean => {
+                  if (!value) return false;
+                  return value.endsWith('px') && !isNaN(parseFloat(value));
+                };
+
+                // Only Image components should preserve their resized pixel dimensions
+                // Other UI components (Navbar, Button, Label, etc.) should fill width naturally
+                const isImageComponent = child.componentId?.toLowerCase().includes('image');
+
+                // For Image: use stored pixel dimensions if available
+                // For other components: always use 100% width to fill parent
+                const childWidth = isImageComponent && isPixelValue(child.size.width)
+                  ? child.size.width
+                  : undefined;
+                const childHeight = isImageComponent && isPixelValue(child.size.height)
+                  ? child.size.height
+                  : undefined;
+
                 return (
-                  <React.Fragment key={child.instanceId}>
+                  <div
+                    key={child.instanceId}
+                    className="leaf-child-wrapper"
+                    style={{
+                      width: childWidth || (isFlexRow ? undefined : '100%'),
+                      height: childHeight,
+                      flex: isFlexRow && !childWidth ? '1' : undefined,
+                    }}
+                  >
                     {renderComponent(child)}
-                  </React.Fragment>
+                  </div>
                 );
               }
 

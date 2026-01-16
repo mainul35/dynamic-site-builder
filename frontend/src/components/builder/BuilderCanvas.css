@@ -619,6 +619,14 @@
      to stretch to fill parent height even when they should size to content */
 }
 
+/* Wrapper for leaf components (Image, Label, etc.) in preview mode */
+/* Applies stored dimensions from resize operations */
+.leaf-child-wrapper {
+  box-sizing: border-box;
+  /* Don't stretch - size to stored dimensions or content */
+  flex-shrink: 0;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .builder-canvas {
