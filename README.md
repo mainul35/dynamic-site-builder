@@ -66,7 +66,7 @@ cd core && mvn spring-boot:run
 
 Open your browser and navigate to:
 - **Application**: http://localhost:8080
-- **H2 Console**: http://localhost:8080/h2-console (JDBC URL: `jdbc:h2:file:./data/flashcarddb`)
+- **H2 Console**: http://localhost:8080/h2-console (JDBC URL: `jdbc:h2:file:./data/vsddb`)
 
 ### Default Credentials
 
@@ -92,7 +92,7 @@ mvn spring-boot:run
 server.port=8080
 
 # Database (H2 embedded)
-spring.datasource.url=jdbc:h2:file:./data/flashcarddb
+spring.datasource.url=jdbc:h2:file:./data/vsddb
 
 # Plugin System
 app.plugin.directory=plugins
@@ -1637,7 +1637,7 @@ If you see database schema errors after changes:
 
 ```bash
 # Delete the database and restart
-rm -rf data/flashcarddb.mv.db
+rm -rf data/vsddb.mv.db
 cd core && mvn spring-boot:run
 ```
 

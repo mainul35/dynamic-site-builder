@@ -121,60 +121,75 @@ Without updating both, width resize won't work because the outer wrapper constra
 
 ## IMAGE COMPONENT SIZING
 
-### Problem Solved (2026-01-13)
+### Current Implementation (Updated 2026-01-17)
 
-Image components inside containers were not filling their parent's height properly. The issue was:
+Image components have special behavior compared to other leaf components:
 
-1. `component.size.height` was storing `'auto'` as a valid value
-2. The ImageRenderer was using `storedHeight || '100%'` which resolved to `'auto'` instead of `'100%'`
+1. **Always fill parent**: ImageRenderer uses `width: '100%'` and `height: '100%'` on its container
+2. **Free resizing**: Images can be resized freely without minimum content constraints
+3. **Source change handling**: Loading/error state resets when src changes via `useEffect`
 
-### Solution
+### ImageRenderer Container Styles
 
-The ImageRenderer now treats `'auto'` as "not set" and falls back to `'100%'`:
-
-```typescript
-// OLD (broken):
-const effectiveHeight = propsHeight || storedHeight || '100%';
-// If storedHeight is 'auto', this resolves to 'auto' - NOT what we want
-
-// NEW (fixed):
-const effectiveHeight = propsHeight ||
-  (storedHeight && storedHeight !== 'auto' ? storedHeight : null) ||
-  '100%';
-// Now 'auto' is treated as "not set" and falls back to '100%'
-```
-
-### Image Container Sizing Logic
-
-The ImageRenderer uses a priority system for dimensions:
-
-1. **Props (from Properties Panel)** - Highest priority
-2. **Stored dimensions (from resize)** - But ignore `'auto'` as it means "not set"
-3. **Parent-aware defaults** - `100%` for children, `auto` for root-level
+The ImageRenderer always uses `width: '100%'` and `height: '100%'` at the END of containerStyles to ensure the image fills its parent wrapper:
 
 ```typescript
-// Width: props > stored (if not auto) > parent-aware default
-const effectiveWidth = propsWidth ||
-  (storedWidth && storedWidth !== 'auto' ? storedWidth : null) ||
-  (hasParent ? '100%' : 'auto');
-
-// Height: Always use '100%' to fill parent container
-// Applied at the END of containerStyles to ensure it's not overridden
 const containerStyles: React.CSSProperties = {
-  width: effectiveWidth,
-  // ... other styles ...
+  maxWidth: hasParent ? undefined : '100%',
+  position: 'relative',
+  overflow: 'hidden',
+  boxSizing: 'border-box',
   ...(component.styles as React.CSSProperties),
-  height: '100%',  // MUST be last to override any stored 'auto' value
+  height: '100%',  // MUST be last to override any stored values
+  width: '100%'    // MUST be last to override any stored values
 };
 ```
+
+### ResizableComponent Special Handling for Images
+
+Images are exempted from content-based minimum size constraints in `ResizableComponent.tsx`:
+
+```typescript
+const getMinSizeFromChildren = (): { childMinWidth: number; childMinHeight: number } => {
+  // ...
+  if (!childrenContainer) {
+    // Check if this is an Image component - Images should be freely resizable
+    const isImageComponent = component.componentId.startsWith('Image');
+    if (isImageComponent) {
+      // Images can be resized freely - use default minimums only (40px)
+      return { childMinWidth: minWidth, childMinHeight: minHeight };
+    }
+    // Other leaf components measure content for minimum size...
+  }
+};
+```
+
+This allows Images to be resized to any size down to 40x40px, unlike Labels/Buttons which have text content that constrains their minimum size.
+
+### Image Source Change Handling
+
+When the image URL changes (e.g., from the image picker), the component resets its loading state:
+
+```typescript
+// Reset loading/error state when src changes
+useEffect(() => {
+  setIsLoaded(false);
+  setHasError(false);
+}, [src]);
+```
+
+This ensures that:
+
+- A previously failed image doesn't stay in error state when a new URL is set
+- The loading placeholder shows while the new image loads
 
 ### Key Files for Image Sizing
 
 | File | Purpose |
 |------|---------|
-| `ImageRenderer.tsx` | Sets `height: '100%'` on container div |
-| `DraggableComponent.css` | Special CSS for `[data-component-id^="Image-"]` |
-| `ResizableComponent.tsx` | Handles resize and stores new dimensions |
+| `ImageRenderer.tsx` | Sets `width: '100%'` and `height: '100%'` on container div |
+| `DraggableComponent.css` | Special CSS for `[data-component-id^="Image-"]` with `align-self: stretch` |
+| `ResizableComponent.tsx` | Exempts Images from content-based minimum size constraints |
 
 ### Plugin Build Process
 
@@ -191,6 +206,7 @@ mvn clean package -DskipTests
 
 # 3. Copy to core plugins (for runtime)
 cp target/image-component-plugin-1.0.0.jar ../core/plugins/
+cp target/image-component-plugin-1.0.0.jar ../core/target/plugins/
 
 # 4. Restart Spring Boot application to reload plugin
 ```
@@ -198,7 +214,7 @@ cp target/image-component-plugin-1.0.0.jar ../core/plugins/
 The browser loads `bundle.js` from the JAR, NOT the source TypeScript. If changes don't appear:
 - Verify bundle was rebuilt (`npm run build`)
 - Verify JAR was rebuilt (`mvn package`)
-- Verify JAR was copied to `core/plugins/`
+- Verify JAR was copied to `core/plugins/` AND `core/target/plugins/`
 - Restart the Spring Boot application
 - Hard refresh browser (Ctrl+Shift+R)
 
@@ -206,4 +222,8 @@ The browser loads `bundle.js` from the JAR, NOT the source TypeScript. If change
 
 ## Last Updated
 
-2026-01-13 - Fixed Image component height to always use `100%` and ignore stored `'auto'` values
+2026-01-17 - Updated Image component documentation:
+
+- ImageRenderer always uses `width: '100%'` and `height: '100%'`
+- ResizableComponent exempts Images from content-based minimum constraints
+- Added useEffect to reset loading/error state when src changes
