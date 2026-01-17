@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { RendererProps } from '../types';
 
 /**
@@ -10,6 +10,12 @@ const ImageRenderer: React.FC<RendererProps> = ({ component, isEditMode }) => {
 
   const props = component.props || {};
   const src = (props.src as string) || 'https://via.placeholder.com/400x300';
+
+  // Reset loading/error state when src changes
+  useEffect(() => {
+    setIsLoaded(false);
+    setHasError(false);
+  }, [src]);
   const alt = (props.alt as string) || 'Image';
   const objectFit = (props.objectFit as string) || 'cover';
   const objectPosition = (props.objectPosition as string) || 'center';
@@ -40,14 +46,7 @@ const ImageRenderer: React.FC<RendererProps> = ({ component, isEditMode }) => {
   // Determine if we're inside a parent container or at root level
   const hasParent = !!component.parentId;
 
-  // Container sizing logic - priority order:
-  // 1. Props width/height (from Properties panel) - highest priority
-  // 2. Stored dimensions (from resize) - but ignore 'auto' as it means "not set"
-  // 3. Parent-aware defaults (100% for children, auto for root)
-  const effectiveWidth = propsWidth || (storedWidth && storedWidth !== 'auto' ? storedWidth : null) || (hasParent ? '100%' : 'auto');
-
   const containerStyles: React.CSSProperties = {
-    width: effectiveWidth,
     // Only apply maxWidth for root-level Images to prevent page overflow
     // Child Images should be resizable beyond parent bounds (container will expand)
     maxWidth: hasParent ? undefined : '100%',
@@ -56,6 +55,7 @@ const ImageRenderer: React.FC<RendererProps> = ({ component, isEditMode }) => {
     boxSizing: 'border-box',
     ...(component.styles as React.CSSProperties),
     height: '100%',
+    width: '100%'
   };
 
   // When height is not explicitly set (auto), use aspect ratio to determine height

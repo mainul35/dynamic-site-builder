@@ -259,14 +259,16 @@
 /* Target Image components by their data-component-id attribute (starts with "Image-") */
 .draggable-component.child-component[data-component-id^="Image-"] {
   /* Allow Image to have explicit pixel width from resize */
-  width: auto;
+  min-width: 120px;
+  min-height: 90px;
   /* Prevent flex stretch */
   align-self: flex-start;
 }
 
 /* Ensure the ResizableComponent inside Image can control width */
 .draggable-component.child-component[data-component-id^="Image-"] .component-content {
-  width: auto;
+  min-width: 120px;
+  min-height: 90px;
   display: block; /* Override flex display so width is not stretched */
 }
 

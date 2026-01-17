@@ -27,8 +27,8 @@
 
 /* Child components - allow resizing */
 .resizable-component.child-component {
-  min-height: 40px;
-  min-width: 40px;
+  min-height: 100%;
+  min-width: 100%;
   /* Don't set width: 100% here - let inline styles from getContainerStyles() control width */
   /* This allows components to be resized to smaller widths */
   /* Don't force height: 100% - let component.size.height control this */
@@ -47,8 +47,8 @@
   width: 100%;
   /* Use auto height to let content determine size naturally */
   /* This ensures Labels, Buttons, etc. size to their content, not expand to fill parent */
-  height: auto;
-  min-height: 40px;
+  height: 100%;
+  min-height: 100%;
   box-sizing: border-box;
   /* Allow nested children's resize handles to be visible */
   /* Leaf components clip their own content via .component-placeholder */
@@ -58,7 +58,7 @@
 /* Layout containers nested as children should grow with their content */
 /* Use auto height so flex-column containers expand to fit child labels, etc. */
 .resizable-component.child-component.auto-height-container .resizable-content {
-  height: auto;
+  height: 100%;
   min-height: 100px;
 }
 

@@ -371,7 +371,7 @@
 /* Image components in grid layouts - allow resizing but constrain to grid cell */
 .children-container.grid-layout > .draggable-component[data-component-id^="Image-"] {
   max-width: 100%; /* Don't overflow grid cell */
-  min-width: 0; /* Allow shrinking */
+  min-width: 60px; /* Allow shrinking */
 }
 
 /* For flex-row layouts, children should use their stored widths as flex-basis */
