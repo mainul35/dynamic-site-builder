@@ -6,6 +6,8 @@ import dev.mainul35.cms.security.dto.RegisterRequest;
 import dev.mainul35.cms.security.entity.CmsRole;
 import dev.mainul35.cms.security.entity.CmsUser;
 import dev.mainul35.cms.security.entity.RefreshToken;
+import dev.mainul35.cms.security.entity.RoleName;
+import dev.mainul35.cms.security.entity.UserStatus;
 import dev.mainul35.cms.security.exception.AuthenticationException;
 import dev.mainul35.cms.security.exception.UserAlreadyExistsException;
 import dev.mainul35.cms.security.repository.CmsRoleRepository;
@@ -85,7 +87,7 @@ public class AuthService {
         }
 
         // Get default USER role
-        CmsRole userRole = roleRepository.findByRoleName(CmsRole.USER)
+        CmsRole userRole = roleRepository.findByRoleName(RoleName.USER)
                 .orElseThrow(() -> new RuntimeException("Default role not found"));
 
         // Create new user with PENDING status
@@ -96,7 +98,7 @@ public class AuthService {
                 .fullName(request.getFullName())
                 .isActive(true)
                 .isAdmin(false)
-                .status("PENDING")
+                .status(UserStatus.PENDING)
                 .emailVerified(false)
                 .build();
 

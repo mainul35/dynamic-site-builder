@@ -1,6 +1,7 @@
 package dev.mainul35.cms.security.service;
 
 import dev.mainul35.cms.security.entity.CmsUser;
+import dev.mainul35.cms.security.entity.RoleName;
 import dev.mainul35.cms.security.repository.CmsUserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +44,7 @@ public class CmsUserDetailsService implements UserDetailsService {
         }
 
         var authorities = user.getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getRoleName()))
+                .map(role -> new SimpleGrantedAuthority(RoleName.valueOf(role.getRoleName()).withRolePrefix()))
                 .collect(Collectors.toList());
 
         return User.builder()

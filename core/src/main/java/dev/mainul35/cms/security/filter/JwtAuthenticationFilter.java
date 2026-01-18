@@ -1,5 +1,6 @@
 package dev.mainul35.cms.security.filter;
 
+import dev.mainul35.cms.security.entity.RoleName;
 import dev.mainul35.cms.security.service.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -32,6 +33,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
 
+    /**
+     * Check if a token appears to be from the VSD Auth Server (JWT with RS256 signature).
+     * Local CMS tokens use HS256 (symmetric), auth server tokens use RS256 (asymmetric).
+     */
+    private boolean isAuthServerToken(String jwt) {
+        try {
+            // Auth server tokens have a different structure - they're signed with RS256
+            // and contain different claims (iss pointing to auth server)
+            String[] parts = jwt.split("\\.");
+            if (parts.length != 3) {
+                return false;
+            }
+            // Decode header to check algorithm
+            String headerJson = new String(java.util.Base64.getUrlDecoder().decode(parts[0]));
+            // Auth server uses RS256, local uses HS256
+            return headerJson.contains("\"RS256\"") || headerJson.contains("\"alg\":\"RS256\"");
+        } catch (Exception e) {
+            log.debug("Error checking token type: {}", e.getMessage());
+            return false;
+        }
+    }
+
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
@@ -40,6 +63,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         try {
             String jwt = extractJwtFromRequest(request);
+
+            // Skip if no token or if it's an auth server token (let OAuth2 Resource Server handle it)
+            if (StringUtils.hasText(jwt) && isAuthServerToken(jwt)) {
+                log.debug("Auth server token detected, delegating to OAuth2 Resource Server");
+                filterChain.doFilter(request, response);
+                return;
+            }
 
             if (StringUtils.hasText(jwt) && jwtService.isTokenValid(jwt)) {
                 // Only process access tokens, not refresh tokens
@@ -56,7 +86,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                     // Create authorities from roles
                     var authorities = roles.stream()
-                            .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+                            .map(role -> new SimpleGrantedAuthority(RoleName.valueOf(role).withRolePrefix()))
                             .collect(Collectors.toList());
 
                     // Create authentication token
@@ -115,7 +145,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         public boolean isAdmin() {
-            return hasRole("ADMIN");
+            return hasRole(RoleName.ADMIN.name());
         }
     }
 }

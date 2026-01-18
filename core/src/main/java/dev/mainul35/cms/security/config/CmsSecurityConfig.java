@@ -1,10 +1,14 @@
 package dev.mainul35.cms.security.config;
 
 import dev.mainul35.cms.config.SecurityProperties;
+import dev.mainul35.cms.security.authserver.AuthServerJwtConverter;
+import dev.mainul35.cms.security.entity.RoleName;
 import dev.mainul35.cms.security.filter.DynamicPublicApiFilter;
 import dev.mainul35.cms.security.filter.JwtAuthenticationFilter;
+import dev.mainul35.cms.security.oauth2.OAuth2AuthenticationSuccessHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -22,6 +26,8 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -42,6 +48,14 @@ public class CmsSecurityConfig {
     private final DynamicPublicApiFilter dynamicPublicApiFilter;
     private final UserDetailsService userDetailsService;
     private final SecurityProperties securityProperties;
+    private final AuthServerJwtConverter authServerJwtConverter;
+    private final OAuth2AuthenticationSuccessHandler oauth2SuccessHandler;
+
+    @Value("${app.auth-server.enabled:false}")
+    private boolean authServerEnabled;
+
+    @Value("${app.auth-server.jwk-set-uri:}")
+    private String authServerJwkSetUri;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -50,8 +64,9 @@ public class CmsSecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .headers(headers -> headers
                         .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
+                // Use IF_REQUIRED to allow sessions for OAuth2 login flow, but still support stateless JWT
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                        .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(auth -> {
                         // Public endpoints - no authentication required
                         auth.requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/refresh").permitAll()
@@ -86,11 +101,11 @@ public class CmsSecurityConfig {
                         configurePublicApiPatterns(auth);
 
                         // Admin endpoints - require ADMIN role
-                        auth.requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        auth.requestMatchers("/api/admin/**").hasRole(RoleName.ADMIN.name())
 
                         // User management endpoints
-                        .requestMatchers("/api/users/pending").hasRole("ADMIN")
-                        .requestMatchers("/api/users/*/approve", "/api/users/*/reject").hasRole("ADMIN")
+                        .requestMatchers("/api/users/pending").hasRole(RoleName.ADMIN.name())
+                        .requestMatchers("/api/users/*/approve", "/api/users/*/reject").hasRole(RoleName.ADMIN.name())
 
                         // Protected API endpoints - require authentication
                         .requestMatchers("/api/**").authenticated()
@@ -98,13 +113,48 @@ public class CmsSecurityConfig {
                         // All other requests - permit (for SPA routing)
                         .anyRequest().permitAll();
                 })
-                .authenticationProvider(authenticationProvider())
-                // Dynamic public API filter runs first to check database-configured patterns
-                .addFilterBefore(dynamicPublicApiFilter, UsernamePasswordAuthenticationFilter.class)
-                // JWT filter runs after to authenticate non-public requests
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .authenticationProvider(authenticationProvider());
+
+        // DUAL AUTHENTICATION MODE:
+        // Always add local JWT filters - they handle CMS-issued tokens (HS256)
+        // and pass through auth server tokens (RS256) for OAuth2 Resource Server to handle
+        log.info("Local JWT authentication enabled for CMS-issued tokens");
+        // Dynamic public API filter runs first to check database-configured patterns
+        http.addFilterBefore(dynamicPublicApiFilter, UsernamePasswordAuthenticationFilter.class);
+        // JWT filter runs after to authenticate non-public requests (passes through auth server tokens)
+        http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
+        // Additionally configure OAuth2 if auth server is enabled
+        if (authServerEnabled && authServerJwkSetUri != null && !authServerJwkSetUri.isEmpty()) {
+            log.info("VSD Auth Server mode also enabled, using JWT validation from: {}", authServerJwkSetUri);
+
+            // OAuth2 Login for SSO flow (user clicks "Sign in with VSD Auth Server")
+            http.oauth2Login(oauth2 -> oauth2
+                    .successHandler(oauth2SuccessHandler)
+                    .failureUrl("/login?error=oauth2")
+            );
+
+            // OAuth2 Resource Server handles auth server tokens (RS256) that passed through the local JWT filter
+            http.oauth2ResourceServer(oauth2 -> oauth2
+                    .jwt(jwt -> jwt
+                            .decoder(jwtDecoder())
+                            .jwtAuthenticationConverter(authServerJwtConverter)
+                    )
+            );
+        }
 
         return http.build();
+    }
+
+    @Bean
+    public JwtDecoder jwtDecoder() {
+        if (authServerEnabled && authServerJwkSetUri != null && !authServerJwkSetUri.isEmpty()) {
+            return NimbusJwtDecoder.withJwkSetUri(authServerJwkSetUri).build();
+        }
+        // Return a dummy decoder when not using auth server
+        return token -> {
+            throw new UnsupportedOperationException("Auth server not enabled");
+        };
     }
 
     /**

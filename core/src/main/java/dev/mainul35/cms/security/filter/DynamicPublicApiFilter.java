@@ -1,5 +1,6 @@
 package dev.mainul35.cms.security.filter;
 
+import dev.mainul35.cms.security.entity.RoleName;
 import dev.mainul35.cms.security.service.PublicApiPatternService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -54,7 +55,7 @@ public class DynamicPublicApiFilter extends OncePerRequestFilter {
                         new AnonymousAuthenticationToken(
                                 "dynamic-public-api",
                                 "anonymousUser",
-                                List.of(new SimpleGrantedAuthority("ROLE_ANONYMOUS"))
+                                List.of(new SimpleGrantedAuthority(RoleName.ANONYMOUS.withRolePrefix()))
                         )
                 );
             }

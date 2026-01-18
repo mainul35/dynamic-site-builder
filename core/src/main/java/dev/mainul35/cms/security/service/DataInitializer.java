@@ -2,6 +2,8 @@ package dev.mainul35.cms.security.service;
 
 import dev.mainul35.cms.security.entity.CmsRole;
 import dev.mainul35.cms.security.entity.CmsUser;
+import dev.mainul35.cms.security.entity.RoleName;
+import dev.mainul35.cms.security.entity.UserStatus;
 import dev.mainul35.cms.security.repository.CmsRoleRepository;
 import dev.mainul35.cms.security.repository.CmsUserRepository;
 import lombok.RequiredArgsConstructor;
@@ -35,9 +37,9 @@ public class DataInitializer implements CommandLineRunner {
 
     private void initializeRoles() {
         // Create ADMIN role if it doesn't exist
-        if (roleRepository.findByRoleName(CmsRole.ADMIN).isEmpty()) {
+        if (!roleRepository.existsByRoleName(RoleName.ADMIN)) {
             CmsRole adminRole = CmsRole.builder()
-                    .roleName(CmsRole.ADMIN)
+                    .roleName(RoleName.ADMIN.name())
                     .description("System administrator with full access")
                     .build();
             roleRepository.save(adminRole);
@@ -45,9 +47,9 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         // Create USER role if it doesn't exist
-        if (roleRepository.findByRoleName(CmsRole.USER).isEmpty()) {
+        if (!roleRepository.existsByRoleName(RoleName.USER)) {
             CmsRole userRole = CmsRole.builder()
-                    .roleName(CmsRole.USER)
+                    .roleName(RoleName.USER.name())
                     .description("Regular user with limited access")
                     .build();
             roleRepository.save(userRole);
@@ -55,9 +57,9 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         // Create DESIGNER role if it doesn't exist
-        if (roleRepository.findByRoleName(CmsRole.DESIGNER).isEmpty()) {
+        if (!roleRepository.existsByRoleName(RoleName.DESIGNER)) {
             CmsRole designerRole = CmsRole.builder()
-                    .roleName(CmsRole.DESIGNER)
+                    .roleName(RoleName.DESIGNER.name())
                     .description("Site designer with edit access")
                     .build();
             roleRepository.save(designerRole);
@@ -65,9 +67,9 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         // Create VIEWER role if it doesn't exist
-        if (roleRepository.findByRoleName(CmsRole.VIEWER).isEmpty()) {
+        if (!roleRepository.existsByRoleName(RoleName.VIEWER)) {
             CmsRole viewerRole = CmsRole.builder()
-                    .roleName(CmsRole.VIEWER)
+                    .roleName(RoleName.VIEWER.name())
                     .description("Read-only access to content")
                     .build();
             roleRepository.save(viewerRole);
@@ -83,7 +85,7 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         // Get ADMIN role
-        CmsRole adminRole = roleRepository.findByRoleName(CmsRole.ADMIN)
+        CmsRole adminRole = roleRepository.findByRoleName(RoleName.ADMIN)
                 .orElseThrow(() -> new RuntimeException("ADMIN role not found"));
 
         // Create default admin user
@@ -94,7 +96,7 @@ public class DataInitializer implements CommandLineRunner {
                 .fullName("System Administrator")
                 .isActive(true)
                 .isAdmin(true)
-                .status("APPROVED")
+                .status(UserStatus.APPROVED)
                 .emailVerified(true)
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
