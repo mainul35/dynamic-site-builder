@@ -1,6 +1,7 @@
 package dev.mainul35.cms.security.repository;
 
 import dev.mainul35.cms.security.entity.CmsUser;
+import dev.mainul35.cms.security.entity.UserStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -24,12 +25,17 @@ public interface CmsUserRepository extends JpaRepository<CmsUser, Long> {
 
     boolean existsByEmail(String email);
 
-    @Query("SELECT u FROM CmsUser u WHERE u.status = 'PENDING' ORDER BY u.createdAt DESC")
-    List<CmsUser> findPendingUsers();
+    List<CmsUser> findByStatusOrderByCreatedAtDesc(UserStatus status);
 
-    @Query("SELECT u FROM CmsUser u WHERE u.status = :status ORDER BY u.createdAt DESC")
-    List<CmsUser> findByStatus(@Param("status") String status);
+    default List<CmsUser> findPendingUsers() {
+        return findByStatusOrderByCreatedAtDesc(UserStatus.PENDING);
+    }
 
-    @Query("SELECT u FROM CmsUser u WHERE u.isActive = true AND u.status = 'APPROVED'")
-    List<CmsUser> findActiveApprovedUsers();
+    default List<CmsUser> findActiveApprovedUsers() {
+        return findByIsActiveTrueAndStatus(UserStatus.APPROVED);
+    }
+
+    List<CmsUser> findByIsActiveTrueAndStatus(UserStatus status);
+
+    Optional<CmsUser> findByAuthServerId(String authServerId);
 }

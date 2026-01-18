@@ -39,9 +39,10 @@ public class CmsUser {
     @Builder.Default
     private Boolean isAdmin = false;
 
+    @Enumerated(EnumType.STRING)
     @Column(length = 20)
     @Builder.Default
-    private String status = "PENDING";
+    private UserStatus status = UserStatus.PENDING;
 
     @Column(name = "avatar_url", length = 1000)
     private String avatarUrl;
@@ -68,6 +69,9 @@ public class CmsUser {
 
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
+
+    @Column(name = "auth_server_id", unique = true, length = 36)
+    private String authServerId;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
@@ -104,14 +108,14 @@ public class CmsUser {
     }
 
     public boolean isApproved() {
-        return "APPROVED".equals(status);
+        return UserStatus.APPROVED == status;
     }
 
     public boolean isPending() {
-        return "PENDING".equals(status);
+        return UserStatus.PENDING == status;
     }
 
     public boolean isRejected() {
-        return "REJECTED".equals(status);
+        return UserStatus.REJECTED == status;
     }
 }

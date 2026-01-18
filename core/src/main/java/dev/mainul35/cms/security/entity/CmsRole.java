@@ -13,10 +13,29 @@ import java.time.Instant;
 @Builder
 public class CmsRole {
 
-    public static final String ADMIN = "ADMIN";
-    public static final String DESIGNER = "DESIGNER";
-    public static final String VIEWER = "VIEWER";
-    public static final String USER = "USER";
+    /**
+     * @deprecated Use {@link RoleName#ADMIN} instead
+     */
+    @Deprecated(forRemoval = true)
+    public static final String ADMIN = RoleName.ADMIN.name();
+
+    /**
+     * @deprecated Use {@link RoleName#DESIGNER} instead
+     */
+    @Deprecated(forRemoval = true)
+    public static final String DESIGNER = RoleName.DESIGNER.name();
+
+    /**
+     * @deprecated Use {@link RoleName#VIEWER} instead
+     */
+    @Deprecated(forRemoval = true)
+    public static final String VIEWER = RoleName.VIEWER.name();
+
+    /**
+     * @deprecated Use {@link RoleName#USER} instead
+     */
+    @Deprecated(forRemoval = true)
+    public static final String USER = RoleName.USER.name();
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
