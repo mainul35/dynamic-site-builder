@@ -25,6 +25,27 @@ let failedQueue: Array<{
   reject: (error: any) => void;
 }> = [];
 
+/**
+ * Check if a token is an SSO token (can't be refreshed via /auth/refresh)
+ * SSO tokens have 'type' = 'access' and no 'family' claim
+ */
+function checkIsSsoToken(token: string): boolean {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return false;
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+
+    // SSO tokens have 'type' = 'access' and no 'family' claim
+    // Regular refresh tokens have 'type' = 'refresh' and 'family' claim
+    const tokenType = payload.type as string;
+    const hasFamily = 'family' in payload;
+
+    return tokenType === 'access' && !hasFamily;
+  } catch {
+    return false;
+  }
+}
+
 const processQueue = (error: any, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
@@ -41,7 +62,13 @@ const processQueue = (error: any, token: string | null = null) => {
  */
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = useAuthStore.getState().accessToken;
+    const store = useAuthStore.getState();
+    const token = store.accessToken;
+
+    console.log('API Request:', config.url, {
+      hasToken: !!token,
+      isAuthenticated: store.isAuthenticated
+    });
 
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -66,6 +93,11 @@ api.interceptors.response.use(
     const isAuthEndpoint = originalRequest?.url?.includes('/auth/');
 
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
+      console.log('API 401 error:', originalRequest.url, {
+        isRefreshing,
+        hasRetried: originalRequest._retry
+      });
+
       if (isRefreshing) {
         // If already refreshing, queue this request
         return new Promise((resolve, reject) => {
@@ -89,14 +121,40 @@ api.interceptors.response.use(
       const store = useAuthStore.getState();
       const refreshToken = store.refreshToken;
 
+      console.log('API 401 handling:', {
+        hasRefreshToken: !!refreshToken,
+        isAuthenticated: store.isAuthenticated
+      });
+
       if (!refreshToken) {
-        store.logout();
+        console.log('API: No refresh token, logging out');
+        // Don't logout or redirect if we're on OAuth2 callback page (it will handle auth)
+        if (!window.location.pathname.includes('/oauth2/callback')) {
+          store.logout();
+        }
         isRefreshing = false;
         return Promise.reject(error);
       }
 
+      // Check if this is an SSO token (can't be refreshed via /auth/refresh)
+      const isSsoToken = checkIsSsoToken(refreshToken);
+      console.log('API: isSsoToken:', isSsoToken);
+
+      if (isSsoToken) {
+        // SSO tokens can't be refreshed - just logout
+        console.log('API: SSO token got 401, logging out');
+        processQueue(error, null);
+        store.logout();
+        isRefreshing = false;
+        // Redirect to login page (but not if we're already on OAuth2 callback - it will handle auth)
+        if (!window.location.pathname.includes('/oauth2/callback')) {
+          window.location.href = '/login';
+        }
+        return Promise.reject(error);
+      }
+
       try {
-        // Refresh the token
+        // Refresh the token (only for non-SSO tokens)
         const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
           refreshToken,
         });

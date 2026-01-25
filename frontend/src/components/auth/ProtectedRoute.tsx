@@ -1,11 +1,68 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { authService } from '../../services/authService';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRoles?: string[];
+}
+
+/**
+ * Check if token is expired by decoding JWT
+ */
+function isTokenExpired(token: string): boolean {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      console.log('ProtectedRoute: Token invalid format - not 3 parts');
+      return true;
+    }
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    const exp = payload.exp as number;
+    if (!exp) {
+      console.log('ProtectedRoute: Token has no expiration - treating as valid');
+      return false; // No expiration = not expired
+    }
+    const now = Math.floor(Date.now() / 1000);
+    const isExpired = exp < now;
+    console.log('ProtectedRoute: Token expiration check', { exp, now, isExpired, expiresIn: exp - now });
+    return isExpired;
+  } catch (e) {
+    console.log('ProtectedRoute: Token decode error', e);
+    return true;
+  }
+}
+
+/**
+ * Read auth state directly from localStorage
+ */
+function getAuthFromLocalStorage(): { isAuthenticated: boolean; accessToken: string | null; user: any } {
+  try {
+    const stored = localStorage.getItem('auth-storage');
+    console.log('ProtectedRoute: localStorage raw value exists:', !!stored);
+    if (!stored) {
+      console.log('ProtectedRoute: No auth-storage in localStorage');
+      return { isAuthenticated: false, accessToken: null, user: null };
+    }
+    const parsed = JSON.parse(stored);
+    const state = parsed.state || parsed;
+    console.log('ProtectedRoute: Parsed localStorage auth', {
+      hasState: !!state,
+      isAuthenticated: state.isAuthenticated,
+      hasToken: !!state.accessToken,
+      tokenLength: state.accessToken?.length,
+      hasUser: !!state.user,
+      userEmail: state.user?.email
+    });
+    return {
+      isAuthenticated: state.isAuthenticated || false,
+      accessToken: state.accessToken || null,
+      user: state.user || null,
+    };
+  } catch (e) {
+    console.log('ProtectedRoute: Error parsing localStorage', e);
+    return { isAuthenticated: false, accessToken: null, user: null };
+  }
 }
 
 /**
@@ -18,27 +75,68 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requiredRoles = [],
 }) => {
   const location = useLocation();
-  const { isAuthenticated, user, refreshToken } = useAuthStore();
-  const [isInitializing, setIsInitializing] = useState(true);
+
+  // Get auth state from Zustand store (reactive)
+  const storeState = useAuthStore();
+  const { isAuthenticated, user, accessToken } = storeState;
+
+  // State to track if we've done our initial check
+  const [isReady, setIsReady] = useState(false);
+  const [authState, setAuthState] = useState<{
+    isAuthenticated: boolean;
+    accessToken: string | null;
+    user: any;
+  }>({ isAuthenticated: false, accessToken: null, user: null });
 
   useEffect(() => {
-    const initAuth = async () => {
-      // If we have a refresh token but no access token, try to refresh
-      if (refreshToken && !isAuthenticated) {
-        try {
-          await authService.initializeAuth();
-        } catch (error) {
-          console.error('Failed to initialize auth:', error);
-        }
+    // On mount, check localStorage directly to avoid hydration race conditions
+    const localAuth = getAuthFromLocalStorage();
+
+    console.log('ProtectedRoute: Initial check', {
+      localStorage: {
+        isAuthenticated: localAuth.isAuthenticated,
+        hasToken: !!localAuth.accessToken,
+        hasUser: !!localAuth.user,
+      },
+      store: {
+        isAuthenticated,
+        hasToken: !!accessToken,
+        hasUser: !!user,
       }
-      setIsInitializing(false);
-    };
+    });
 
-    initAuth();
-  }, [refreshToken, isAuthenticated]);
+    // Use localStorage values if store hasn't hydrated yet
+    if (localAuth.isAuthenticated && localAuth.accessToken && localAuth.user) {
+      // Check if token is expired
+      if (!isTokenExpired(localAuth.accessToken)) {
+        console.log('ProtectedRoute: Using localStorage auth (valid token)');
+        setAuthState(localAuth);
+        setIsReady(true);
+        return;
+      } else {
+        console.log('ProtectedRoute: localStorage token is expired');
+      }
+    }
 
-  // Show loading while initializing
-  if (isInitializing) {
+    // Use store values
+    setAuthState({
+      isAuthenticated,
+      accessToken,
+      user,
+    });
+    setIsReady(true);
+  }, []); // Only run once on mount
+
+  // Also update when store changes (after initial mount)
+  useEffect(() => {
+    if (isReady && isAuthenticated && accessToken && user) {
+      console.log('ProtectedRoute: Store updated with auth', { email: user.email });
+      setAuthState({ isAuthenticated, accessToken, user });
+    }
+  }, [isReady, isAuthenticated, accessToken, user]);
+
+  // Show loading while checking
+  if (!isReady) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
         <div className="text-center">
@@ -50,16 +148,18 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // Not authenticated - redirect to login
-  if (!isAuthenticated) {
+  if (!authState.isAuthenticated || !authState.accessToken) {
+    console.log('ProtectedRoute: Not authenticated, redirecting to login');
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   // Check for required roles
   if (requiredRoles.length > 0) {
-    const userRoles = user?.roles || [];
+    const userRoles = authState.user?.roles || [];
     const hasRequiredRole = requiredRoles.some((role) => userRoles.includes(role));
 
     if (!hasRequiredRole) {
+      console.log('ProtectedRoute: Missing required roles', { required: requiredRoles, has: userRoles });
       return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100">
           <div className="text-center p-8 bg-white rounded-lg shadow-md">
@@ -82,6 +182,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     }
   }
 
+  console.log('ProtectedRoute: Rendering protected content');
   return <>{children}</>;
 };
 

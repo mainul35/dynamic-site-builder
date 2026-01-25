@@ -19,6 +19,7 @@ export interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  _hasHydrated: boolean;
 
   // Actions
   setTokens: (accessToken: string, refreshToken: string, expiresIn: number) => void;
@@ -27,6 +28,7 @@ export interface AuthState {
   setError: (error: string | null) => void;
   logout: () => void;
   clearError: () => void;
+  setHasHydrated: (hasHydrated: boolean) => void;
 
   // Helpers
   hasRole: (role: string) => boolean;
@@ -47,14 +49,17 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      _hasHydrated: false,
 
       // Actions
       setTokens: (accessToken: string, refreshToken: string, expiresIn: number) => {
+        console.log('authStore.setTokens called:', { hasToken: !!accessToken });
         set({
           accessToken,
           refreshToken,
           isAuthenticated: true,
           error: null,
+          _hasHydrated: true, // Mark as hydrated when tokens are set
         });
 
         // Set up token refresh before expiration (refresh 1 minute before expiry)
@@ -71,6 +76,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       setUser: (user: UserProfile) => {
+        console.log('authStore.setUser called:', { email: user?.email });
         set({ user });
       },
 
@@ -83,6 +89,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
+        console.log('authStore.logout called');
         if (tokenExpirationTimeout) {
           clearTimeout(tokenExpirationTimeout);
           tokenExpirationTimeout = null;
@@ -98,6 +105,10 @@ export const useAuthStore = create<AuthState>()(
 
       clearError: () => {
         set({ error: null });
+      },
+
+      setHasHydrated: (hasHydrated: boolean) => {
+        set({ _hasHydrated: hasHydrated });
       },
 
       // Helpers
@@ -118,11 +129,22 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auth-storage',
       storage: createJSONStorage(() => localStorage),
-      // Only persist refreshToken, not accessToken (for security)
+      // Persist tokens and user info
+      // Note: For SSO users, accessToken === refreshToken, so we persist both
       partialize: (state) => ({
+        accessToken: state.accessToken,
         refreshToken: state.refreshToken,
         user: state.user,
+        isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: () => (state) => {
+        console.log('authStore: Rehydration complete', {
+          isAuthenticated: state?.isAuthenticated,
+          hasAccessToken: !!state?.accessToken,
+          hasUser: !!state?.user
+        });
+        state?.setHasHydrated(true);
+      },
     }
   )
 );
