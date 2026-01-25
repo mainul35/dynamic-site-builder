@@ -23,13 +23,13 @@ import java.util.Map;
 /**
  * Admin controller for component registry management.
  * Provides endpoints for registering, activating, deactivating, and deleting components.
- * Only accessible by administrators.
+ * Accessible by administrators and designers.
  */
 @RestController
 @RequestMapping("/api/admin/components")
 @RequiredArgsConstructor
 @Slf4j
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'DESIGNER')")
 public class ComponentAdminController {
 
     private final ComponentRegistryService componentRegistryService;

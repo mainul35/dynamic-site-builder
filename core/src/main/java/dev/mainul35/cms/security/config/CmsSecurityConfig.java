@@ -30,6 +30,9 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -100,8 +103,8 @@ public class CmsSecurityConfig {
                         // Configure via: security.public-api-patterns=/api/sample/**,/api/products/**
                         configurePublicApiPatterns(auth);
 
-                        // Admin endpoints - require ADMIN role
-                        auth.requestMatchers("/api/admin/**").hasRole(RoleName.ADMIN.name())
+                        // Admin endpoints - require authentication, method-level security handles role checks
+                        auth.requestMatchers("/api/admin/**").authenticated()
 
                         // User management endpoints
                         .requestMatchers("/api/users/pending").hasRole(RoleName.ADMIN.name())
@@ -113,7 +116,12 @@ public class CmsSecurityConfig {
                         // All other requests - permit (for SPA routing)
                         .anyRequest().permitAll();
                 })
-                .authenticationProvider(authenticationProvider());
+                .authenticationProvider(authenticationProvider())
+                // Configure exception handling: return 401/403 for API requests instead of redirect
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(apiAuthenticationEntryPoint())
+                        .accessDeniedHandler(apiAccessDeniedHandler())
+                );
 
         // DUAL AUTHENTICATION MODE:
         // Always add local JWT filters - they handle CMS-issued tokens (HS256)
@@ -136,6 +144,7 @@ public class CmsSecurityConfig {
 
             // OAuth2 Resource Server handles auth server tokens (RS256) that passed through the local JWT filter
             http.oauth2ResourceServer(oauth2 -> oauth2
+                    .bearerTokenResolver(bearerTokenResolver())
                     .jwt(jwt -> jwt
                             .decoder(jwtDecoder())
                             .jwtAuthenticationConverter(authServerJwtConverter)
@@ -144,6 +153,35 @@ public class CmsSecurityConfig {
         }
 
         return http.build();
+    }
+
+    /**
+     * Custom BearerTokenResolver that returns null for HS256 tokens (CMS local tokens).
+     * This prevents the OAuth2 Resource Server from trying to process them.
+     */
+    @Bean
+    public org.springframework.security.oauth2.server.resource.web.BearerTokenResolver bearerTokenResolver() {
+        return request -> {
+            String bearerToken = request.getHeader("Authorization");
+            if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+                String token = bearerToken.substring(7);
+                // Check if this is an HS256 token (local CMS token)
+                try {
+                    String[] parts = token.split("\\.");
+                    if (parts.length == 3) {
+                        String headerJson = new String(java.util.Base64.getUrlDecoder().decode(parts[0]));
+                        if (headerJson.contains("\"HS256\"") || headerJson.contains("\"alg\":\"HS256\"")) {
+                            log.debug("HS256 token detected - skipping OAuth2 Resource Server (handled by local JWT filter)");
+                            return null; // Return null so OAuth2 Resource Server skips this request
+                        }
+                    }
+                } catch (Exception e) {
+                    log.debug("Error checking token type: {}", e.getMessage());
+                }
+                return token; // RS256 token - let OAuth2 Resource Server handle it
+            }
+            return null;
+        };
     }
 
     @Bean
@@ -206,5 +244,47 @@ public class CmsSecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    /**
+     * Custom authentication entry point that returns 401 for API requests
+     * instead of redirecting to OAuth2 login.
+     */
+    @Bean
+    public AuthenticationEntryPoint apiAuthenticationEntryPoint() {
+        return (request, response, authException) -> {
+            String requestUri = request.getRequestURI();
+            // For API requests, return 401 JSON response
+            if (requestUri.startsWith("/api/")) {
+                log.debug("API authentication failed for {}: {}", requestUri, authException.getMessage());
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json");
+                response.getWriter().write("{\"error\":\"Unauthorized\",\"message\":\"Authentication required\"}");
+            } else {
+                // For non-API requests (browser navigation), redirect to login
+                response.sendRedirect("/login");
+            }
+        };
+    }
+
+    /**
+     * Custom access denied handler that returns 403 for API requests
+     * instead of redirecting.
+     */
+    @Bean
+    public AccessDeniedHandler apiAccessDeniedHandler() {
+        return (request, response, accessDeniedException) -> {
+            String requestUri = request.getRequestURI();
+            // For API requests, return 403 JSON response
+            if (requestUri.startsWith("/api/")) {
+                log.debug("API access denied for {}: {}", requestUri, accessDeniedException.getMessage());
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                response.setContentType("application/json");
+                response.getWriter().write("{\"error\":\"Forbidden\",\"message\":\"Access denied\"}");
+            } else {
+                // For non-API requests, redirect to error page
+                response.sendRedirect("/error?code=403");
+            }
+        };
     }
 }

@@ -19,15 +19,17 @@ type SettingsTab = 'general' | 'editor' | 'keyboard' | 'security' | 'components'
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const uiPreferences = useUIPreferencesStore();
-  const { isAdmin } = useAuthStore();
+  const { isAdmin, isDesigner } = useAuthStore();
 
-  // Build tabs list - Security and Components tabs only visible to admins
+  // Build tabs list - Security tab only visible to admins, Components tab visible to admins and designers
   const tabs: { id: SettingsTab; label: string }[] = [
     { id: 'general', label: 'General' },
     { id: 'editor', label: 'Editor' },
     { id: 'keyboard', label: 'Shortcuts' },
     ...(isAdmin() ? [
       { id: 'security' as SettingsTab, label: 'Security' },
+    ] : []),
+    ...((isAdmin() || isDesigner()) ? [
       { id: 'components' as SettingsTab, label: 'Components' },
     ] : []),
   ];
@@ -268,7 +270,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           </div>
         )}
 
-        {activeTab === 'components' && isAdmin() && (
+        {activeTab === 'components' && (isAdmin() || isDesigner()) && (
           <div className="settings-panel">
             <ComponentManagementTab />
           </div>
