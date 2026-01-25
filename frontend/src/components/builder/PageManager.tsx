@@ -38,7 +38,7 @@ export const PageManager: React.FC<PageManagerProps> = ({
   // Site manager store
   const {
     currentSite,
-    pages,
+    pages: storePages,
     pageTree,
     isLoadingPages,
     error: storeError,
@@ -56,6 +56,37 @@ export const PageManager: React.FC<PageManagerProps> = ({
 
   // Use siteId prop if provided, otherwise use store's currentSiteId
   const effectiveSiteId = siteId ?? storeSiteId;
+
+  // Local pages state for demo mode
+  const [localPages, setLocalPages] = useState<Page[]>([]);
+
+  // Use store pages for real sites, local pages for demo mode
+  const pages = effectiveSiteId ? storePages : localPages;
+
+  // Load pages from localStorage in demo mode
+  useEffect(() => {
+    if (!effectiveSiteId) {
+      loadLocalPages();
+    }
+  }, [effectiveSiteId]);
+
+  // Function to load pages from localStorage
+  const loadLocalPages = () => {
+    const savedPages = JSON.parse(localStorage.getItem('builder_saved_pages') || '{}');
+    const demoPages: Page[] = Object.entries(savedPages).map(([key, val]: [string, any], index) => ({
+      id: Date.now() + index, // Generate unique IDs
+      siteId: 0,
+      pageName: val.pageName || key,
+      pageSlug: key,
+      pageType: val.pageType || 'standard',
+      routePath: key === 'home' ? '/' : `/${key}`,
+      displayOrder: index,
+      isPublished: false,
+      createdAt: val.savedAt || new Date().toISOString(),
+      updatedAt: val.savedAt || new Date().toISOString(),
+    }));
+    setLocalPages(demoPages);
+  };
 
   // Load site and pages when effective siteId changes
   useEffect(() => {
@@ -146,6 +177,9 @@ export const PageManager: React.FC<PageManagerProps> = ({
       };
       localStorage.setItem('builder_saved_pages', JSON.stringify(savedPages));
 
+      // Refresh local pages list to show the new page
+      loadLocalPages();
+
       onPageCreate?.(newPage);
       setShowCreateModal(false);
       resetCreateForm();
@@ -177,6 +211,8 @@ export const PageManager: React.FC<PageManagerProps> = ({
       const savedPages = JSON.parse(localStorage.getItem('builder_saved_pages') || '{}');
       delete savedPages[page.pageSlug];
       localStorage.setItem('builder_saved_pages', JSON.stringify(savedPages));
+      // Refresh local pages list
+      loadLocalPages();
       onPageDelete?.(pageId);
     }
 
@@ -203,6 +239,8 @@ export const PageManager: React.FC<PageManagerProps> = ({
           savedAt: new Date().toISOString(),
         };
         localStorage.setItem('builder_saved_pages', JSON.stringify(savedPages));
+        // Refresh local pages list
+        loadLocalPages();
       }
     }
 
@@ -232,6 +270,8 @@ export const PageManager: React.FC<PageManagerProps> = ({
         if (savedPages[page.pageSlug]) {
           savedPages[page.pageSlug].pageName = editingName;
           localStorage.setItem('builder_saved_pages', JSON.stringify(savedPages));
+          // Refresh local pages list
+          loadLocalPages();
         }
       }
     }
