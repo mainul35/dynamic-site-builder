@@ -47,7 +47,7 @@ public class OAuth2ClientConfig {
     @Value("${spring.security.oauth2.client.provider.vsd-auth.user-info-uri:}")
     private String userInfoUri;
 
-    @Value("${spring.security.oauth2.client.registration.vsd-auth.redirect-uri:{baseUrl}/login/oauth2/code/vsd-auth}")
+    @Value("${spring.security.oauth2.client.registration.vsd-auth.redirect-uri}")
     private String redirectUri;
 
     @Value("${spring.security.oauth2.client.provider.vsd-auth.user-name-attribute:sub}")
@@ -61,6 +61,16 @@ public class OAuth2ClientConfig {
         Map<String, ClientRegistrationConfig> configs = new HashMap<>();
 
         if (clientId != null && !clientId.isEmpty()) {
+            // Debug: log client secret info (masked for security)
+            String secretInfo = clientSecret == null ? "NULL" :
+                               clientSecret.isEmpty() ? "EMPTY" :
+                               clientSecret.length() + " chars, starts with: " + clientSecret.substring(0, Math.min(4, clientSecret.length())) + "***";
+            log.info("OAuth2 client secret configured: {}", secretInfo);
+
+            if (clientSecret == null || clientSecret.isEmpty()) {
+                log.error("VSD_CMS_CLIENT_SECRET environment variable is not set! OAuth2 authentication will fail.");
+            }
+
             ClientRegistrationConfig vsdAuthConfig = ClientRegistrationConfig.builder()
                     .clientId(clientId)
                     .clientSecret(clientSecret)
@@ -77,7 +87,7 @@ public class OAuth2ClientConfig {
                     .build();
 
             configs.put("vsd-auth", vsdAuthConfig);
-            log.info("Configured OAuth2 client 'vsd-auth' with issuer: {} (lazy-loaded)", issuerUri);
+            log.info("Configured OAuth2 client 'vsd-auth' with client_id: {}, issuer: {} (lazy-loaded)", clientId, issuerUri);
         }
 
         return new LazyClientRegistrationRepository(configs);

@@ -38,6 +38,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     private final CmsUserRepository userRepository;
     private final CmsRoleRepository roleRepository;
     private final JwtService jwtService;
+    private final OAuth2TokenExchangeService tokenExchangeService;
 
     @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
@@ -58,26 +59,40 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             OAuth2User oauth2User = oauth2Token.getPrincipal();
             Map<String, Object> attributes = oauth2User.getAttributes();
 
+            // Log all attributes to understand what the Auth Server is returning
+            log.info("OAuth2 attributes received: {}", attributes);
+            log.info("OAuth2 attribute keys: {}", attributes.keySet());
+
             String authServerId = (String) attributes.get("sub");
             String emailAttr = (String) attributes.get("email");
             String displayName = (String) attributes.get("display_name");
             if (displayName == null) {
                 displayName = (String) attributes.get("name");
             }
+            if (displayName == null) {
+                displayName = (String) attributes.get("fullName");
+            }
 
-            // If email is not directly available, check if sub contains an email
-            // (VSD Auth Server may use email as the subject identifier)
+            // If email is not directly available, check alternative sources
+            // (VSD Auth Server may use email as the subject identifier or in other claims)
             final String email;
-            if (emailAttr != null) {
+            if (emailAttr != null && !emailAttr.isEmpty()) {
                 email = emailAttr;
             } else if (authServerId != null && authServerId.contains("@")) {
                 email = authServerId;
             } else {
-                email = null;
+                // Try to get email from preferred_username or other claims
+                String preferredUsername = (String) attributes.get("preferred_username");
+                if (preferredUsername != null && preferredUsername.contains("@")) {
+                    email = preferredUsername;
+                } else {
+                    // Last resort: generate a placeholder email
+                    log.warn("No email found in OAuth2 attributes, generating placeholder email");
+                    email = authServerId + "@sso.local";
+                }
             }
 
-            log.info("OAuth2 login success for user: {} ({})", email, authServerId);
-            log.debug("OAuth2 attributes: {}", attributes);
+            log.info("OAuth2 login success for user: {} (sub: {}, display_name: {})", email, authServerId, displayName);
 
             // Find or create local CMS user
             CmsUser cmsUser = userRepository.findByAuthServerId(authServerId)
@@ -107,25 +122,25 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             // Generate local JWT token
             String accessToken = jwtService.generateAccessToken(cmsUser);
 
-            // Redirect to frontend with token
-            // Ensure frontendUrl is valid (fallback to hardcoded value if empty)
+            // Generate a short-lived authorization code for secure token exchange
+            // This prevents the JWT token from being exposed in URL query parameters
+            String authCode = tokenExchangeService.generateCode(accessToken);
+
+            // Redirect to frontend with authorization code (not the token)
+            // Frontend will exchange this code for the actual token via POST /api/auth/oauth2/exchange
             String effectiveFrontendUrl = (frontendUrl != null && !frontendUrl.trim().isEmpty())
                     ? frontendUrl
                     : "http://localhost:5173";
             log.info("Using frontend URL: '{}'", effectiveFrontendUrl);
 
-            // Use encode() to properly URL-encode the JWT token (handles + and = characters)
             String redirectUrl = UriComponentsBuilder.fromUriString(effectiveFrontendUrl)
                     .path("/oauth2/callback")
-                    .queryParam("token", accessToken)
+                    .queryParam("code", authCode)
                     .encode()
                     .build()
                     .toUriString();
 
-            log.info("Constructed redirect URL: {}", redirectUrl);
-            log.info("Redirect URL starts with http: {}", redirectUrl.startsWith("http"));
-            log.info("Token length: {}", accessToken.length());
-            log.info("Full redirect URL length: {}", redirectUrl.length());
+            log.info("Constructed redirect URL with authorization code (token not exposed in URL)");
 
             // Clear any response state and do a simple HTTP redirect
             response.reset();
@@ -146,14 +161,27 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         CmsUser user = new CmsUser();
         user.setAuthServerId(authServerId);
         user.setEmail(email);
-        // Use email prefix as username, or authServerId if email is not available
+
+        // Generate a unique username from email or authServerId
+        String baseUsername;
         if (email != null && email.contains("@")) {
-            user.setUsername(email.split("@")[0]);
+            baseUsername = email.split("@")[0];
         } else if (authServerId != null) {
-            user.setUsername(authServerId.contains("@") ? authServerId.split("@")[0] : authServerId);
+            baseUsername = authServerId.contains("@") ? authServerId.split("@")[0] : authServerId;
         } else {
-            user.setUsername("user_" + System.currentTimeMillis());
+            baseUsername = "user";
         }
+
+        // Ensure username is unique by checking if it exists and adding a suffix if needed
+        String username = baseUsername;
+        int suffix = 1;
+        while (userRepository.findByUsername(username).isPresent()) {
+            username = baseUsername + "_" + suffix;
+            suffix++;
+            log.debug("Username {} already exists, trying {}", baseUsername, username);
+        }
+        user.setUsername(username);
+        log.info("Generated unique username: {} for SSO user with email: {}", username, email);
         user.setFullName(displayName != null ? displayName : user.getUsername());
         user.setIsActive(true);
         user.setStatus(UserStatus.APPROVED); // Auto-approve SSO users

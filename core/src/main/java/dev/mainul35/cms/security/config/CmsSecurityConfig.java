@@ -74,6 +74,8 @@ public class CmsSecurityConfig {
                         // Public endpoints - no authentication required
                         auth.requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/refresh").permitAll()
                         .requestMatchers("/api/auth/check").permitAll()
+                        // OAuth2 token exchange endpoint (exchanges short-lived code for JWT)
+                        .requestMatchers("/api/auth/oauth2/exchange").permitAll()
 
                         // OAuth2 endpoints
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
@@ -139,7 +141,15 @@ public class CmsSecurityConfig {
             // OAuth2 Login for SSO flow (user clicks "Sign in with VSD Auth Server")
             http.oauth2Login(oauth2 -> oauth2
                     .successHandler(oauth2SuccessHandler)
-                    .failureUrl("/login?error=oauth2")
+                    .failureHandler((request, response, exception) -> {
+                        log.error("OAuth2 login failed: {}", exception.getMessage(), exception);
+                        log.error("OAuth2 error class: {}", exception.getClass().getName());
+                        if (exception.getCause() != null) {
+                            log.error("OAuth2 error cause: {}", exception.getCause().getMessage());
+                        }
+                        response.sendRedirect("/login?error=oauth2&message=" +
+                            java.net.URLEncoder.encode(exception.getMessage(), java.nio.charset.StandardCharsets.UTF_8));
+                    })
             );
 
             // OAuth2 Resource Server handles auth server tokens (RS256) that passed through the local JWT filter

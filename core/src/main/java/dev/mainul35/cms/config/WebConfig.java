@@ -1,9 +1,13 @@
 package dev.mainul35.cms.config;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
+import org.springframework.web.filter.ForwardedHeaderFilter;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -14,6 +18,17 @@ import java.io.IOException;
 @Configuration
 @RequiredArgsConstructor
 public class WebConfig implements WebMvcConfigurer {
+
+    /**
+     * Enable ForwardedHeaderFilter to handle X-Forwarded-* headers from reverse proxy.
+     * This ensures HTTPS redirect URIs are built correctly when behind Cloudflare/nginx.
+     * Must run before Spring Security filters.
+     */
+    @Bean
+    @Order(Ordered.HIGHEST_PRECEDENCE)
+    public ForwardedHeaderFilter forwardedHeaderFilter() {
+        return new ForwardedHeaderFilter();
+    }
 
     private final CorsProperties corsProperties;
 

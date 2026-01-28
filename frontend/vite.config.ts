@@ -53,5 +53,5 @@ export default defineConfig({
   },
   
   // Base path for assets
-  base: './',
+  base: '/',
 })

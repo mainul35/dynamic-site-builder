@@ -10,6 +10,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -168,7 +171,22 @@ public class JwtService {
     }
 
     private SecretKey getSigningKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
+        byte[] keyBytes;
+        if (jwtSecret.contains("-") || jwtSecret.contains("_")) {
+            keyBytes = Decoders.BASE64URL.decode(jwtSecret);
+        } else {
+            keyBytes = Decoders.BASE64.decode(jwtSecret);
+        }
+        // HMAC-SHA256 requires at least 256 bits (32 bytes).
+        // If the decoded key is too short, derive a 256-bit key using SHA-256.
+        if (keyBytes.length < 32) {
+            try {
+                MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
+                keyBytes = sha256.digest(keyBytes);
+            } catch (NoSuchAlgorithmException e) {
+                throw new IllegalStateException("SHA-256 not available", e);
+            }
+        }
         return Keys.hmacShaKeyFor(keyBytes);
     }
 

@@ -1,0 +1,98 @@
+# Stage 1: Build Frontend
+FROM node:22-alpine AS frontend-build
+WORKDIR /app
+
+# Copy package files
+COPY frontend/package*.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy frontend source
+COPY frontend/ .
+
+# Build frontend for production
+RUN npm run build
+
+# Stage 2: Build Backend with embedded Frontend
+FROM maven:3.9-eclipse-temurin-21-alpine AS backend-build
+WORKDIR /app
+
+# Copy parent POM first
+COPY pom.xml .
+
+# Copy all Maven modules (required for multi-module build)
+COPY vsd-cms-bom ./vsd-cms-bom
+COPY flashcard-cms-plugin-sdk ./flashcard-cms-plugin-sdk
+COPY site-runtime ./site-runtime
+COPY core ./core
+COPY plugins ./plugins
+
+# Copy the pre-built frontend to static resources
+COPY --from=frontend-build /app/dist /app/core/src/main/resources/static/
+
+# Download dependencies (cached layer)
+RUN mvn dependency:go-offline -B -pl core -am -Pskip-frontend
+
+# Build the application with skip-frontend profile (frontend is already built and copied)
+RUN mvn clean package -DskipTests -B -pl core -am -Pskip-frontend
+
+# Stage 3: Analyze and create custom JRE with jlink
+FROM eclipse-temurin:21-jdk-alpine AS jre-builder
+
+COPY --from=backend-build /app/core/target/*.jar /app/app.jar
+
+# Extract JAR and analyze dependencies, then build minimal JRE
+RUN mkdir -p /app/extracted && \
+    cd /app/extracted && \
+    jar -xf /app/app.jar && \
+    MODULES=$(jdeps --ignore-missing-deps --print-module-deps --multi-release 21 -q -cp 'BOOT-INF/lib/*' /app/app.jar 2>/dev/null || echo "java.base,java.logging,java.naming,java.management,java.security.jgss,java.instrument,java.sql,jdk.unsupported") && \
+    echo "Detected modules: $MODULES" && \
+    $JAVA_HOME/bin/jlink \
+        --add-modules $MODULES,jdk.crypto.ec,jdk.crypto.cryptoki \
+        --strip-debug \
+        --no-man-pages \
+        --no-header-files \
+        --compress=zip-6 \
+        --output /custom-jre
+
+# Stage 4: Runtime
+FROM alpine:3.20
+WORKDIR /app
+
+# Install required runtime dependencies
+RUN apk add --no-cache wget ca-certificates fontconfig freetype ttf-dejavu gcompat
+
+# Copy custom JRE
+COPY --from=jre-builder /custom-jre /opt/java
+
+# Set JAVA_HOME
+ENV JAVA_HOME=/opt/java
+ENV PATH="$JAVA_HOME/bin:$PATH"
+
+# Add non-root user for security
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# Create directories for plugins and data
+RUN mkdir -p /app/plugins /app/data && chown -R appuser:appgroup /app
+
+# Copy the built jar (contains both backend and frontend)
+COPY --from=backend-build /app/core/target/*.jar app.jar
+
+# Copy built plugin JARs to the runtime plugins directory
+COPY --from=backend-build /app/plugins/*/target/*.jar /app/plugins/
+
+# Set ownership
+RUN chown -R appuser:appgroup /app
+
+USER appuser
+
+# Expose port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1
+
+# Run the application
+ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]
