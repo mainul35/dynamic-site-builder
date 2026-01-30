@@ -32,7 +32,8 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - AUTH_SERVER_ENABLED=true
       - AUTH_SERVER_ISSUER_URI=https://vsdauthserver.visualsitedesigner.com
-      - AUTH_SERVER_JWK_URI=https://vsdauthserver.visualsitedesigner.com/oauth2/jwks
+      - AUTH_SERVER_JWK_URI=http://vsd-auth-server:9001/oauth2/jwks
+      - AUTH_SERVER_INTERNAL_URL=http://vsd-auth-server:9001
       - VSD_CMS_CLIENT_ID=vsd-cms-client
       - VSD_CMS_CLIENT_SECRET=${VSD_CMS_CLIENT_SECRET}
       - FRONTEND_URL=https://cms.visualsitedesigner.com
