@@ -165,6 +165,25 @@ export const ResizableComponent: React.FC<ResizableComponentProps> = ({
     setIsResizing(true);
   };
 
+  // Get the maximum allowed size based on parent container
+  // For PageLayout slots, children should not exceed the slot boundaries
+  const getParentConstraints = (): { maxWidth: number | null; maxHeight: number | null } => {
+    if (!componentRef.current) return { maxWidth: null, maxHeight: null };
+
+    // Find the closest parent slot container (PageLayout region)
+    const parentSlot = componentRef.current.closest('[data-slot]');
+    if (parentSlot) {
+      const parentRect = parentSlot.getBoundingClientRect();
+      const padding = 16; // Account for padding in the slot
+      return {
+        maxWidth: parentRect.width - padding,
+        maxHeight: parentRect.height - padding
+      };
+    }
+
+    return { maxWidth: null, maxHeight: null };
+  };
+
   const handleResizeMove = (e: MouseEvent) => {
     if (!isResizing || !resizeHandle || !startSize || !componentRef.current) return;
 
@@ -223,8 +242,19 @@ export const ResizableComponent: React.FC<ResizableComponentProps> = ({
       newHeight = Math.max(minHeight, childMinHeight, newHeight);
     }
 
-    if (maxWidth) newWidth = Math.min(maxWidth, newWidth);
-    if (maxHeight) newHeight = Math.min(maxHeight, newHeight);
+    // Get parent container constraints (for PageLayout slots)
+    const parentConstraints = getParentConstraints();
+
+    // Apply maximum constraints - use the more restrictive of prop maxWidth/maxHeight and parent constraints
+    const effectiveMaxWidth = parentConstraints.maxWidth
+      ? (maxWidth ? Math.min(maxWidth, parentConstraints.maxWidth) : parentConstraints.maxWidth)
+      : maxWidth;
+    const effectiveMaxHeight = parentConstraints.maxHeight
+      ? (maxHeight ? Math.min(maxHeight, parentConstraints.maxHeight) : parentConstraints.maxHeight)
+      : maxHeight;
+
+    if (effectiveMaxWidth) newWidth = Math.min(effectiveMaxWidth, newWidth);
+    if (effectiveMaxHeight) newHeight = Math.min(effectiveMaxHeight, newHeight);
 
     // Maintain aspect ratio if required
     if (maintainAspectRatio && aspectRatio) {

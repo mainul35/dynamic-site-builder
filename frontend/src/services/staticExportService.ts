@@ -2,6 +2,14 @@ import { PageDefinition, ComponentInstance } from '../types/builder';
 import { Page } from '../types/site';
 import JSZip from 'jszip';
 import { ExportTemplateRegistry } from './ExportTemplateRegistry';
+import {
+  BREAKPOINTS,
+  BreakpointName,
+  ResponsiveConfig,
+  BreakpointSettings,
+  DEFAULT_RESPONSIVE_CONFIG,
+  getBreakpointSettings,
+} from '../types/responsive';
 
 /**
  * StaticExportService - Exports site pages as deployable static HTML/CSS/JS files
@@ -136,6 +144,76 @@ function getContainerLayoutStyles(props: Record<string, any>): Record<string, st
 }
 
 /**
+ * Generate responsive CSS media queries for PageLayout components
+ * Returns CSS string with media queries for each breakpoint
+ */
+function generatePageLayoutResponsiveCSS(component: ComponentInstance): string {
+  if (component.componentId !== 'PageLayout') {
+    return '';
+  }
+
+  const layoutId = `page-layout-${component.instanceId}`;
+  const responsiveConfig: ResponsiveConfig = (component.props?.responsive as ResponsiveConfig) || DEFAULT_RESPONSIVE_CONFIG;
+  const defaultSidebarRatio = (component.props?.sidebarRatio as string) || '30-70';
+
+  const cssRules: string[] = [];
+  const breakpointOrder: BreakpointName[] = ['mobile', 'tablet', 'desktop', 'large'];
+
+  breakpointOrder.forEach((bp) => {
+    const bpDef = BREAKPOINTS[bp];
+    const settings: BreakpointSettings = getBreakpointSettings(responsiveConfig, bp);
+
+    // Build media query
+    let mediaQuery: string;
+    if (bp === 'large') {
+      mediaQuery = `@media (min-width: ${bpDef.minWidth}px)`;
+    } else {
+      mediaQuery = `@media (min-width: ${bpDef.minWidth}px) and (max-width: ${bpDef.maxWidth}px)`;
+    }
+
+    // Get sidebar ratio for this breakpoint
+    const bpRatio = settings.sidebarRatio || defaultSidebarRatio;
+    const [bpLeftPct] = bpRatio.split('-').map((s: string) => parseInt(s, 10));
+
+    // Generate CSS rules for this breakpoint
+    const rules: string[] = [];
+
+    // Slot visibility
+    if (!settings.slotVisibility.header) {
+      rules.push(`#${layoutId} .page-layout-header { display: none !important; }`);
+    }
+    if (!settings.slotVisibility.footer) {
+      rules.push(`#${layoutId} .page-layout-footer { display: none !important; }`);
+    }
+    if (!settings.slotVisibility.left) {
+      rules.push(`#${layoutId} .page-layout-left { display: none !important; }`);
+    }
+    if (!settings.slotVisibility.right) {
+      rules.push(`#${layoutId} .page-layout-right { display: none !important; }`);
+    }
+    if (!settings.slotVisibility.center) {
+      rules.push(`#${layoutId} .page-layout-center { display: none !important; }`);
+    }
+
+    // Stacking behavior
+    if (settings.stackSidebars) {
+      rules.push(`#${layoutId}.page-layout-container { display: flex !important; flex-direction: column !important; }`);
+      rules.push(`#${layoutId} .page-layout-region { width: 100% !important; }`);
+    } else {
+      // Side-by-side layout
+      rules.push(`#${layoutId} .page-layout-left { width: ${bpLeftPct}% !important; }`);
+      rules.push(`#${layoutId} .page-layout-center { flex: 1 !important; }`);
+    }
+
+    if (rules.length > 0) {
+      cssRules.push(`${mediaQuery} {\n  ${rules.join('\n  ')}\n}`);
+    }
+  });
+
+  return cssRules.join('\n\n');
+}
+
+/**
  * Merge component styles with layout styles
  */
 function mergeStyles(...styleObjects: Record<string, any>[]): Record<string, any> {
@@ -187,6 +265,9 @@ function generateComponentHTML(component: ComponentInstance, depth: number = 0):
     case 'Container':
     case 'ScrollableContainer':
       return generateContainerHTML(component, id, indent, depth);
+
+    case 'PageLayout':
+      return generatePageLayoutHTML(component, id, indent, depth);
 
     case 'Navbar':
     case 'NavbarDefault':
@@ -444,6 +525,133 @@ function generateContainerHTML(component: ComponentInstance, id: string, indent:
     return `${indent}<div id="${id}" class="${containerClass}"${styleAttr}>\n${childrenHtml}\n${indent}</div>`;
   }
   return `${indent}<div id="${id}" class="${containerClass}"${styleAttr}></div>`;
+}
+
+/**
+ * Generate PageLayout HTML with responsive regions
+ * Includes inline style and responsive CSS will be added to the page
+ */
+function generatePageLayoutHTML(component: ComponentInstance, id: string, indent: string, depth: number): string {
+  const { props, styles, children, instanceId } = component;
+
+  const layoutId = `page-layout-${instanceId}`;
+  const gap = props.gap || '4px';
+  const fullHeight = props.fullHeight !== false;
+  const sidebarRatio = (props.sidebarRatio as string) || '30-70';
+  const [leftPercent, centerPercent] = sidebarRatio.split('-').map((s: string) => parseInt(s, 10));
+  const backgroundColor = styles.backgroundColor || '#f8f9fa';
+
+  // Group children by their assigned slot
+  const slottedChildren: Record<string, ComponentInstance[]> = {
+    header: [],
+    footer: [],
+    left: [],
+    right: [],
+    center: []
+  };
+
+  (children || []).forEach(child => {
+    const slot = (child.props?.slot as string) || 'center';
+    if (slottedChildren[slot]) {
+      slottedChildren[slot].push(child);
+    } else {
+      slottedChildren.center.push(child);
+    }
+  });
+
+  const hasHeader = slottedChildren.header.length > 0;
+  const hasFooter = slottedChildren.footer.length > 0;
+  const hasLeft = slottedChildren.left.length > 0;
+  const hasRight = slottedChildren.right.length > 0;
+  const hasCenter = slottedChildren.center.length > 0;
+
+  // Generate slot children HTML
+  const renderSlotChildren = (slot: string): string => {
+    const slotChildren = slottedChildren[slot];
+    if (slotChildren.length === 0) return '';
+    return slotChildren.map(child => generateComponentHTML(child, depth + 2)).join('\n');
+  };
+
+  // Build layout container styles
+  const layoutStyles: Record<string, string> = {
+    display: 'grid',
+    gap,
+    backgroundColor,
+    width: '100%',
+    minHeight: fullHeight ? '100vh' : 'auto',
+  };
+
+  // Build grid template based on content
+  const gridRows = [
+    hasHeader ? 'auto' : '',
+    '1fr',
+    hasFooter ? 'auto' : '',
+  ].filter(Boolean).join(' ');
+
+  const gridCols = [
+    hasLeft ? `${leftPercent}%` : '',
+    hasLeft ? `${centerPercent}%` : '1fr',
+    hasRight ? '250px' : '',
+  ].filter(Boolean).join(' ');
+
+  layoutStyles.gridTemplateRows = gridRows;
+  layoutStyles.gridTemplateColumns = gridCols;
+
+  const layoutStyleAttr = generateInlineStyle(layoutStyles);
+
+  // Build HTML
+  let html = `${indent}<div id="${layoutId}" class="page-layout-container component" style="${layoutStyleAttr}">\n`;
+
+  // Calculate grid positions
+  const totalCols = (hasLeft ? 1 : 0) + 1 + (hasRight ? 1 : 0);
+  const rowStart = hasHeader ? 2 : 1;
+  const colStart = hasLeft ? 2 : 1;
+
+  // Header
+  if (hasHeader) {
+    const headerStyle = `grid-row: 1 / 2; grid-column: 1 / ${totalCols + 1}; display: flex; flex-direction: column;`;
+    html += `${indent}  <div class="page-layout-region page-layout-header" style="${headerStyle}">\n`;
+    html += renderSlotChildren('header');
+    html += `\n${indent}  </div>\n`;
+  }
+
+  // Left Panel
+  if (hasLeft) {
+    const leftStyle = `grid-row: ${rowStart} / ${rowStart + 1}; grid-column: 1 / 2; display: flex; flex-direction: column;`;
+    html += `${indent}  <div class="page-layout-region page-layout-left" style="${leftStyle}">\n`;
+    html += renderSlotChildren('left');
+    html += `\n${indent}  </div>\n`;
+  }
+
+  // Center Content
+  if (hasCenter || !hasLeft && !hasRight) {
+    const centerStyle = `grid-row: ${rowStart} / ${rowStart + 1}; grid-column: ${colStart} / ${colStart + 1}; display: flex; flex-direction: column; flex: 1;`;
+    html += `${indent}  <div class="page-layout-region page-layout-center" style="${centerStyle}">\n`;
+    html += renderSlotChildren('center');
+    html += `\n${indent}  </div>\n`;
+  }
+
+  // Right Panel
+  if (hasRight) {
+    const rightCol = colStart + 1;
+    const rightStyle = `grid-row: ${rowStart} / ${rowStart + 1}; grid-column: ${rightCol} / ${rightCol + 1}; display: flex; flex-direction: column;`;
+    html += `${indent}  <div class="page-layout-region page-layout-right" style="${rightStyle}">\n`;
+    html += renderSlotChildren('right');
+    html += `\n${indent}  </div>\n`;
+  }
+
+  // Footer
+  if (hasFooter) {
+    const footerRow = hasHeader ? 3 : 2;
+    const footerStyle = `grid-row: ${footerRow} / ${footerRow + 1}; grid-column: 1 / ${totalCols + 1}; display: flex; flex-direction: column;`;
+    html += `${indent}  <div class="page-layout-region page-layout-footer" style="${footerStyle}">\n`;
+    html += renderSlotChildren('footer');
+    html += `\n${indent}  </div>\n`;
+  }
+
+  html += `${indent}</div>`;
+
+  return html;
 }
 
 /**
@@ -821,10 +1029,32 @@ function generateHTMLPage(
     .map(comp => generateComponentHTML(comp, 2))
     .join('\n\n');
 
-  // Generate custom CSS
+  // Collect responsive CSS from all PageLayout components
+  const responsiveCssParts: string[] = [];
+  const collectResponsiveCSS = (comps: ComponentInstance[]) => {
+    comps.forEach(comp => {
+      if (comp.componentId === 'PageLayout') {
+        const css = generatePageLayoutResponsiveCSS(comp);
+        if (css) {
+          responsiveCssParts.push(css);
+        }
+      }
+      if (comp.children) {
+        collectResponsiveCSS(comp.children);
+      }
+    });
+  };
+  collectResponsiveCSS(components);
+
+  // Generate custom CSS (including responsive CSS)
   let customCss = '';
-  if (globalStyles?.customCSS) {
-    customCss = `\n  <style>\n${globalStyles.customCSS}\n  </style>`;
+  const responsiveCss = responsiveCssParts.join('\n\n');
+  if (globalStyles?.customCSS || responsiveCss) {
+    const allCustomCss = [
+      responsiveCss,
+      globalStyles?.customCSS || '',
+    ].filter(Boolean).join('\n\n');
+    customCss = `\n  <style>\n/* Responsive Layout Styles */\n${allCustomCss}\n  </style>`;
   }
 
   // Determine CSS and JS includes
