@@ -129,9 +129,10 @@ const LabelRenderer: React.FC<LabelProps> = (props) => {
   const Element = elementType as keyof React.JSX.IntrinsicElements;
 
   // Container styles to prevent text from overflowing parent bounds
+  // Don't use height: 100% as it becomes 0 when parent has height: auto
   const containerStyles: React.CSSProperties = {
     width: '100%',
-    height: '100%',
+    minHeight: 'fit-content', // Use fit-content to size based on text
     overflow: 'hidden',
     boxSizing: 'border-box',
   };
