@@ -145,16 +145,30 @@
 /* Preview Content */
 .preview-content {
   flex: 1;
-  overflow: auto;
+  overflow: auto; /* Allow scrolling so footer is accessible */
   background: white;
+  display: flex;
+  flex-direction: column;
+  /* Ensure height is constrained so children can scroll */
+  min-height: 0;
 }
 
 .preview-content .builder-canvas {
+  /* Use min-height instead of height so content can expand naturally */
   min-height: 100%;
+  /* Ensure page-layout-container uses available height not 100vh */
+}
+
+/* Override page-layout-container height to use 100% instead of 100vh in preview */
+.preview-content .page-layout-container {
+  height: 100% !important;
+  min-height: 100% !important;
 }
 
 .preview-navigation-interceptor {
   height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Loading State */

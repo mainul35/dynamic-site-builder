@@ -11,6 +11,10 @@ export { RendererRegistry };
 // Expose RendererRegistry globally so plugins can use it to render children
 (globalThis as unknown as { RendererRegistry: typeof RendererRegistry }).RendererRegistry = RendererRegistry;
 
+// Also expose loadPlugin function so plugins can trigger loading of other plugins
+import { loadPlugin as loadPluginFn } from '../../../services/pluginLoaderService';
+(globalThis as unknown as { loadPlugin: typeof loadPluginFn }).loadPlugin = loadPluginFn;
+
 /**
  * Auto-discover and register all core *Renderer.tsx files from this directory
  * Uses Vite's import.meta.glob for convention-based auto-discovery
@@ -43,6 +47,10 @@ const NAVBAR_PLUGIN_IDS = ['navbar-component-plugin', 'core-navbar'];
 const NAVBAR_ALIASES: Record<string, string> = {
   'NavbarDefault': 'Navbar',
 };
+
+// Note: Core UI components (Container, Label, Button, Image, Textbox) are provided by their
+// respective plugins (container-layout-plugin, label-component-plugin, etc.) and are loaded
+// dynamically via pluginLoaderService when 'core-ui' virtual plugin is requested.
 
 // Register all core renderers on module load
 for (const path in coreRendererModules) {

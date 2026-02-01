@@ -64,6 +64,7 @@ const VIRTUAL_PLUGIN_MAPPINGS: Record<string, string[]> = {
     'label-component-plugin',
     'button-component-plugin',
     'container-layout-plugin',
+    'page-layout-plugin',
     'textbox-component-plugin',
     'image-component-plugin',
   ],
@@ -94,6 +95,7 @@ const COMPONENT_TO_PLUGIN_MAPPING: Record<string, string> = {
   'Label': 'label-component-plugin',
   'Button': 'button-component-plugin',
   'Container': 'container-layout-plugin',
+  'PageLayout': 'page-layout-plugin',
   'Textbox': 'textbox-component-plugin',
   'Image': 'image-component-plugin',
   // Form components

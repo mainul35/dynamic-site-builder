@@ -5,9 +5,64 @@ import { useSiteManagerStore } from '../../stores/siteManagerStore';
 import { PreviewNavigationInterceptor } from './PreviewNavigationInterceptor';
 import { BuilderCanvas } from './BuilderCanvas';
 import { Page } from '../../types/site';
-import { PageDefinition } from '../../types/builder';
+import { PageDefinition, ComponentInstance } from '../../types/builder';
 import { pageService } from '../../services/pageService';
+import { loadPlugin } from '../../services/pluginLoaderService';
 import './MultiPagePreview.css';
+
+/**
+ * Recursively collect all unique plugin IDs from a component tree
+ */
+function collectPluginIds(components: ComponentInstance[]): Set<string> {
+  const pluginIds = new Set<string>();
+
+  function traverse(component: ComponentInstance) {
+    if (component.pluginId) {
+      pluginIds.add(component.pluginId);
+    }
+    if (component.children && component.children.length > 0) {
+      component.children.forEach(traverse);
+    }
+  }
+
+  components.forEach(traverse);
+  return pluginIds;
+}
+
+/**
+ * Preload all plugins used by a page definition
+ */
+async function preloadPluginsForPage(page: PageDefinition): Promise<void> {
+  // Debug: Log page structure to check if children are populated
+  console.log('[Preview] Page structure:', {
+    pageName: page.pageName,
+    componentsCount: page.components?.length,
+    components: page.components?.map(c => ({
+      instanceId: c.instanceId,
+      componentId: c.componentId,
+      childrenCount: c.children?.length || 0,
+      children: c.children?.map(ch => ({
+        instanceId: ch.instanceId,
+        componentId: ch.componentId,
+        childrenCount: ch.children?.length || 0
+      }))
+    }))
+  });
+
+  const pluginIds = collectPluginIds(page.components || []);
+  console.log('[Preview] Preloading plugins:', Array.from(pluginIds));
+
+  // Load all plugins in parallel
+  await Promise.all(
+    Array.from(pluginIds).map(pluginId =>
+      loadPlugin(pluginId).catch(err => {
+        console.warn(`[Preview] Failed to preload plugin ${pluginId}:`, err);
+      })
+    )
+  );
+
+  console.log('[Preview] All plugins preloaded');
+}
 
 interface MultiPagePreviewProps {
   siteId: number | null;
@@ -26,6 +81,7 @@ export const MultiPagePreview: React.FC<MultiPagePreviewProps> = ({
   onExitPreview,
 }) => {
   const [isLoadingPage, setIsLoadingPage] = useState(false);
+  const [isLoadingPlugins, setIsLoadingPlugins] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Get effective siteId from URL param or store
@@ -101,6 +157,22 @@ export const MultiPagePreview: React.FC<MultiPagePreviewProps> = ({
           const pageNamesMatch = currentPage.pageName?.toLowerCase() === currentEditingPage.pageName?.toLowerCase();
           if (pageNamesMatch) {
             console.log(`[Preview] Caching current editing page "${currentPage.pageName}" at path "${startPath}"`);
+            // Debug: Log the currentPage structure to verify children are populated
+            console.log(`[Preview] currentPage structure from builderStore:`, {
+              pageName: currentPage.pageName,
+              componentsCount: currentPage.components?.length,
+              components: currentPage.components?.map(c => ({
+                instanceId: c.instanceId,
+                componentId: c.componentId,
+                slot: c.props?.slot,
+                childrenCount: c.children?.length || 0,
+                children: c.children?.map(ch => ({
+                  instanceId: ch.instanceId,
+                  componentId: ch.componentId,
+                  childrenCount: ch.children?.length || 0
+                }))
+              }))
+            });
             loadPageDefinition(startPath, currentPage);
             // Set initial preview page
             setPreviewPage(currentPage);
@@ -182,6 +254,15 @@ export const MultiPagePreview: React.FC<MultiPagePreviewProps> = ({
       if (cachedPage) {
         console.log(`[Preview] Found cached page for "${currentPreviewPath}": "${cachedPage.pageName}"`);
         setError(null); // Clear any previous error when loading cached page
+
+        // Preload all plugins before rendering
+        setIsLoadingPlugins(true);
+        try {
+          await preloadPluginsForPage(cachedPage);
+        } finally {
+          setIsLoadingPlugins(false);
+        }
+
         setPreviewPage(cachedPage);
         return;
       }
@@ -210,6 +291,14 @@ export const MultiPagePreview: React.FC<MultiPagePreviewProps> = ({
           const localPage = savedPages[slug];
 
           if (localPage) {
+            // Preload plugins before rendering
+            setIsLoadingPlugins(true);
+            try {
+              await preloadPluginsForPage(localPage);
+            } finally {
+              setIsLoadingPlugins(false);
+            }
+
             loadPageDefinition(currentPreviewPath, localPage);
             setPreviewPage(localPage);
             return;
@@ -233,6 +322,15 @@ export const MultiPagePreview: React.FC<MultiPagePreviewProps> = ({
               componentsCount: definition?.components?.length,
               version: definition?.version
             });
+
+            // Preload all plugins before rendering
+            setIsLoadingPlugins(true);
+            try {
+              await preloadPluginsForPage(definition);
+            } finally {
+              setIsLoadingPlugins(false);
+            }
+
             loadPageDefinition(currentPreviewPath, definition);
             setPreviewPage(definition);
           } catch (apiErr: any) {
@@ -254,6 +352,15 @@ export const MultiPagePreview: React.FC<MultiPagePreviewProps> = ({
 
               if (localPageData && localPageData.components && localPageData.components.length > 0) {
                 console.log(`[Preview] Found localStorage fallback for "${page.pageName}"`);
+
+                // Preload plugins before rendering
+                setIsLoadingPlugins(true);
+                try {
+                  await preloadPluginsForPage(localPageData);
+                } finally {
+                  setIsLoadingPlugins(false);
+                }
+
                 loadPageDefinition(currentPreviewPath, localPageData);
                 setPreviewPage(localPageData);
               } else {
@@ -284,6 +391,14 @@ export const MultiPagePreview: React.FC<MultiPagePreviewProps> = ({
           const pageData = savedPages[page.pageSlug];
 
           if (pageData) {
+            // Preload plugins before rendering
+            setIsLoadingPlugins(true);
+            try {
+              await preloadPluginsForPage(pageData);
+            } finally {
+              setIsLoadingPlugins(false);
+            }
+
             loadPageDefinition(currentPreviewPath, pageData);
             setPreviewPage(pageData);
           } else {
@@ -382,10 +497,10 @@ export const MultiPagePreview: React.FC<MultiPagePreviewProps> = ({
 
       {/* Preview Content */}
       <div className="preview-content">
-        {isLoadingPage ? (
+        {isLoadingPage || isLoadingPlugins ? (
           <div className="preview-loading">
             <div className="loading-spinner" />
-            <p>Loading page...</p>
+            <p>{isLoadingPlugins ? 'Loading plugins...' : 'Loading page...'}</p>
           </div>
         ) : error ? (
           <div className="preview-error">
