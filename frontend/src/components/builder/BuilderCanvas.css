@@ -8,6 +8,9 @@
   min-height: 600px;
   outline: none;
   transition: background-color var(--transition-normal, 200ms ease);
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
 }
 
 .builder-canvas.edit-mode {
@@ -19,13 +22,14 @@
   pointer-events: auto !important;
   background: white;
   padding: 0;
-  /* Override grid layout - preview mode should be a simple block container */
-  display: block !important;
-  /* Allow content to size naturally within the viewport */
-  min-height: auto;
-  /* Ensure scrolling only when content actually exceeds viewport */
-  overflow-y: auto;
-  overflow-x: hidden;
+  /* Use flex to allow page-layout-container to fill the space */
+  display: flex !important;
+  flex-direction: column;
+  /* Fill available height from parent - critical for scroll to work */
+  height: 100%;
+  min-height: 0;
+  /* Don't scroll here - let page-layout-container handle its own scrolling for sticky headers to work */
+  overflow: hidden;
 }
 
 .builder-canvas.drag-over {
@@ -398,6 +402,64 @@
   border-style: solid;
 }
 
+/* PageLayout container - ensure it respects parent width constraints */
+.page-layout-container {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.page-layout-container.edit-mode {
+  overflow: visible;
+}
+
+/* PageLayout region drag-over styles */
+.page-layout-region.drag-over {
+  background: rgba(40, 167, 69, 0.15) !important;
+  border-color: #28a745 !important;
+  border-width: 2px !important;
+  border-style: solid !important;
+}
+
+.page-layout-region {
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+}
+
+.page-layout-region:hover {
+  background: rgba(0, 123, 255, 0.05);
+}
+
+/* Hidden slot styles for responsive breakpoints */
+.page-layout-region.slot-hidden {
+  opacity: 0.4;
+  background: repeating-linear-gradient(
+    45deg,
+    #f5f5f5,
+    #f5f5f5 10px,
+    #e8e8e8 10px,
+    #e8e8e8 20px
+  );
+  border: 1px dashed #999 !important;
+}
+
+.page-layout-region.slot-hidden:hover {
+  opacity: 0.6;
+  background: repeating-linear-gradient(
+    45deg,
+    #f0f0f0,
+    #f0f0f0 10px,
+    #e0e0e0 10px,
+    #e0e0e0 20px
+  );
+}
+
+/* Stacked layout styles */
+.page-layout-container.stacked-layout {
+  /* Additional styles for stacked mode if needed */
+}
+
 .child-component {
   margin-bottom: 8px;
 }
@@ -659,4 +721,228 @@
 
 .builder-canvas:focus:not(:focus-visible) {
   outline: none;
+}
+
+/* ===== Responsive Canvas Wrapper ===== */
+/* Container for responsive device width simulation */
+
+.canvas-responsive-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  background: var(--bg-canvas-outer, #e9ecef);
+  overflow: auto;
+  min-height: 0;
+}
+
+.canvas-responsive-wrapper.width-constrained {
+  align-items: center;
+  /* Remove padding to eliminate left/top gaps - the canvas itself provides spacing */
+}
+
+.canvas-width-container {
+  width: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.canvas-responsive-wrapper.width-constrained .canvas-width-container {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+}
+
+/* Breakpoint Indicator */
+.breakpoint-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--bg-secondary, #f8f9fa);
+  border-bottom: 1px solid var(--border-color, #dee2e6);
+  font-size: 13px;
+  color: var(--text-secondary, #6c757d);
+  flex-shrink: 0;
+}
+
+.canvas-responsive-wrapper.width-constrained .breakpoint-indicator {
+  background: var(--bg-canvas-outer, #e9ecef);
+  border-bottom: none;
+  margin: 8px 0;
+  padding: 8px 16px;
+  border-radius: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.breakpoint-indicator-icon {
+  font-size: 16px;
+}
+
+.breakpoint-indicator-label {
+  font-weight: 600;
+  color: var(--text-primary, #333);
+}
+
+.breakpoint-indicator-width {
+  font-size: 12px;
+  color: var(--text-muted, #999);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Dark mode support */
+.dark-mode .canvas-responsive-wrapper {
+  background: var(--bg-canvas-outer-dark, #1a1a1a);
+}
+
+.dark-mode .canvas-responsive-wrapper.width-constrained .canvas-width-container {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.dark-mode .breakpoint-indicator {
+  background: var(--bg-secondary-dark, #2a2a2a);
+  border-color: var(--border-color-dark, #444);
+}
+
+.dark-mode .breakpoint-indicator-label {
+  color: var(--text-primary-dark, #fff);
+}
+
+/* Preview mode - no device simulation */
+.builder-canvas.preview-mode + .canvas-responsive-wrapper,
+.canvas-responsive-wrapper:has(.builder-canvas.preview-mode) {
+  background: white;
+  padding: 0;
+}
+
+/* When Large breakpoint is active, canvas is full width */
+.canvas-responsive-wrapper:not(.width-constrained) .canvas-width-container {
+  max-width: 100% !important;
+}
+
+/* ===== Width-Constrained Canvas - All Content Must Fit Within ===== */
+/* Ensure all components within constrained canvas respect width boundaries */
+/* Use !important to override inline styles from resize operations */
+
+.canvas-responsive-wrapper.width-constrained .builder-canvas {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Root-level draggable components must not overflow */
+.canvas-responsive-wrapper.width-constrained .draggable-component {
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* Ensure all content layers respect width */
+.canvas-responsive-wrapper.width-constrained .component-content,
+.canvas-responsive-wrapper.width-constrained .resizable-component,
+.canvas-responsive-wrapper.width-constrained .resizable-content {
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* PageLayout must fit within canvas width */
+.canvas-responsive-wrapper.width-constrained .page-layout-container {
+  width: 100%;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* Layout placeholders and children containers */
+.canvas-responsive-wrapper.width-constrained .layout-placeholder,
+.canvas-responsive-wrapper.width-constrained .children-container {
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* Nested child components - ensure they don't overflow */
+.canvas-responsive-wrapper.width-constrained .child-component {
+  max-width: 100% !important;
+}
+
+.canvas-responsive-wrapper.width-constrained .child-component .component-content {
+  max-width: 100% !important;
+}
+
+/* Component placeholders should also respect width */
+.canvas-responsive-wrapper.width-constrained .component-placeholder {
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* PageLayout slots content */
+.canvas-responsive-wrapper.width-constrained .page-layout-region {
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* ===== PageLayout Slot Components - Always Fill Slot Width ===== */
+/* Components inside PageLayout slots should always fill their slot width */
+/* Override any pixel widths from resize operations */
+
+.page-layout-region .draggable-component {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.page-layout-region .resizable-component {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.page-layout-region .component-content {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.page-layout-region .resizable-content {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.page-layout-region .layout-placeholder {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.page-layout-region .component-placeholder {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Children containers inside PageLayout slots should also fill width */
+.page-layout-region .children-container {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Nested child components inside PageLayout slots */
+.page-layout-region .child-component {
+  width: 100% !important;
+  max-width: 100% !important;
+  align-self: stretch !important;
+}
+
+/* ===== Root PageLayout Component - Always Fill Canvas Width ===== */
+/* The root PageLayout draggable wrapper should always fill the canvas */
+.builder-canvas > .draggable-component:has(.page-layout-container) {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.builder-canvas > .draggable-component:has(.page-layout-container) .resizable-component {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.builder-canvas > .draggable-component:has(.page-layout-container) .component-content {
+  width: 100% !important;
+  max-width: 100% !important;
 }

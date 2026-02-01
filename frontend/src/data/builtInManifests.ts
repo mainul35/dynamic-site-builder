@@ -7,6 +7,7 @@
  */
 
 import { ComponentManifest, PropType } from '../types/builder';
+import { DEFAULT_RESPONSIVE_CONFIG } from '../types/responsive';
 
 /**
  * Label component manifest
@@ -184,6 +185,7 @@ const containerManifest: ComponentManifest = {
     centerContent: true,
     alignItems: 'stretch',
     justifyContent: 'flex-start',
+    heightMode: 'resizable',
   },
   defaultStyles: {
     backgroundColor: '#ffffff',
@@ -215,6 +217,14 @@ const containerManifest: ComponentManifest = {
         'grid-80-20',
       ],
       helpText: 'How child components are arranged',
+    },
+    {
+      name: 'heightMode',
+      type: PropType.SELECT,
+      label: 'Height Mode',
+      defaultValue: 'resizable',
+      options: ['fill', 'resizable', 'wrap'],
+      helpText: 'Height behavior: fill (100% of parent), resizable (fixed pixel height), wrap (auto based on content)',
     },
     {
       name: 'gap',
@@ -278,6 +288,92 @@ const containerManifest: ComponentManifest = {
     autoHeight: true,
     isResizable: true,
     supportsTemplateBindings: true,
+  },
+};
+
+/**
+ * PageLayout component manifest - structured page layout with 5 regions
+ *
+ * This layout displays a visual wireframe in edit mode with labeled regions:
+ * Header, Left Panel, Content Panel, Footer
+ *
+ * In preview mode, regions intelligently expand when adjacent slots are empty.
+ */
+const pageLayoutManifest: ComponentManifest = {
+  componentId: 'PageLayout',
+  displayName: 'Page Layout',
+  category: 'layout',
+  icon: '📄',
+  description: 'Structured page layout with header, footer, left/right panels, and center content. Empty regions are automatically hidden and adjacent regions expand to fill the space. Drag components into regions to populate them.',
+  defaultProps: {
+    gap: '4px',
+    fullHeight: true,
+    stickyHeader: false,
+    stickyFooter: false,
+    sidebarRatio: '30-70',
+    availableSlots: ['header', 'footer', 'left', 'right', 'center'],
+    responsive: DEFAULT_RESPONSIVE_CONFIG,
+  },
+  defaultStyles: {
+    display: 'grid',
+    backgroundColor: '#f8f9fa',
+  },
+  reactComponentPath: 'renderers/PageLayoutRenderer',
+  configurableProps: [
+    {
+      name: 'gap',
+      type: PropType.STRING,
+      label: 'Gap Between Regions',
+      defaultValue: '4px',
+      helpText: 'Gap between layout regions (e.g., 0px, 4px, 8px)',
+    },
+    {
+      name: 'sidebarRatio',
+      type: PropType.SELECT,
+      label: 'Sidebar/Content Ratio',
+      defaultValue: '30-70',
+      options: ['30-70', '35-65', '40-60', '25-75', '20-80'],
+      helpText: 'Width ratio between left sidebar and center content (left%-center%)',
+    },
+    {
+      name: 'fullHeight',
+      type: PropType.BOOLEAN,
+      label: 'Full Viewport Height',
+      defaultValue: true,
+      helpText: 'Make the layout fill the entire viewport height in preview mode',
+    },
+    {
+      name: 'stickyHeader',
+      type: PropType.BOOLEAN,
+      label: 'Sticky Header',
+      defaultValue: false,
+      helpText: 'Keep header fixed at top when scrolling (preview mode)',
+    },
+    {
+      name: 'stickyFooter',
+      type: PropType.BOOLEAN,
+      label: 'Sticky Footer',
+      defaultValue: false,
+      helpText: 'Keep footer fixed at bottom when scrolling (preview mode)',
+    },
+  ],
+  configurableStyles: [],
+  sizeConstraints: {
+    minWidth: 320,
+    minHeight: 400,
+    maxWidth: 5000,
+    maxHeight: 10000,
+  },
+  pluginId: 'page-layout-plugin',
+  pluginVersion: '1.0.0',
+  canHaveChildren: true,
+  capabilities: {
+    canHaveChildren: true,
+    isContainer: true,
+    hasDataSource: false,
+    autoHeight: false,
+    isResizable: true,
+    supportsTemplateBindings: false,
   },
 };
 
@@ -1728,6 +1824,7 @@ export const builtInManifests: Record<string, ComponentManifest> = {
   'label-component-plugin:Label': labelManifest,
   'button-component-plugin:Button': buttonManifest,
   'container-layout-plugin:Container': containerManifest,
+  'page-layout-plugin:PageLayout': pageLayoutManifest,
   'textbox-component-plugin:Textbox': textboxManifest,
   'image-component-plugin:Image': imageManifest,
 

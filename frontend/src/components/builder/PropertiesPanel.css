@@ -870,6 +870,53 @@
   background: var(--text-muted, #adb5bd);
 }
 
+/* Slot Selector for PageLayout children */
+.slot-selector {
+  background: linear-gradient(135deg, #e3f2fd 0%, #e8f5e9 100%);
+  border: 1px solid #90caf9;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.slot-selector .property-label {
+  color: #1565c0;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.slot-indicator {
+  font-size: 16px;
+}
+
+.slot-select {
+  padding: 10px 12px;
+  border: 2px solid #64b5f6;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.slot-select:focus {
+  border-color: #1976d2;
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.2);
+  outline: none;
+}
+
+.slot-select:hover {
+  border-color: #1976d2;
+}
+
+.slot-selector .help-text {
+  color: #1565c0;
+  font-style: italic;
+}
+
 /* Data Source Section Styles */
 .data-source-section {
   margin-top: 16px;

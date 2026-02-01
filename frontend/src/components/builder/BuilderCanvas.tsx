@@ -8,6 +8,7 @@ import { ResizableComponent } from './ResizableComponent';
 import { ComponentRenderer } from './renderers';
 import { CanvasContextMenu } from './CanvasContextMenu';
 import { capabilityService } from '../../services/componentCapabilityService';
+import { BREAKPOINTS, getBreakpointSettings, DEFAULT_RESPONSIVE_CONFIG, ResponsiveConfig } from '../../types/responsive';
 import './BuilderCanvas.css';
 
 interface CanvasContextMenuState {
@@ -47,14 +48,15 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
     selectComponent,
     removeComponent,
     reparentComponent,
-    setHoveredComponent
+    setHoveredComponent,
+    updateComponentProps
   } = useBuilderStore();
 
   // Use pageOverride if provided (for preview mode), otherwise use store's currentPage
   const currentPage = pageOverride !== undefined ? pageOverride : storeCurrentPage;
 
   const { getManifest } = useComponentStore();
-  const { showGrid } = useUIPreferencesStore();
+  const { showGrid, activeBreakpoint, canvasWidth, showBreakpointIndicator } = useUIPreferencesStore();
 
   // Global hover tracking - single listener for entire canvas
   // This finds the innermost (closest) draggable component under the mouse
@@ -586,6 +588,301 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
     const hasChildren = component.children && component.children.length > 0;
     const isEditMode = viewMode === 'edit';
 
+    // SPECIAL CASE: PageLayout has its own visual wireframe renderer with slot-based drop zones
+    if (component.componentId === 'PageLayout') {
+      // In preview mode, delegate to ComponentRenderer
+      if (!isEditMode) {
+        return (
+          <ComponentRenderer
+            component={component}
+            isEditMode={isEditMode}
+          />
+        );
+      }
+
+      // In edit mode, render the visual wireframe with drop zones for each slot
+      const gap = component.props?.gap || '4px';
+      const backgroundColor = component.styles?.backgroundColor || '#f8f9fa';
+
+      // Get responsive settings for the active breakpoint
+      const responsiveConfig = component.props?.responsive as ResponsiveConfig | undefined;
+      const breakpointSettings = getBreakpointSettings(responsiveConfig, activeBreakpoint);
+      const { slotVisibility, stackSidebars } = breakpointSettings;
+
+      // Get sidebar ratio - use breakpoint-specific ratio if available, otherwise component default
+      const sidebarRatio = breakpointSettings.sidebarRatio || component.props?.sidebarRatio || '30-70';
+      const [leftPercent, centerPercent] = sidebarRatio.split('-').map((s: string) => parseInt(s, 10));
+
+      // Group children by their assigned slot
+      const children = component.children || [];
+      const slottedChildren: Record<string, ComponentInstance[]> = {
+        header: [],
+        footer: [],
+        left: [],
+        right: [],
+        center: []
+      };
+      children.forEach(child => {
+        const slot = child.props?.slot || 'center';
+        if (slottedChildren[slot]) {
+          slottedChildren[slot].push(child);
+        } else {
+          slottedChildren.center.push(child);
+        }
+      });
+
+      const hasHeader = slottedChildren.header.length > 0;
+      const hasFooter = slottedChildren.footer.length > 0;
+      const hasLeft = slottedChildren.left.length > 0;
+      const hasRight = slottedChildren.right.length > 0;
+      const hasCenter = slottedChildren.center.length > 0;
+
+      // Check if slots are visible at current breakpoint
+      const isHeaderVisible = slotVisibility.header;
+      const isFooterVisible = slotVisibility.footer;
+      const isLeftVisible = slotVisibility.left;
+      const isRightVisible = slotVisibility.right;
+      const isCenterVisible = slotVisibility.center;
+
+      // Common styles for regions - overflow hidden to constrain children within slot boundaries
+      const regionStyle: React.CSSProperties = {
+        border: '1px solid #dee2e6',
+        backgroundColor: '#ffffff',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'stretch',
+        justifyContent: 'flex-start',
+        position: 'relative',
+        minHeight: '60px',
+        padding: '8px',
+        boxSizing: 'border-box',
+        overflow: 'hidden',
+      };
+
+      const labelStyle: React.CSSProperties = {
+        color: '#6c757d',
+        fontSize: '14px',
+        fontWeight: 500,
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px',
+        pointerEvents: 'none',
+        textAlign: 'center',
+        padding: '20px 0',
+      };
+
+      const hasContentIndicator: React.CSSProperties = {
+        position: 'absolute',
+        top: '4px',
+        right: '4px',
+        width: '8px',
+        height: '8px',
+        borderRadius: '50%',
+        backgroundColor: '#28a745',
+        zIndex: 10,
+      };
+
+      // Render children for a specific slot - children fill width, constrained to parent
+      const renderSlotContent = (slot: string) => {
+        const slotChildren = slottedChildren[slot] || [];
+        if (slotChildren.length === 0) return null;
+
+        return slotChildren.map(child => (
+          <div
+            key={child.instanceId}
+            style={{
+              width: '100%',
+              maxWidth: '100%',
+              overflow: 'hidden',
+              boxSizing: 'border-box',
+            }}
+          >
+            <DraggableComponent
+              component={child}
+              isSelected={selectedComponentId === child.instanceId}
+              isInGridLayout={false}
+              isDropTarget={dragOverContainerId === child.instanceId}
+              onSelect={handleComponentSelect}
+              onDoubleClick={handleComponentDoubleClick}
+            >
+              <ResizableComponent
+                component={child}
+                isSelected={selectedComponentId === child.instanceId}
+                isInGridLayout={false}
+              >
+                {renderComponent(child)}
+              </ResizableComponent>
+            </DraggableComponent>
+          </div>
+        ));
+      };
+
+      // Create drop zone handlers
+      const createDropZoneProps = (slot: string) => ({
+        onDrop: (e: React.DragEvent) => handlePageLayoutSlotDrop(e, component.instanceId, slot),
+        onDragOver: (e: React.DragEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setDragOverContainerId(`${component.instanceId}-${slot}`);
+        },
+        onDragLeave: (e: React.DragEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setDragOverContainerId(null);
+        },
+      });
+
+      const isSlotDragOver = (slot: string) => dragOverContainerId === `${component.instanceId}-${slot}`;
+
+      // Styles for hidden slots (dimmed, with "Hidden" label)
+      const hiddenSlotStyle: React.CSSProperties = {
+        ...regionStyle,
+        opacity: 0.4,
+        backgroundColor: '#f0f0f0',
+        border: '1px dashed #999',
+      };
+
+      const hiddenLabelStyle: React.CSSProperties = {
+        ...labelStyle,
+        fontSize: '11px',
+        color: '#999',
+      };
+
+      // Render a slot region with visibility awareness
+      const renderSlotRegion = (
+        slotName: string,
+        label: string,
+        isVisible: boolean,
+        hasContent: boolean,
+        extraStyles: React.CSSProperties = {}
+      ) => {
+        const isHidden = !isVisible;
+        const slotStyle = isHidden ? { ...hiddenSlotStyle, ...extraStyles } : { ...regionStyle, ...extraStyles };
+
+        return (
+          <div
+            className={`page-layout-region page-layout-${slotName} ${isSlotDragOver(slotName) ? 'drag-over' : ''} ${isHidden ? 'slot-hidden' : ''}`}
+            style={slotStyle}
+            data-slot={slotName}
+            {...createDropZoneProps(slotName)}
+          >
+            {hasContent && <div style={hasContentIndicator} title="Has content" />}
+            {!hasContent && (
+              <div style={isHidden ? hiddenLabelStyle : labelStyle}>
+                {isHidden ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <span>{label}</span>
+                    <span style={{ fontSize: '10px', marginTop: '2px', fontStyle: 'italic' }}>
+                      Hidden on {BREAKPOINTS[activeBreakpoint].label}
+                    </span>
+                  </div>
+                ) : (
+                  label
+                )}
+              </div>
+            )}
+            {hasContent && (
+              <div style={{ width: '100%', maxWidth: '100%', display: 'flex', flexDirection: 'column', gap: '8px', overflow: 'hidden', boxSizing: 'border-box' }}>
+                {renderSlotContent(slotName)}
+              </div>
+            )}
+          </div>
+        );
+      };
+
+      // Use flexbox layout for better auto-height behavior
+      // When stackSidebars is true, render in a single column layout
+      return (
+        <div
+          className={`page-layout-container edit-mode ${stackSidebars ? 'stacked-layout' : ''}`}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap,
+            backgroundColor,
+            width: '100%',
+            maxWidth: '100%',
+            minHeight: '400px',
+            border: '2px solid #dee2e6',
+            borderRadius: '8px',
+            boxSizing: 'border-box',
+            overflow: 'hidden',
+          }}
+          data-component-type="PageLayout"
+          data-active-breakpoint={activeBreakpoint}
+        >
+          {/* Header */}
+          {renderSlotRegion('header', 'HEADER', isHeaderVisible, hasHeader, { width: '100%', flexShrink: 0 })}
+
+          {/* Middle section - depends on stackSidebars setting */}
+          {stackSidebars ? (
+            // Stacked layout: All slots in a column
+            <>
+              {renderSlotRegion('left', 'LEFT PANEL', isLeftVisible, hasLeft, { width: '100%', minHeight: '100px' })}
+              {renderSlotRegion('center', 'CONTENT PANEL', isCenterVisible, hasCenter, { width: '100%', flex: 1, minHeight: '150px' })}
+              {renderSlotRegion('right', 'RIGHT PANEL', isRightVisible, hasRight, { width: '100%', minHeight: '100px' })}
+            </>
+          ) : (
+            // Side-by-side layout: Left + Center + Right in a row
+            // Calculate widths based on which slots are visible
+            (() => {
+              // Determine effective widths based on visibility
+              // When right is hidden: left takes leftPercent, center takes rest
+              // When left is hidden: center takes full width (or shares with right)
+              // When all visible: use configured ratios
+              let leftWidthStyle: React.CSSProperties = {};
+              let centerWidthStyle: React.CSSProperties = {};
+              let rightWidthStyle: React.CSSProperties = {};
+
+              if (isLeftVisible && isRightVisible) {
+                // All three visible - use percentage ratios
+                leftWidthStyle = { width: `${leftPercent}%`, flexShrink: 0 };
+                centerWidthStyle = { flex: 1 };
+                rightWidthStyle = { width: '250px', flexShrink: 0 };
+              } else if (isLeftVisible && !isRightVisible) {
+                // Left and center only
+                leftWidthStyle = { width: `${leftPercent}%`, flexShrink: 0 };
+                centerWidthStyle = { flex: 1 };
+                rightWidthStyle = { display: 'none' };
+              } else if (!isLeftVisible && isRightVisible) {
+                // Center and right only
+                leftWidthStyle = { display: 'none' };
+                centerWidthStyle = { flex: 1 };
+                rightWidthStyle = { width: '250px', flexShrink: 0 };
+              } else {
+                // Center only
+                leftWidthStyle = { display: 'none' };
+                centerWidthStyle = { flex: 1, width: '100%' };
+                rightWidthStyle = { display: 'none' };
+              }
+
+              return (
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'row',
+                    gap,
+                    flex: 1,
+                    minHeight: '200px',
+                    width: '100%',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {renderSlotRegion('left', 'LEFT\nSide Panel', isLeftVisible, hasLeft, { ...leftWidthStyle, overflow: 'hidden' })}
+                  {renderSlotRegion('center', 'CONTENT PANEL', isCenterVisible, hasCenter, { ...centerWidthStyle, overflow: 'hidden' })}
+                  {renderSlotRegion('right', 'RIGHT\nSide Panel', isRightVisible, hasRight, { ...rightWidthStyle, overflow: 'hidden' })}
+                </div>
+              );
+            })()
+          )}
+
+          {/* Footer */}
+          {renderSlotRegion('footer', 'FOOTER', isFooterVisible, hasFooter, { width: '100%', flexShrink: 0 })}
+        </div>
+      );
+    }
+
     // For container components, render container with children
     if (isContainer) {
       // Get layout type from component props - layoutMode is primary (set by UI), layoutType is fallback
@@ -984,26 +1281,130 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
     }
   };
 
+  // Handle drop on PageLayout slot (header, footer, left, right, center)
+  // This is similar to handleNestedDrop but also sets the 'slot' prop on the dropped component
+  const handlePageLayoutSlotDrop = (e: React.DragEvent, pageLayoutId: string, slot: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverContainerId(null);
+
+    console.log('Drop on PageLayout slot:', pageLayoutId, slot);
+
+    try {
+      // Check if this is an existing component being moved
+      const existingComponentData = e.dataTransfer.getData('application/x-builder-component');
+
+      if (existingComponentData) {
+        const dragData = JSON.parse(existingComponentData);
+        if (dragData.isExisting && dragData.instanceId) {
+          // Move existing component to this slot
+          reparentComponent(dragData.instanceId, pageLayoutId);
+          // Update the slot prop on the moved component
+          const movedComponent = useBuilderStore.getState().findComponent(dragData.instanceId);
+          if (movedComponent) {
+            updateComponentProps(dragData.instanceId, {
+              ...movedComponent.props,
+              slot: slot
+            });
+          }
+          selectComponent(dragData.instanceId);
+          onComponentSelect?.(dragData.instanceId);
+          return;
+        }
+      }
+
+      // Otherwise, this is a new component from the palette
+      const data = e.dataTransfer.getData('application/json');
+      if (!data) return;
+
+      const componentEntry: ComponentRegistryEntry = JSON.parse(data);
+
+      // Get component manifest for default props and styles
+      const manifest = getManifest(componentEntry.pluginId, componentEntry.componentId);
+      const parsedManifest = manifest || JSON.parse(componentEntry.componentManifest);
+
+      const category = componentEntry.category?.toLowerCase() || '';
+
+      // Create new component instance with the slot prop set
+      const newComponent: ComponentInstance = {
+        instanceId: `${componentEntry.componentId}-${Date.now()}`,
+        pluginId: componentEntry.pluginId,
+        componentId: componentEntry.componentId,
+        componentCategory: category as any,
+        parentId: pageLayoutId,
+        position: {
+          row: 1,
+          column: 1,
+          rowSpan: 1,
+          columnSpan: 1
+        },
+        size: {
+          width: '100%',
+          height: 'auto'
+        },
+        props: {
+          ...(parsedManifest.defaultProps || {}),
+          slot: slot  // Set the slot prop
+        },
+        styles: parsedManifest.defaultStyles || {},
+        children: [],
+        isVisible: true,
+        zIndex: 1
+      };
+
+      addComponent(newComponent);
+      selectComponent(newComponent.instanceId);
+      onComponentSelect?.(newComponent.instanceId);
+    } catch (error) {
+      console.error('Failed to add component to PageLayout slot:', error);
+    }
+  };
+
   const gridStyles: React.CSSProperties = {
     gridTemplateColumns: `repeat(${gridConfig.columns}, 1fr)`,
     gridAutoRows: gridConfig.minRowHeight,
     gap: gridConfig.gap
   };
 
+  // Get current breakpoint info for indicator
+  const currentBreakpointDef = BREAKPOINTS[activeBreakpoint];
+  const isWidthConstrained = canvasWidth !== null && viewMode === 'edit';
+
   return (
     <>
-    <div
-      ref={canvasRef}
-      className={`builder-canvas ${isDragOver ? 'drag-over' : ''} ${viewMode === 'preview' ? 'preview-mode' : 'edit-mode'}`}
-      style={gridStyles}
-      onDrop={handleDrop}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onClick={handleCanvasClick}
-      onContextMenu={handleCanvasContextMenu}
-      onKeyDown={handleKeyDown}
-      tabIndex={0}
-    >
+    {/* Canvas outer container for responsive width simulation */}
+    <div className={`canvas-responsive-wrapper ${isWidthConstrained ? 'width-constrained' : ''}`}>
+      {/* Breakpoint indicator */}
+      {showBreakpointIndicator && viewMode === 'edit' && (
+        <div className="breakpoint-indicator">
+          <span className="breakpoint-indicator-icon">{currentBreakpointDef.icon}</span>
+          <span className="breakpoint-indicator-label">{currentBreakpointDef.label}</span>
+          {canvasWidth && (
+            <span className="breakpoint-indicator-width">({canvasWidth}px)</span>
+          )}
+        </div>
+      )}
+
+      {/* Canvas container with constrained width */}
+      <div
+        className="canvas-width-container"
+        style={{
+          maxWidth: isWidthConstrained ? `${canvasWidth}px` : '100%',
+          transition: 'max-width 0.3s ease',
+        }}
+      >
+        <div
+          ref={canvasRef}
+          className={`builder-canvas ${isDragOver ? 'drag-over' : ''} ${viewMode === 'preview' ? 'preview-mode' : 'edit-mode'}`}
+          style={gridStyles}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onClick={handleCanvasClick}
+          onContextMenu={handleCanvasContextMenu}
+          onKeyDown={handleKeyDown}
+          tabIndex={0}
+        >
       {/* Grid Background - only show when enabled */}
       {showGrid && <div className="grid-background" style={gridStyles}></div>}
 
@@ -1089,6 +1490,8 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
           </div>
         </div>
       )}
+        </div>
+      </div>
     </div>
 
     {/* Canvas Context Menu - for right-click on empty canvas area */}

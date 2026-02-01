@@ -7,6 +7,7 @@ import { PageLinkSelector } from './PageLinkSelector';
 import { ImageRepositoryModal } from './ImageRepositoryModal';
 import { GradientPicker } from './GradientPicker';
 import { DataSourceEditor } from './DataSourceEditor';
+import { ResponsiveSettingsEditor } from './ResponsiveSettingsEditor';
 import './PropertiesPanel.css';
 
 /**
@@ -425,7 +426,7 @@ const NavigationEditor: React.FC<NavigationEditorProps> = ({ value, onChange }) 
  * PropertiesPanel - Right sidebar for editing component properties and styles
  */
 export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedComponentId }) => {
-  const [activeTab, setActiveTab] = useState<'props' | 'styles' | 'layout' | 'events'>('props');
+  const [activeTab, setActiveTab] = useState<'props' | 'styles' | 'layout' | 'events' | 'responsive'>('props');
   const [manifest, setManifest] = useState<ComponentManifest | null>(null);
   const [imagePickerOpen, setImagePickerOpen] = useState(false);
   const [imagePickerPropName, setImagePickerPropName] = useState<string | null>(null);
@@ -467,6 +468,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedCompon
       'core-ui',
       'core-navbar',
       'container-layout-plugin',
+      'page-layout-plugin',
       'label-component-plugin',
       'button-component-plugin',
       'textbox-component-plugin',
@@ -491,16 +493,8 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedCompon
   // Load component manifest when selection changes
   useEffect(() => {
     if (componentId) {
-      // First check component store cache
-      if (pluginId) {
-        const cachedManifest = getManifest(pluginId, componentId);
-        if (cachedManifest) {
-          setManifest(cachedManifest);
-          return;
-        }
-      }
-
-      // Try built-in manifests with fallbacks
+      // PRIORITY 1: Try built-in manifests first (they are always authoritative)
+      // This ensures frontend-defined manifests take precedence over backend API responses
       const builtIn = tryGetManifest(pluginId, componentId);
       if (builtIn) {
         // Cache the built-in manifest for future use
@@ -510,7 +504,16 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedCompon
         return;
       }
 
-      // Fallback: fetch from API for plugin-provided components
+      // PRIORITY 2: Check component store cache (for API-provided manifests)
+      if (pluginId) {
+        const cachedManifest = getManifest(pluginId, componentId);
+        if (cachedManifest) {
+          setManifest(cachedManifest);
+          return;
+        }
+      }
+
+      // PRIORITY 3: Fallback - fetch from API for plugin-provided components
       if (pluginId) {
         import('../../services/componentService').then(({ componentService }) => {
           componentService.getComponentManifest(pluginId, componentId)
@@ -909,6 +912,15 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedCompon
         >
           Events
         </button>
+        {/* Responsive tab - only for PageLayout */}
+        {selectedComponent?.componentId === 'PageLayout' && (
+          <button
+            className={`tab ${activeTab === 'responsive' ? 'active' : ''}`}
+            onClick={() => setActiveTab('responsive')}
+          >
+            Responsive
+          </button>
+        )}
       </div>
 
       {/* Tab Content */}
@@ -916,8 +928,40 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedCompon
         {/* Props Tab */}
         {activeTab === 'props' && (
           <div className="props-section">
+            {/* Slot selector for components inside PageLayout */}
+            {selectedComponent.parentId && (() => {
+              const parent = findComponent(selectedComponent.parentId);
+              if (parent?.componentId === 'PageLayout') {
+                const currentSlot = (selectedComponent.props?.slot as string) || 'center';
+                return (
+                  <div className="property-field slot-selector">
+                    <label className="property-label">
+                      Layout Region
+                      <span className="slot-indicator">📄</span>
+                    </label>
+                    <select
+                      value={currentSlot}
+                      onChange={(e) => handlePropChange('slot', e.target.value)}
+                      className="slot-select"
+                    >
+                      <option value="header">Header (Top)</option>
+                      <option value="left">Left Panel</option>
+                      <option value="center">Center (Main Content)</option>
+                      <option value="right">Right Panel</option>
+                      <option value="footer">Footer (Bottom)</option>
+                    </select>
+                    <small className="help-text">Select which region of the page layout this component belongs to</small>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
             {manifest?.configurableProps && manifest.configurableProps.length > 0 ? (
-              manifest.configurableProps.map(propDef => (
+              // Deduplicate configurableProps by name to prevent React duplicate key warnings
+              manifest.configurableProps
+                .filter((propDef, index, arr) => arr.findIndex(p => p.name === propDef.name) === index)
+                .map(propDef => (
                 <div key={propDef.name} className="property-field">
                   <label className="property-label">
                     {propDef.label}
@@ -1281,6 +1325,11 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedCompon
               </div>
             )}
           </div>
+        )}
+
+        {/* Responsive Tab - only for PageLayout */}
+        {activeTab === 'responsive' && selectedComponent?.componentId === 'PageLayout' && (
+          <ResponsiveSettingsEditor componentId={selectedComponent.instanceId} />
         )}
       </div>
 
