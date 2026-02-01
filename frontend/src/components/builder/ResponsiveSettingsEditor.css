@@ -1,0 +1,281 @@
+/**
+ * ResponsiveSettingsEditor Styles
+ *
+ * Styles for the responsive settings editor in the properties panel.
+ */
+
+.responsive-settings-editor {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.responsive-settings-header {
+  margin-bottom: 4px;
+}
+
+.responsive-settings-header h4 {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #333);
+}
+
+.responsive-settings-description {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary, #666);
+}
+
+/* Breakpoint Selector */
+.responsive-breakpoint-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.responsive-breakpoint-selector label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary, #666);
+}
+
+.breakpoint-buttons {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.breakpoint-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-color, #ddd);
+  background: var(--bg-secondary, #f8f8f8);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--text-secondary, #666);
+  transition: all 0.15s ease;
+}
+
+.breakpoint-btn:hover {
+  background: var(--bg-hover, #f0f0f0);
+  border-color: var(--border-color-hover, #ccc);
+}
+
+.breakpoint-btn.active {
+  background: var(--accent-color, #0066cc);
+  border-color: var(--accent-color, #0066cc);
+  color: white;
+}
+
+.bp-icon {
+  font-size: 14px;
+}
+
+.bp-label {
+  font-weight: 500;
+}
+
+/* Breakpoint Info */
+.breakpoint-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-info, #e7f3ff);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.breakpoint-info-icon {
+  font-size: 18px;
+}
+
+.breakpoint-info-text {
+  font-weight: 500;
+  color: var(--text-primary, #333);
+}
+
+.breakpoint-range {
+  margin-left: 4px;
+  font-weight: 400;
+  color: var(--text-secondary, #666);
+  font-size: 11px;
+}
+
+/* Sections */
+.responsive-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--bg-secondary, #f8f8f8);
+  border-radius: 8px;
+}
+
+.responsive-section h5 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #333);
+}
+
+.section-description {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted, #888);
+}
+
+/* Slot Visibility Grid */
+.slot-visibility-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.slot-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-primary, #333);
+}
+
+.slot-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--accent-color, #0066cc);
+}
+
+.slot-label {
+  user-select: none;
+}
+
+/* Stack Sidebars Toggle */
+.stack-sidebars-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.stack-sidebars-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--accent-color, #0066cc);
+}
+
+.toggle-label {
+  font-weight: 500;
+  user-select: none;
+}
+
+/* Sidebar Ratio Select */
+.sidebar-ratio-select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 6px;
+  font-size: 13px;
+  background: white;
+  color: var(--text-primary, #333);
+  cursor: pointer;
+}
+
+.sidebar-ratio-select:focus {
+  outline: 2px solid var(--accent-color, #0066cc);
+  outline-offset: 1px;
+}
+
+/* Quick Apply Presets */
+.quick-apply {
+  border-top: 1px solid var(--border-color, #ddd);
+  padding-top: 16px;
+  margin-top: 8px;
+}
+
+.preset-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.preset-btn {
+  flex: 1;
+  min-width: 100px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #ddd);
+  background: white;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary, #333);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.preset-btn:hover {
+  background: var(--accent-color, #0066cc);
+  border-color: var(--accent-color, #0066cc);
+  color: white;
+}
+
+/* Dark mode support */
+.dark-mode .responsive-settings-header h4,
+.dark-mode .responsive-section h5,
+.dark-mode .slot-checkbox,
+.dark-mode .toggle-label,
+.dark-mode .breakpoint-info-text {
+  color: var(--text-primary-dark, #fff);
+}
+
+.dark-mode .responsive-settings-description,
+.dark-mode .section-description,
+.dark-mode .responsive-breakpoint-selector label,
+.dark-mode .breakpoint-range {
+  color: var(--text-secondary-dark, #aaa);
+}
+
+.dark-mode .responsive-section {
+  background: var(--bg-secondary-dark, #2a2a2a);
+}
+
+.dark-mode .breakpoint-btn {
+  background: var(--bg-secondary-dark, #2a2a2a);
+  border-color: var(--border-color-dark, #444);
+  color: var(--text-secondary-dark, #aaa);
+}
+
+.dark-mode .breakpoint-btn:hover {
+  background: var(--bg-hover-dark, #3a3a3a);
+}
+
+.dark-mode .breakpoint-info {
+  background: var(--bg-info-dark, #1a3a5c);
+}
+
+.dark-mode .sidebar-ratio-select {
+  background: var(--bg-secondary-dark, #2a2a2a);
+  border-color: var(--border-color-dark, #444);
+  color: var(--text-primary-dark, #fff);
+}
+
+.dark-mode .preset-btn {
+  background: var(--bg-secondary-dark, #2a2a2a);
+  border-color: var(--border-color-dark, #444);
+  color: var(--text-primary-dark, #fff);
+}
+
+.dark-mode .preset-btn:hover {
+  background: var(--accent-color, #0066cc);
+  border-color: var(--accent-color, #0066cc);
+}

@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { BreakpointName, BREAKPOINTS } from '../types/responsive';
 
 /**
  * UI Preferences Store
  *
  * Manages user interface preferences like view toggles,
- * zoom level, and panel visibility. Persisted to localStorage.
+ * zoom level, panel visibility, and responsive breakpoint editing.
+ * Persisted to localStorage.
  */
 
 export interface UIPreferencesState {
@@ -29,6 +31,11 @@ export interface UIPreferencesState {
   leftPanelCollapsed: boolean;
   rightPanelCollapsed: boolean;
 
+  // Responsive breakpoint editing
+  activeBreakpoint: BreakpointName;
+  canvasWidth: number | null; // null = 100% (auto), number = constrained width in pixels
+  showBreakpointIndicator: boolean;
+
   // Actions
   toggleGrid: () => void;
   toggleRulers: () => void;
@@ -45,6 +52,11 @@ export interface UIPreferencesState {
   setLeftPanelCollapsed: (collapsed: boolean) => void;
   setRightPanelCollapsed: (collapsed: boolean) => void;
 
+  // Responsive breakpoint actions
+  setActiveBreakpoint: (breakpoint: BreakpointName) => void;
+  setCanvasWidth: (width: number | null) => void;
+  toggleBreakpointIndicator: () => void;
+
   // Reset all preferences
   resetPreferences: () => void;
 }
@@ -59,6 +71,10 @@ const DEFAULT_PREFERENCES = {
   zoomLevel: 100,
   leftPanelCollapsed: false,
   rightPanelCollapsed: false,
+  // Responsive breakpoint defaults
+  activeBreakpoint: 'large' as BreakpointName,
+  canvasWidth: null as number | null, // null = 100% (auto)
+  showBreakpointIndicator: true,
 };
 
 const ZOOM_LEVELS = [25, 50, 75, 100, 125, 150, 200];
@@ -147,6 +163,17 @@ export const useUIPreferencesStore = create<UIPreferencesState>()(
       setRightPanelCollapsed: (collapsed: boolean) =>
         set({ rightPanelCollapsed: collapsed }),
 
+      // Responsive breakpoint actions
+      setActiveBreakpoint: (breakpoint: BreakpointName) => {
+        const canvasWidth = BREAKPOINTS[breakpoint].canvasWidth;
+        set({ activeBreakpoint: breakpoint, canvasWidth });
+      },
+
+      setCanvasWidth: (width: number | null) => set({ canvasWidth: width }),
+
+      toggleBreakpointIndicator: () =>
+        set((state) => ({ showBreakpointIndicator: !state.showBreakpointIndicator })),
+
       // Reset
       resetPreferences: () => set(DEFAULT_PREFERENCES),
     }),
@@ -169,6 +196,14 @@ export const useDarkMode = () => useUIPreferencesStore((state) => state.darkMode
 export const useCompactMode = () => useUIPreferencesStore((state) => state.compactMode);
 export const useAutoSaveNotifications = () =>
   useUIPreferencesStore((state) => state.autoSaveNotifications);
+
+// Responsive breakpoint selectors
+export const useActiveBreakpoint = () =>
+  useUIPreferencesStore((state) => state.activeBreakpoint);
+export const useCanvasWidth = () =>
+  useUIPreferencesStore((state) => state.canvasWidth);
+export const useShowBreakpointIndicator = () =>
+  useUIPreferencesStore((state) => state.showBreakpointIndicator);
 
 /**
  * Initialize UI preferences on app load

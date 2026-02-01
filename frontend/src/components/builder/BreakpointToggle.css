@@ -1,0 +1,110 @@
+/**
+ * BreakpointToggle Styles
+ *
+ * Styles for the device breakpoint toggle button group in the toolbar.
+ */
+
+.breakpoint-toggle {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-secondary, #f0f0f0);
+  border-radius: 6px;
+  padding: 2px;
+  margin: 0 8px;
+}
+
+.breakpoint-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary, #666);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.breakpoint-toggle-btn:hover {
+  background: var(--bg-hover, #e0e0e0);
+  color: var(--text-primary, #333);
+}
+
+.breakpoint-toggle-btn.active {
+  background: var(--bg-primary, #fff);
+  color: var(--accent-color, #0066cc);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-weight: 500;
+}
+
+.breakpoint-toggle-btn:focus {
+  outline: 2px solid var(--focus-ring, #0066cc);
+  outline-offset: 1px;
+}
+
+.breakpoint-toggle-btn:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.breakpoint-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.breakpoint-width {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Compact mode styles */
+.compact-mode .breakpoint-toggle {
+  gap: 1px;
+  padding: 1px;
+}
+
+.compact-mode .breakpoint-toggle-btn {
+  padding: 3px 6px;
+  gap: 3px;
+}
+
+.compact-mode .breakpoint-icon {
+  font-size: 12px;
+}
+
+.compact-mode .breakpoint-width {
+  font-size: 10px;
+}
+
+/* Dark mode styles */
+.dark-mode .breakpoint-toggle {
+  background: var(--bg-secondary-dark, #2a2a2a);
+}
+
+.dark-mode .breakpoint-toggle-btn {
+  color: var(--text-secondary-dark, #aaa);
+}
+
+.dark-mode .breakpoint-toggle-btn:hover {
+  background: var(--bg-hover-dark, #3a3a3a);
+  color: var(--text-primary-dark, #fff);
+}
+
+.dark-mode .breakpoint-toggle-btn.active {
+  background: var(--bg-primary-dark, #444);
+  color: var(--accent-color, #4da6ff);
+}
+
+/* Responsive - hide width on very small screens */
+@media (max-width: 900px) {
+  .breakpoint-width {
+    display: none;
+  }
+
+  .breakpoint-toggle-btn {
+    padding: 4px 6px;
+  }
+}

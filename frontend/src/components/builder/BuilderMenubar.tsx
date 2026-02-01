@@ -8,6 +8,7 @@ import { useUIPreferencesStore } from '../../stores/uiPreferencesStore';
 import { useSiteManagerStore } from '../../stores/siteManagerStore';
 import { useClipboardStore } from '../../stores/clipboardStore';
 import { Page } from '../../types/site';
+import { BreakpointToggle } from './BreakpointToggle';
 import './BuilderMenubar.css';
 
 export interface BuilderMenubarProps {
@@ -354,6 +355,9 @@ export const BuilderMenubar: React.FC<BuilderMenubarProps> = ({
           <MenuDivider />
           <MenuItem label="Manage Folders..." onClick={() => console.log('Manage folders')} />
         </Menu>
+
+        {/* Breakpoint Toggle for Responsive Design */}
+        <BreakpointToggle />
 
         <MenubarSpacer />
 
