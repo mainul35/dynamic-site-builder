@@ -1092,18 +1092,13 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
             ...component.styles,
             height: isScrollable ? containerHeight : undefined,
           }}
-          onClick={(e) => {
-            // Stop propagation to prevent parent containers from receiving the click
-            // The DraggableComponent wrapper will handle the selection
-            e.stopPropagation();
-          }}
+          // Don't stop propagation here - let clicks bubble up to DraggableComponent
+          // so the container can be selected when clicking on its background
         >
           <div
             className="placeholder-header"
-            onClick={(e) => {
-              // Stop propagation - clicking header should not bubble to parents
-              e.stopPropagation();
-            }}
+            // Don't stop propagation - let clicks bubble up to DraggableComponent
+            // so clicking the header selects this container
           >
             <span className="placeholder-id">{component.componentId}</span>
             <span className={`layout-badge ${isDataContainerComponent ? 'data-badge' : ''}`}>
@@ -1135,11 +1130,9 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
               minHeight: (isScrollable && !isGridLayout) ? 0 : undefined, // Allow flex shrinking only for flex layouts
               scrollBehavior: component.props?.smoothScroll ? 'smooth' : 'auto',
             }}
-            onClick={(e) => {
-              // Always stop propagation to prevent bubbling to parent containers
-              // Child DraggableComponents have their own click handlers that will fire first
-              e.stopPropagation();
-            }}
+            // Don't stop propagation on click - let it bubble up to DraggableComponent
+            // When clicking on this container's background (not on a child), the container should get selected
+            // Child DraggableComponents handle their own clicks and call stopPropagation there
             onDrop={(e) => handleNestedDrop(e, component.instanceId)}
             onDragOver={(e) => {
               e.preventDefault();
