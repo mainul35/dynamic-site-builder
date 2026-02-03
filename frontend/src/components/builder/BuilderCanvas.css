@@ -11,6 +11,8 @@
   box-sizing: border-box;
   width: 100%;
   max-width: 100%;
+  /* Prevent browser from auto-adjusting scroll position when DOM changes */
+  overflow-anchor: none;
 }
 
 .builder-canvas.edit-mode {
@@ -420,6 +422,22 @@
   overflow: visible;
 }
 
+/* PageLayout selectable header bar - only visible in edit mode */
+.page-layout-header-bar {
+  user-select: none;
+  transition: background-color 0.15s ease;
+}
+
+.page-layout-header-bar:hover {
+  background-color: #d1e7fd !important;
+}
+
+/* When PageLayout is selected, highlight the header bar */
+.draggable-component.selected .page-layout-header-bar {
+  background-color: #bee3f8 !important;
+  border-bottom-color: #63b3ed !important;
+}
+
 /* PageLayout region drag-over styles */
 .page-layout-region.drag-over {
   background: rgba(40, 167, 69, 0.15) !important;
@@ -751,6 +769,8 @@
   background: var(--bg-canvas-outer, #e9ecef);
   overflow: auto;
   min-height: 0;
+  /* Prevent browser from auto-adjusting scroll position when DOM changes */
+  overflow-anchor: none;
 }
 
 .canvas-responsive-wrapper.width-constrained {

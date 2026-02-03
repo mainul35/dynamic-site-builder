@@ -84,10 +84,46 @@ export const DraggableComponent: React.FC<DraggableComponentProps> = ({
       return;
     }
 
+    // Also check if click is inside a slot child wrapper (for PageLayout slots)
+    // If so, let the slot child handle it instead of selecting the PageLayout
+    // This handles clicks on the child's box-shadow border (which is outside the child's DraggableComponent)
+    const slotChildWrapper = (target as HTMLElement).closest('.slot-child-wrapper');
+    if (slotChildWrapper && componentRef.current?.contains(slotChildWrapper)) {
+      // Click was inside a slot's child wrapper, but outside the child's DraggableComponent
+      // Don't select the parent PageLayout - let the slot system handle it
+      return;
+    }
+
     e.stopPropagation();
+
+    // Capture scroll position of scrollable ancestors before selection
+    // This prevents auto-scroll when selection triggers DOM changes
+    const scrollableAncestors: { element: Element; scrollTop: number; scrollLeft: number }[] = [];
+    let ancestor = componentRef.current?.parentElement;
+    while (ancestor) {
+      if (ancestor.scrollHeight > ancestor.clientHeight || ancestor.scrollWidth > ancestor.clientWidth) {
+        scrollableAncestors.push({
+          element: ancestor,
+          scrollTop: ancestor.scrollTop,
+          scrollLeft: ancestor.scrollLeft,
+        });
+      }
+      ancestor = ancestor.parentElement;
+    }
 
     // Select component on mouse down
     onSelect?.(component.instanceId);
+
+    // Restore scroll position in a microtask (after React re-render)
+    // This prevents the browser's auto-scroll behavior when focus/selection changes
+    if (scrollableAncestors.length > 0) {
+      requestAnimationFrame(() => {
+        scrollableAncestors.forEach(({ element, scrollTop, scrollLeft }) => {
+          element.scrollTop = scrollTop;
+          element.scrollLeft = scrollLeft;
+        });
+      });
+    }
 
     if (componentRef.current) {
       const rect = componentRef.current.getBoundingClientRect();
@@ -206,8 +242,40 @@ export const DraggableComponent: React.FC<DraggableComponentProps> = ({
       return;
     }
 
+    // Also check if click is inside a slot child wrapper (for PageLayout slots)
+    const slotChildWrapper = target.closest('.slot-child-wrapper');
+    if (slotChildWrapper && componentRef.current?.contains(slotChildWrapper)) {
+      // Click was inside a slot's child wrapper - don't select parent PageLayout
+      return;
+    }
+
     e.stopPropagation();
+
+    // Capture scroll position before selection to prevent auto-scroll
+    const scrollableAncestors: { element: Element; scrollTop: number; scrollLeft: number }[] = [];
+    let ancestor = componentRef.current?.parentElement;
+    while (ancestor) {
+      if (ancestor.scrollHeight > ancestor.clientHeight || ancestor.scrollWidth > ancestor.clientWidth) {
+        scrollableAncestors.push({
+          element: ancestor,
+          scrollTop: ancestor.scrollTop,
+          scrollLeft: ancestor.scrollLeft,
+        });
+      }
+      ancestor = ancestor.parentElement;
+    }
+
     onSelect?.(component.instanceId);
+
+    // Restore scroll position after selection
+    if (scrollableAncestors.length > 0) {
+      requestAnimationFrame(() => {
+        scrollableAncestors.forEach(({ element, scrollTop, scrollLeft }) => {
+          element.scrollTop = scrollTop;
+          element.scrollLeft = scrollLeft;
+        });
+      });
+    }
   };
 
   const handleDoubleClick = (e: React.MouseEvent) => {
@@ -217,6 +285,12 @@ export const DraggableComponent: React.FC<DraggableComponentProps> = ({
     const target = e.target as HTMLElement;
     const closestDraggable = target.closest('.draggable-component');
     if (closestDraggable && closestDraggable !== componentRef.current) {
+      return;
+    }
+
+    // Also check if click is inside a slot child wrapper (for PageLayout slots)
+    const slotChildWrapper = target.closest('.slot-child-wrapper');
+    if (slotChildWrapper && componentRef.current?.contains(slotChildWrapper)) {
       return;
     }
 
@@ -236,11 +310,42 @@ export const DraggableComponent: React.FC<DraggableComponentProps> = ({
       return;
     }
 
+    // Also check if click is inside a slot child wrapper (for PageLayout slots)
+    const slotChildWrapper = target.closest('.slot-child-wrapper');
+    if (slotChildWrapper && componentRef.current?.contains(slotChildWrapper)) {
+      // Click was inside a slot's child wrapper - don't select parent PageLayout
+      return;
+    }
+
     e.preventDefault();
     e.stopPropagation();
 
+    // Capture scroll position before selection to prevent auto-scroll
+    const scrollableAncestors: { element: Element; scrollTop: number; scrollLeft: number }[] = [];
+    let ancestor = componentRef.current?.parentElement;
+    while (ancestor) {
+      if (ancestor.scrollHeight > ancestor.clientHeight || ancestor.scrollWidth > ancestor.clientWidth) {
+        scrollableAncestors.push({
+          element: ancestor,
+          scrollTop: ancestor.scrollTop,
+          scrollLeft: ancestor.scrollLeft,
+        });
+      }
+      ancestor = ancestor.parentElement;
+    }
+
     // Select the component on right-click
     onSelect?.(component.instanceId);
+
+    // Restore scroll position after selection
+    if (scrollableAncestors.length > 0) {
+      requestAnimationFrame(() => {
+        scrollableAncestors.forEach(({ element, scrollTop, scrollLeft }) => {
+          element.scrollTop = scrollTop;
+          element.scrollLeft = scrollLeft;
+        });
+      });
+    }
 
     // Open context menu at mouse position
     setContextMenu({

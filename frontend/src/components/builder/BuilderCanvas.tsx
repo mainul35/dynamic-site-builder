@@ -22,13 +22,15 @@ interface BuilderCanvasProps {
   // Optional page override for preview mode - allows rendering a different page
   // without modifying the builder store's currentPage
   pageOverride?: import('../../types/builder').PageDefinition | null;
+  // Force preview mode regardless of store state - useful for standalone preview window
+  forcePreviewMode?: boolean;
 }
 
 /**
  * BuilderCanvas - Main canvas where components are placed and arranged
  * Implements grid-based layout with drag-drop support
  */
-export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect, pageOverride }) => {
+export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect, pageOverride, forcePreviewMode = false }) => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [dragOverContainerId, setDragOverContainerId] = useState<string | null>(null);
@@ -55,13 +57,16 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
   // Use pageOverride if provided (for preview mode), otherwise use store's currentPage
   const currentPage = pageOverride !== undefined ? pageOverride : storeCurrentPage;
 
+  // Effective viewMode - forcePreviewMode overrides store viewMode
+  const effectiveViewMode = forcePreviewMode ? 'preview' : viewMode;
+
   const { getManifest } = useComponentStore();
   const { showGrid, activeBreakpoint, canvasWidth, showBreakpointIndicator } = useUIPreferencesStore();
 
   // Global hover tracking - single listener for entire canvas
   // This finds the innermost (closest) draggable component under the mouse
   useEffect(() => {
-    if (viewMode !== 'edit') return;
+    if (effectiveViewMode !== 'edit') return;
 
     const handleMouseMove = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -92,7 +97,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
         canvas.removeEventListener('mousemove', handleMouseMove);
       }
     };
-  }, [viewMode, hoveredComponentId, setHoveredComponent]);
+  }, [effectiveViewMode, hoveredComponentId, setHoveredComponent]);
 
   // Helper function to find component recursively
   const findComponentRecursive = (component: ComponentInstance, targetId: string): ComponentInstance | null => {
@@ -426,7 +431,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
   // Handle right-click on empty canvas area
   const handleCanvasContextMenu = (e: React.MouseEvent) => {
     // Only show canvas context menu in edit mode
-    if (viewMode !== 'edit') return;
+    if (effectiveViewMode !== 'edit') return;
 
     // Only handle if clicking directly on canvas (not on a component)
     // Components have their own context menu handlers
@@ -586,7 +591,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
     // Check if component is a data container (like Repeater) - has data source capability
     const isDataContainerComponent = capabilityService.hasDataSource(component);
     const hasChildren = component.children && component.children.length > 0;
-    const isEditMode = viewMode === 'edit';
+    const isEditMode = effectiveViewMode === 'edit';
 
     // SPECIAL CASE: PageLayout has its own visual wireframe renderer with slot-based drop zones
     if (component.componentId === 'PageLayout') {
@@ -603,6 +608,10 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
       // In edit mode, render the visual wireframe with drop zones for each slot
       const gap = component.props?.gap || '4px';
       const backgroundColor = component.styles?.backgroundColor || '#f8f9fa';
+
+      // Extract sticky header/footer props for display in header bar
+      const stickyHeader = component.props?.stickyHeader || false;
+      const stickyFooter = component.props?.stickyFooter || false;
 
       // Get responsive settings for the active breakpoint
       const responsiveConfig = component.props?.responsive as ResponsiveConfig | undefined;
@@ -643,12 +652,9 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
       const isCenterVisible = slotVisibility.center;
       const isRightVisible = slotVisibility.right;
 
-      // For left sidebar, consider mobileSidebarBehavior - if it's 'overlay' or 'stacked',
-      // the sidebar is still accessible (just displayed differently), so don't treat it as hidden
-      const mobileSidebarBehavior = component.props?.mobileSidebarBehavior || 'hidden';
-      const isMobileBreakpoint = activeBreakpoint === 'mobile';
-      const isLeftVisible = slotVisibility.left ||
-        (isMobileBreakpoint && (mobileSidebarBehavior === 'overlay' || mobileSidebarBehavior === 'stacked'));
+      // For left sidebar, respect the visibility setting directly like other slots
+      // The mobileSidebarBehavior prop affects how visible sidebars are displayed, not whether they're visible
+      const isLeftVisible = slotVisibility.left;
 
       // Common styles for regions - overflow hidden to constrain children within slot boundaries
       const regionStyle: React.CSSProperties = {
@@ -695,11 +701,22 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
         return slotChildren.map(child => (
           <div
             key={child.instanceId}
+            className="slot-child-wrapper"
             style={{
               width: '100%',
               maxWidth: '100%',
               overflow: 'hidden',
               boxSizing: 'border-box',
+            }}
+            // Handle clicks on the wrapper (including box-shadow border area)
+            // This ensures the child gets selected even when clicking outside its DraggableComponent
+            onClick={(e) => {
+              e.stopPropagation();
+              handleComponentSelect(child.instanceId);
+            }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              handleComponentSelect(child.instanceId);
             }}
           >
             <DraggableComponent
@@ -734,6 +751,14 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
           e.preventDefault();
           e.stopPropagation();
           setDragOverContainerId(null);
+        },
+        // Stop click/mousedown propagation in slots to prevent PageLayout from being selected
+        // when clicking inside a slot (children handle their own selection via stopPropagation)
+        onClick: (e: React.MouseEvent) => {
+          e.stopPropagation();
+        },
+        onMouseDown: (e: React.MouseEvent) => {
+          e.stopPropagation();
         },
       });
 
@@ -771,8 +796,11 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
             data-slot={slotName}
             {...createDropZoneProps(slotName)}
           >
+            {/* Show green indicator when slot has content (visible or hidden) */}
             {hasContent && <div style={hasContentIndicator} title="Has content" />}
-            {!hasContent && (
+
+            {/* Show label/hidden message when: slot is hidden OR slot is visible but empty */}
+            {(isHidden || !hasContent) && (
               <div style={isHidden ? hiddenLabelStyle : labelStyle}>
                 {isHidden ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -786,7 +814,9 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
                 )}
               </div>
             )}
-            {hasContent && (
+
+            {/* Only render children when slot is visible AND has content */}
+            {!isHidden && hasContent && (
               <div style={{ width: '100%', maxWidth: '100%', display: 'flex', flexDirection: 'column', gap: '8px', overflow: 'hidden', boxSizing: 'border-box' }}>
                 {renderSlotContent(slotName)}
               </div>
@@ -816,7 +846,87 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
           data-component-type="PageLayout"
           data-active-breakpoint={activeBreakpoint}
         >
-          {/* Header */}
+          {/* Selectable header bar for PageLayout - allows selecting the component */}
+          <div
+            className="page-layout-header-bar"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 12px',
+              backgroundColor: '#e8f4fd',
+              borderBottom: '1px solid #bee3f8',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+            // Don't stop propagation - let clicks bubble up to DraggableComponent
+            // so the PageLayout can be selected when clicking this header
+          >
+            <span style={{ fontWeight: 600, color: '#2b6cb0', fontSize: '14px' }}>
+              PageLayout
+            </span>
+            <span
+              style={{
+                display: 'inline-block',
+                padding: '2px 8px',
+                background: '#3182ce',
+                color: 'white',
+                fontSize: '11px',
+                fontWeight: 600,
+                borderRadius: '12px',
+                textTransform: 'uppercase',
+              }}
+            >
+              Layout
+            </span>
+            {stackSidebars && (
+              <span
+                style={{
+                  display: 'inline-block',
+                  padding: '2px 8px',
+                  background: '#6c757d',
+                  color: 'white',
+                  fontSize: '10px',
+                  fontWeight: 500,
+                  borderRadius: '12px',
+                }}
+              >
+                stacked
+              </span>
+            )}
+            {stickyHeader && (
+              <span
+                style={{
+                  display: 'inline-block',
+                  padding: '2px 8px',
+                  background: '#38a169',
+                  color: 'white',
+                  fontSize: '10px',
+                  fontWeight: 500,
+                  borderRadius: '12px',
+                }}
+              >
+                sticky header
+              </span>
+            )}
+            {stickyFooter && (
+              <span
+                style={{
+                  display: 'inline-block',
+                  padding: '2px 8px',
+                  background: '#38a169',
+                  color: 'white',
+                  fontSize: '10px',
+                  fontWeight: 500,
+                  borderRadius: '12px',
+                }}
+              >
+                sticky footer
+              </span>
+            )}
+          </div>
+
+          {/* Header Slot */}
           {renderSlotRegion('header', 'HEADER', isHeaderVisible, hasHeader, { width: '100%', flexShrink: 0 })}
 
           {/* Middle section - depends on stackSidebars setting */}
@@ -1410,14 +1520,14 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
 
   // Get current breakpoint info for indicator
   const currentBreakpointDef = BREAKPOINTS[activeBreakpoint];
-  const isWidthConstrained = canvasWidth !== null && viewMode === 'edit';
+  const isWidthConstrained = canvasWidth !== null && effectiveViewMode === 'edit';
 
   return (
     <>
     {/* Canvas outer container for responsive width simulation */}
     <div className={`canvas-responsive-wrapper ${isWidthConstrained ? 'width-constrained' : ''}`}>
       {/* Breakpoint indicator */}
-      {showBreakpointIndicator && viewMode === 'edit' && (
+      {showBreakpointIndicator && effectiveViewMode === 'edit' && (
         <div className="breakpoint-indicator">
           <span className="breakpoint-indicator-icon">{currentBreakpointDef.icon}</span>
           <span className="breakpoint-indicator-label">{currentBreakpointDef.label}</span>
@@ -1437,7 +1547,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
       >
         <div
           ref={canvasRef}
-          className={`builder-canvas ${isDragOver ? 'drag-over' : ''} ${viewMode === 'preview' ? 'preview-mode' : 'edit-mode'}`}
+          className={`builder-canvas ${isDragOver ? 'drag-over' : ''} ${effectiveViewMode === 'preview' ? 'preview-mode' : 'edit-mode'}`}
           style={gridStyles}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
@@ -1470,7 +1580,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
         .filter(component => !component.parentId)
         .map(component => {
           // In preview mode, render without builder wrappers
-          if (viewMode === 'preview') {
+          if (effectiveViewMode === 'preview') {
             // For height, only apply explicit pixel/percentage values, not 'auto'
             const previewHeight = component.size.height && component.size.height !== 'auto'
               ? component.size.height
