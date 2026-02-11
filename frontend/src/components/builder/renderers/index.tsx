@@ -115,16 +115,16 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({ component,
     }
   }, [rendererVersion]);
 
-  // Debug logging for component resolution
-  if (import.meta.env.DEV) {
-    console.log('[ComponentRenderer] Lookup:', {
-      componentId: component.componentId,
-      pluginId: component.pluginId,
-      found: !!Renderer,
-      rendererVersion,
-      registeredKeys: RendererRegistry.debugGetAllKeys(),
-    });
-  }
+  // Debug logging for component resolution (commented out - too verbose)
+  // if (import.meta.env.DEV) {
+  //   console.log('[ComponentRenderer] Lookup:', {
+  //     componentId: component.componentId,
+  //     pluginId: component.pluginId,
+  //     found: !!Renderer,
+  //     rendererVersion,
+  //     registeredKeys: RendererRegistry.debugGetAllKeys(),
+  //   });
+  // }
 
   // If no renderer found, try loading the plugin dynamically
   useEffect(() => {

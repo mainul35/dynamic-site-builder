@@ -58,6 +58,7 @@ export const DraggableComponent: React.FC<DraggableComponentProps> = ({
   const canDrag = viewMode === 'edit';
 
   const handleMouseDown = (e: React.MouseEvent) => {
+
     if (!canDrag || e.button !== 0) return; // Only left click
 
     // Don't start drag if clicking on interactive elements, resize handles, or move handle
@@ -78,7 +79,7 @@ export const DraggableComponent: React.FC<DraggableComponentProps> = ({
 
     // Check if the click originated from a nested DraggableComponent
     // If so, don't handle this event - let the nested component handle it
-    const closestDraggable = (target as HTMLElement).closest('.draggable-component');
+    const closestDraggable = target.closest('.draggable-component');
     if (closestDraggable && closestDraggable !== componentRef.current) {
       // Click was on a nested draggable component, don't handle here
       return;
@@ -87,7 +88,7 @@ export const DraggableComponent: React.FC<DraggableComponentProps> = ({
     // Also check if click is inside a slot child wrapper (for PageLayout slots)
     // If so, let the slot child handle it instead of selecting the PageLayout
     // This handles clicks on the child's box-shadow border (which is outside the child's DraggableComponent)
-    const slotChildWrapper = (target as HTMLElement).closest('.slot-child-wrapper');
+    const slotChildWrapper = target.closest('.slot-child-wrapper');
     if (slotChildWrapper && componentRef.current?.contains(slotChildWrapper)) {
       // Click was inside a slot's child wrapper, but outside the child's DraggableComponent
       // Don't select the parent PageLayout - let the slot system handle it
@@ -95,35 +96,10 @@ export const DraggableComponent: React.FC<DraggableComponentProps> = ({
     }
 
     e.stopPropagation();
-
-    // Capture scroll position of scrollable ancestors before selection
-    // This prevents auto-scroll when selection triggers DOM changes
-    const scrollableAncestors: { element: Element; scrollTop: number; scrollLeft: number }[] = [];
-    let ancestor = componentRef.current?.parentElement;
-    while (ancestor) {
-      if (ancestor.scrollHeight > ancestor.clientHeight || ancestor.scrollWidth > ancestor.clientWidth) {
-        scrollableAncestors.push({
-          element: ancestor,
-          scrollTop: ancestor.scrollTop,
-          scrollLeft: ancestor.scrollLeft,
-        });
-      }
-      ancestor = ancestor.parentElement;
-    }
+    e.preventDefault();
 
     // Select component on mouse down
     onSelect?.(component.instanceId);
-
-    // Restore scroll position in a microtask (after React re-render)
-    // This prevents the browser's auto-scroll behavior when focus/selection changes
-    if (scrollableAncestors.length > 0) {
-      requestAnimationFrame(() => {
-        scrollableAncestors.forEach(({ element, scrollTop, scrollLeft }) => {
-          element.scrollTop = scrollTop;
-          element.scrollLeft = scrollLeft;
-        });
-      });
-    }
 
     if (componentRef.current) {
       const rect = componentRef.current.getBoundingClientRect();
@@ -234,8 +210,9 @@ export const DraggableComponent: React.FC<DraggableComponentProps> = ({
   const handleClick = (e: React.MouseEvent) => {
     if (!canDrag) return;
 
-    // Check if the click originated from a nested DraggableComponent
     const target = e.target as HTMLElement;
+
+    // Check if the click originated from a nested DraggableComponent
     const closestDraggable = target.closest('.draggable-component');
     if (closestDraggable && closestDraggable !== componentRef.current) {
       // Click was on a nested draggable component, don't handle here
@@ -245,37 +222,15 @@ export const DraggableComponent: React.FC<DraggableComponentProps> = ({
     // Also check if click is inside a slot child wrapper (for PageLayout slots)
     const slotChildWrapper = target.closest('.slot-child-wrapper');
     if (slotChildWrapper && componentRef.current?.contains(slotChildWrapper)) {
-      // Click was inside a slot's child wrapper - don't select parent PageLayout
+      // Click was inside a slot's child wrapper - don't handle here
       return;
     }
 
+    // Don't select here - selection is already handled by mousedown
+    // The click target can differ from mousedown target due to React re-renders
+    // (e.g., selection overlay appearing causes layout shift between mousedown and click)
+    // Just stop propagation to prevent parent handlers from firing
     e.stopPropagation();
-
-    // Capture scroll position before selection to prevent auto-scroll
-    const scrollableAncestors: { element: Element; scrollTop: number; scrollLeft: number }[] = [];
-    let ancestor = componentRef.current?.parentElement;
-    while (ancestor) {
-      if (ancestor.scrollHeight > ancestor.clientHeight || ancestor.scrollWidth > ancestor.clientWidth) {
-        scrollableAncestors.push({
-          element: ancestor,
-          scrollTop: ancestor.scrollTop,
-          scrollLeft: ancestor.scrollLeft,
-        });
-      }
-      ancestor = ancestor.parentElement;
-    }
-
-    onSelect?.(component.instanceId);
-
-    // Restore scroll position after selection
-    if (scrollableAncestors.length > 0) {
-      requestAnimationFrame(() => {
-        scrollableAncestors.forEach(({ element, scrollTop, scrollLeft }) => {
-          element.scrollTop = scrollTop;
-          element.scrollLeft = scrollLeft;
-        });
-      });
-    }
   };
 
   const handleDoubleClick = (e: React.MouseEvent) => {
@@ -320,32 +275,8 @@ export const DraggableComponent: React.FC<DraggableComponentProps> = ({
     e.preventDefault();
     e.stopPropagation();
 
-    // Capture scroll position before selection to prevent auto-scroll
-    const scrollableAncestors: { element: Element; scrollTop: number; scrollLeft: number }[] = [];
-    let ancestor = componentRef.current?.parentElement;
-    while (ancestor) {
-      if (ancestor.scrollHeight > ancestor.clientHeight || ancestor.scrollWidth > ancestor.clientWidth) {
-        scrollableAncestors.push({
-          element: ancestor,
-          scrollTop: ancestor.scrollTop,
-          scrollLeft: ancestor.scrollLeft,
-        });
-      }
-      ancestor = ancestor.parentElement;
-    }
-
     // Select the component on right-click
     onSelect?.(component.instanceId);
-
-    // Restore scroll position after selection
-    if (scrollableAncestors.length > 0) {
-      requestAnimationFrame(() => {
-        scrollableAncestors.forEach(({ element, scrollTop, scrollLeft }) => {
-          element.scrollTop = scrollTop;
-          element.scrollLeft = scrollLeft;
-        });
-      });
-    }
 
     // Open context menu at mouse position
     setContextMenu({
@@ -472,9 +403,9 @@ export const DraggableComponent: React.FC<DraggableComponentProps> = ({
         data-component-id={component.instanceId}
         data-is-container={capabilityService.isContainer(component) ? 'true' : undefined}
       >
-        {/* Selection Overlay */}
-        {isSelected && canDrag && (
-          <div className="selection-overlay">
+        {/* Selection Overlay - always rendered, visibility controlled by CSS to prevent DOM flicker */}
+        {canDrag && (
+          <div className="selection-overlay" style={{ visibility: isSelected ? 'visible' : 'hidden' }}>
             <div className="selection-border"></div>
             <div className="component-label">
               {component.componentId}
@@ -487,14 +418,15 @@ export const DraggableComponent: React.FC<DraggableComponentProps> = ({
           {children}
         </div>
 
-        {/* Move Handle (for moving between containers) */}
-        {canDrag && isSelected && (
+        {/* Move Handle (for moving between containers) - always rendered, visibility controlled by CSS */}
+        {canDrag && (
           <div
             className="move-handle"
             title="Drag to move between containers"
-            draggable={true}
+            draggable={isSelected}
             onDragStart={handleMoveHandleDragStart}
             onDragEnd={handleMoveHandleDragEnd}
+            style={{ visibility: isSelected ? 'visible' : 'hidden' }}
           >
             ↕
           </div>

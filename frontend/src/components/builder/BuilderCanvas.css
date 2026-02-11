@@ -410,6 +410,88 @@
   border-style: solid;
 }
 
+/* Drop position indicator - shows where the component will be inserted */
+.drop-position-indicator {
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, #007bff 0%, #00d4ff 50%, #007bff 100%);
+  border-radius: 2px;
+  margin: 4px 0;
+  position: relative;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px rgba(0, 123, 255, 0.6);
+  animation: drop-indicator-pulse 1s ease-in-out infinite;
+}
+
+/* Arrows on the sides to make it more visible */
+.drop-position-indicator::before,
+.drop-position-indicator::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border: 6px solid transparent;
+}
+
+.drop-position-indicator::before {
+  left: -8px;
+  border-right-color: #007bff;
+  border-left: none;
+}
+
+.drop-position-indicator::after {
+  right: -8px;
+  border-left-color: #007bff;
+  border-right: none;
+}
+
+@keyframes drop-indicator-pulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 8px rgba(0, 123, 255, 0.6);
+  }
+  50% {
+    opacity: 0.7;
+    box-shadow: 0 0 12px rgba(0, 123, 255, 0.9);
+  }
+}
+
+/* For flex-row layouts, indicator should be vertical */
+.children-container.flex-row-layout .drop-position-indicator {
+  width: 4px;
+  height: 100%;
+  min-height: 40px;
+  margin: 0 4px;
+}
+
+.children-container.flex-row-layout .drop-position-indicator::before,
+.children-container.flex-row-layout .drop-position-indicator::after {
+  border: 6px solid transparent;
+}
+
+.children-container.flex-row-layout .drop-position-indicator::before {
+  left: 50%;
+  top: -8px;
+  transform: translateX(-50%);
+  border-bottom-color: #007bff;
+  border-top: none;
+  border-left-color: transparent;
+  border-right-color: transparent;
+}
+
+.children-container.flex-row-layout .drop-position-indicator::after {
+  left: 50%;
+  top: auto;
+  bottom: -8px;
+  transform: translateX(-50%);
+  border-top-color: #007bff;
+  border-bottom: none;
+  border-left-color: transparent;
+  border-right-color: transparent;
+}
+
 /* PageLayout container - ensure it respects parent width constraints */
 .page-layout-container {
   width: 100%;
@@ -420,6 +502,11 @@
 
 .page-layout-container.edit-mode {
   overflow: visible;
+}
+
+/* In width-constrained mode, override edit-mode overflow to clip content */
+.canvas-responsive-wrapper.width-constrained .page-layout-container.edit-mode {
+  overflow: hidden !important;
 }
 
 /* PageLayout selectable header bar - only visible in edit mode */
@@ -767,7 +854,8 @@
   flex-direction: column;
   flex: 1;
   background: var(--bg-canvas-outer, #e9ecef);
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   min-height: 0;
   /* Prevent browser from auto-adjusting scroll position when DOM changes */
   overflow-anchor: none;
@@ -776,6 +864,11 @@
 .canvas-responsive-wrapper.width-constrained {
   align-items: center;
   /* Remove padding to eliminate left/top gaps - the canvas itself provides spacing */
+  /* Reserve space for scrollbar to prevent it from overlaying centered content */
+  scrollbar-gutter: stable;
+  /* Fallback padding for scrollbar space in case scrollbar-gutter isn't fully supported */
+  padding-right: 8px;
+  padding-left: 8px;
 }
 
 .canvas-width-container {
@@ -784,14 +877,19 @@
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  overflow: hidden;
+  /* Only hide horizontal overflow - preserve vertical scrolling */
+  overflow-x: hidden;
+  overflow-y: visible;
 }
 
 .canvas-responsive-wrapper.width-constrained .canvas-width-container {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   border-radius: 8px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: visible;
   background: white;
+  /* Ensure width is exactly the maxWidth set inline */
+  flex-shrink: 0;
 }
 
 /* Breakpoint Indicator */
@@ -867,9 +965,10 @@
 /* Use !important to override inline styles from resize operations */
 
 .canvas-responsive-wrapper.width-constrained .builder-canvas {
-  width: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
+  width: 100% !important;
+  max-width: 100% !important;
+  /* Remove padding in constrained mode to give full width to content */
+  padding: 0 !important;
 }
 
 /* Root-level draggable components must not overflow */
@@ -890,6 +989,12 @@
 .canvas-responsive-wrapper.width-constrained .page-layout-container {
   width: 100%;
   max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* Force all elements in width-constrained canvas to respect max-width */
+.canvas-responsive-wrapper.width-constrained .page-layout-container * {
+  max-width: 100%;
   box-sizing: border-box;
 }
 
@@ -921,6 +1026,28 @@
   box-sizing: border-box;
 }
 
+/* ===== Width-Constrained Canvas - Override Min-Width ===== */
+/* Override min-width constraints in responsive/constrained canvas mode */
+/* This ensures components can shrink to fit narrower device widths */
+
+.canvas-responsive-wrapper.width-constrained .layout-placeholder {
+  min-width: 0 !important;
+}
+
+.canvas-responsive-wrapper.width-constrained .component-placeholder {
+  min-width: 0 !important;
+}
+
+/* All flex/grid items in width-constrained canvas should be able to shrink */
+.canvas-responsive-wrapper.width-constrained .children-container > * {
+  min-width: 0 !important;
+}
+
+/* Slot child wrappers in PageLayout must shrink */
+.canvas-responsive-wrapper.width-constrained .slot-child-wrapper {
+  min-width: 0 !important;
+}
+
 /* ===== PageLayout Slot Components - Always Fill Slot Width ===== */
 /* Components inside PageLayout slots should always fill their slot width */
 /* Override any pixel widths from resize operations */
@@ -928,6 +1055,7 @@
 .page-layout-region .draggable-component {
   width: 100% !important;
   max-width: 100% !important;
+  min-width: 0 !important;
 }
 
 .page-layout-region .resizable-component {
@@ -948,11 +1076,13 @@
 .page-layout-region .layout-placeholder {
   width: 100% !important;
   max-width: 100% !important;
+  min-width: 0 !important;
 }
 
 .page-layout-region .component-placeholder {
   width: 100% !important;
   max-width: 100% !important;
+  min-width: 0 !important;
 }
 
 /* Children containers inside PageLayout slots should also fill width */
@@ -965,7 +1095,74 @@
 .page-layout-region .child-component {
   width: 100% !important;
   max-width: 100% !important;
+  min-width: 0 !important;
   align-self: stretch !important;
+}
+
+/* CRITICAL: Override DraggableComponent.css width: fit-content for child components in PageLayout */
+/* This ensures child components fill their slot width instead of sizing to content */
+.page-layout-region .draggable-component.child-component {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  align-self: stretch !important;
+}
+
+.page-layout-region .draggable-component.child-component .component-content {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* In width-constrained canvas, force all PageLayout children to shrink */
+.canvas-responsive-wrapper.width-constrained .page-layout-region .draggable-component.child-component {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  align-self: stretch !important;
+  flex-shrink: 1 !important;
+}
+
+.canvas-responsive-wrapper.width-constrained .page-layout-region .draggable-component.child-component .component-content {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+.canvas-responsive-wrapper.width-constrained .page-layout-region .slot-child-wrapper {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* Force all nested elements in PageLayout slots to respect width constraints */
+.canvas-responsive-wrapper.width-constrained .page-layout-region .layout-placeholder {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+.canvas-responsive-wrapper.width-constrained .page-layout-region .children-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+.canvas-responsive-wrapper.width-constrained .page-layout-region .resizable-component,
+.canvas-responsive-wrapper.width-constrained .page-layout-region .resizable-content {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* Ensure resizable components in PageLayout slots can shrink */
+.page-layout-region .resizable-component,
+.page-layout-region .resizable-content {
+  min-width: 0 !important;
+}
+
+/* Ensure children containers in PageLayout slots can shrink */
+.page-layout-region .children-container {
+  min-width: 0 !important;
 }
 
 /* ===== Root PageLayout Component - Always Fill Canvas Width ===== */
@@ -983,4 +1180,286 @@
 .builder-canvas > .draggable-component:has(.page-layout-container) .component-content {
   width: 100% !important;
   max-width: 100% !important;
+}
+
+/* ===== Container Queries for Edit Mode Responsive Canvas ===== */
+/* Use CSS Container Queries to apply breakpoint-specific styles based on container width */
+/* This enables accurate device simulation in edit mode */
+
+/* Define the canvas width container as a container query context */
+.canvas-width-container {
+  container-type: inline-size;
+  container-name: canvas-device;
+}
+
+/* ===== Ensure Width-Constrained Canvas Content Fits ===== */
+/* Apply to ALL width-constrained scenarios regardless of container query support */
+.canvas-responsive-wrapper.width-constrained .builder-canvas {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 0 !important;
+  /* Only hide horizontal overflow - preserve vertical scrolling */
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+}
+
+.canvas-responsive-wrapper.width-constrained .builder-canvas > * {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.canvas-responsive-wrapper.width-constrained .draggable-component {
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+.canvas-responsive-wrapper.width-constrained .page-layout-container {
+  max-width: 100% !important;
+  /* Only hide horizontal overflow - preserve vertical scrolling */
+  overflow-x: hidden !important;
+}
+
+.canvas-responsive-wrapper.width-constrained .page-layout-container * {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Force slot children to use 100% width, overriding any inline pixel widths from resize */
+.canvas-responsive-wrapper.width-constrained .slot-child-wrapper,
+.canvas-responsive-wrapper.width-constrained .slot-child-wrapper > .draggable-component,
+.canvas-responsive-wrapper.width-constrained .slot-child-wrapper .resizable-component,
+.canvas-responsive-wrapper.width-constrained .slot-child-wrapper .component-content {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* Components directly inside PageLayout regions must also respect width */
+.canvas-responsive-wrapper.width-constrained .page-layout-region > .slot-child-wrapper {
+  width: 100% !important;
+}
+
+/* Nested layout placeholders and their content */
+.canvas-responsive-wrapper.width-constrained .page-layout-region .layout-placeholder,
+.canvas-responsive-wrapper.width-constrained .page-layout-region .children-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* Force ALL flex children to shrink in width-constrained mode */
+.canvas-responsive-wrapper.width-constrained .page-layout-region * {
+  flex-shrink: 1 !important;
+  min-width: 0 !important;
+}
+
+/* Ensure text can wrap to prevent overflow */
+.canvas-responsive-wrapper.width-constrained .page-layout-region {
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+/* Navbar specific - force content to fit */
+.canvas-responsive-wrapper.width-constrained nav {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  flex-wrap: wrap !important;
+  overflow-x: hidden !important;
+}
+
+.canvas-responsive-wrapper.width-constrained nav * {
+  max-width: 100% !important;
+  min-width: 0 !important;
+  flex-shrink: 1 !important;
+}
+
+/* ===== Edit Mode Hamburger Menu and Overlay Sidebar ===== */
+/* Default: Hide hamburger menu in edit mode - shown only at mobile width for overlay mode */
+.canvas-width-container .page-layout-container.edit-mode .hamburger-menu {
+  display: none;
+}
+
+/* Show hamburger when in mobile width mode (<=575px) for overlay mode */
+/* Uses class-based approach for reliable cross-browser support */
+.canvas-responsive-wrapper.mobile-width .page-layout-container.edit-mode[data-mobile-sidebar-behavior="overlay"] .hamburger-menu {
+  display: flex !important;
+}
+
+/* Mobile width overlay sidebar positioning in edit mode */
+.canvas-responsive-wrapper.mobile-width .page-layout-container.edit-mode[data-mobile-sidebar-behavior="overlay"] .page-layout-left {
+  position: absolute !important;
+  top: 60px !important;
+  left: 0 !important;
+  width: 180px !important;
+  height: calc(100% - 110px) !important;
+  z-index: 100 !important;
+  transform: translateX(-100%) !important;
+  transition: transform 0.3s ease-in-out !important;
+  box-shadow: 2px 0 8px rgba(0,0,0,0.15) !important;
+  background: #f5f3ff !important;
+  border: 2px dashed #6366f1 !important;
+}
+
+.canvas-responsive-wrapper.mobile-width .page-layout-container.edit-mode[data-mobile-sidebar-behavior="overlay"].sidebar-open .page-layout-left {
+  transform: translateX(0) !important;
+}
+
+/* When sidebar is hidden (overlay closed), expand center to full width */
+.canvas-responsive-wrapper.mobile-width .page-layout-container.edit-mode[data-mobile-sidebar-behavior="overlay"]:not(.sidebar-open) {
+  grid-template-columns: 0 1fr !important;
+}
+
+/* When sidebar is open (overlay visible), keep original grid */
+.canvas-responsive-wrapper.mobile-width .page-layout-container.edit-mode[data-mobile-sidebar-behavior="overlay"].sidebar-open {
+  grid-template-columns: 180px 1fr !important;
+}
+
+/* Mobile breakpoint (0-575px) - Width constraints only, don't hide sidebars in edit mode */
+/* Note: In edit mode, sidebar visibility is controlled by BuilderCanvas.tsx which shows */
+/* slots as dimmed when hidden. We only apply width constraints here, not display: none. */
+@container canvas-device (max-width: 575px) {
+  /* Show hamburger menu in edit mode for overlay mode */
+  .page-layout-container.edit-mode[data-mobile-sidebar-behavior="overlay"] .hamburger-menu {
+    display: flex !important;
+  }
+
+  /* Overlay mode in edit mode: Position sidebar as slide-in overlay */
+  .page-layout-container.edit-mode[data-mobile-sidebar-behavior="overlay"] {
+    position: relative !important;
+  }
+
+  .page-layout-container.edit-mode[data-mobile-sidebar-behavior="overlay"] .page-layout-left {
+    position: absolute !important;
+    top: 60px !important; /* Below header */
+    left: 0 !important;
+    width: 180px !important;
+    height: calc(100% - 110px) !important; /* Account for header and footer */
+    z-index: 100 !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.3s ease-in-out !important;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.15) !important;
+    background: #f5f3ff !important;
+    border: 2px dashed #6366f1 !important;
+  }
+
+  .page-layout-container.edit-mode[data-mobile-sidebar-behavior="overlay"].sidebar-open .page-layout-left {
+    transform: translateX(0) !important;
+  }
+
+  /* When sidebar is hidden (overlay closed), expand center to full width */
+  .page-layout-container.edit-mode[data-mobile-sidebar-behavior="overlay"]:not(.sidebar-open) {
+    grid-template-columns: 0 1fr !important;
+  }
+
+  /* When sidebar is open (overlay visible), keep original grid */
+  .page-layout-container.edit-mode[data-mobile-sidebar-behavior="overlay"].sidebar-open {
+    grid-template-columns: 180px 1fr !important;
+  }
+  /* Force ALL elements to respect container width */
+  .page-layout-container,
+  .page-layout-container * {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* All regions should fit within container width */
+  .page-layout-region {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Force slot children to fit width */
+  .slot-child-wrapper {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Draggable and resizable wrappers must shrink */
+  .draggable-component,
+  .resizable-component,
+  .resizable-content {
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Component content must shrink */
+  .component-content {
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Layout placeholders and children containers */
+  .layout-placeholder,
+  .children-container {
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Navbar components - force to fit within container */
+  nav {
+    max-width: 100% !important;
+    flex-wrap: wrap !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Navigation list should wrap and shrink */
+  nav ul {
+    flex-wrap: wrap !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Nav items should shrink if needed */
+  nav li {
+    flex-shrink: 1 !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Force all text to truncate rather than overflow */
+  nav a,
+  nav span {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  /* Ensure brand/logo section doesn't take too much space */
+  nav > a:first-child {
+    flex-shrink: 1 !important;
+    min-width: 0 !important;
+    max-width: 50% !important;
+  }
+}
+
+/* Tablet and Desktop breakpoints - only apply width constraints */
+/* Sidebar visibility is controlled by BuilderCanvas.tsx based on activeBreakpoint */
+@container canvas-device (min-width: 576px) {
+  /* All elements should still respect container width */
+  .page-layout-container * {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Hide hamburger menu on tablet/desktop */
+  .page-layout-container.edit-mode .hamburger-menu {
+    display: none !important;
+  }
+
+  /* Reset overlay positioning on tablet/desktop */
+  .page-layout-container.edit-mode[data-mobile-sidebar-behavior="overlay"] .page-layout-left {
+    position: static !important;
+    transform: none !important;
+    width: auto !important;
+    height: auto !important;
+    z-index: auto !important;
+    box-shadow: none !important;
+  }
+
+  /* Reset grid columns on tablet/desktop */
+  .page-layout-container.edit-mode[data-mobile-sidebar-behavior="overlay"] {
+    grid-template-columns: 180px 1fr !important;
+  }
 }

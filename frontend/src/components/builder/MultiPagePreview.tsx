@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useMultiPagePreviewStore } from '../../stores/multiPagePreviewStore';
 import { useBuilderStore } from '../../stores/builderStore';
 import { useSiteManagerStore } from '../../stores/siteManagerStore';
+import { useUIPreferencesStore } from '../../stores/uiPreferencesStore';
 import { PreviewNavigationInterceptor } from './PreviewNavigationInterceptor';
 import { BuilderCanvas } from './BuilderCanvas';
+import { BreakpointToggle } from './BreakpointToggle';
 import { Page } from '../../types/site';
 import { PageDefinition, ComponentInstance } from '../../types/builder';
 import { pageService } from '../../services/pageService';
@@ -107,6 +109,7 @@ export const MultiPagePreview: React.FC<MultiPagePreviewProps> = ({
   } = useMultiPagePreviewStore();
 
   const { currentPage } = useBuilderStore();
+  const { canvasWidth } = useUIPreferencesStore();
 
   // Initialize preview mode
   useEffect(() => {
@@ -485,6 +488,9 @@ export const MultiPagePreview: React.FC<MultiPagePreviewProps> = ({
         </div>
 
         <div className="preview-toolbar-right">
+          {/* Device Size Selector */}
+          <BreakpointToggle />
+
           <button
             className="exit-preview-btn"
             onClick={onExitPreview}
@@ -510,12 +516,22 @@ export const MultiPagePreview: React.FC<MultiPagePreviewProps> = ({
             <button onClick={() => navigateToPage('/')}>Go to Home</button>
           </div>
         ) : (
-          <PreviewNavigationInterceptor enabled={isActive}>
-            <BuilderCanvas
-              key={`preview-${currentPreviewPath}-${previewPage?.pageName || 'empty'}`}
-              pageOverride={previewPage}
-            />
-          </PreviewNavigationInterceptor>
+          <div className={`preview-responsive-wrapper ${canvasWidth ? 'width-constrained' : ''} ${canvasWidth && canvasWidth <= 575 ? 'mobile-width' : ''}`}>
+            <div
+              className="preview-width-container"
+              style={{
+                maxWidth: canvasWidth ? `${canvasWidth}px` : '100%',
+                transition: 'max-width 0.3s ease',
+              }}
+            >
+              <PreviewNavigationInterceptor enabled={isActive}>
+                <BuilderCanvas
+                  key={`preview-${currentPreviewPath}-${previewPage?.pageName || 'empty'}`}
+                  pageOverride={previewPage}
+                />
+              </PreviewNavigationInterceptor>
+            </div>
+          </div>
         )}
       </div>
 

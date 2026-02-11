@@ -24,13 +24,13 @@ const ChildRenderer: React.FC<ChildRendererProps> = ({ child, isEditMode, childS
   const registry = getGlobalRendererRegistry();
   const ChildRendererComponent = registry?.get(child.componentId, child.pluginId);
 
-  // Debug logging for nested children
-  console.log(`[ContainerChildRenderer] Rendering child:`, {
-    componentId: child.componentId,
-    pluginId: child.pluginId,
-    hasRenderer: !!ChildRendererComponent,
-    instanceId: child.instanceId,
-  });
+  // Debug logging for nested children (commented out - too verbose)
+  // console.log(`[ContainerChildRenderer] Rendering child:`, {
+  //   componentId: child.componentId,
+  //   pluginId: child.pluginId,
+  //   hasRenderer: !!ChildRendererComponent,
+  //   instanceId: child.instanceId,
+  // });
 
   if (ChildRendererComponent) {
     // Don't apply height from childSizeStyles - let children determine their own height
@@ -299,13 +299,13 @@ const ContainerRenderer: React.FC<RendererProps> = ({ component, isEditMode }) =
   // Render children using ChildRenderer
   const renderChildren = () => {
     if (!component.children || component.children.length === 0) {
-      console.log(`[ContainerRenderer] No children for container ${component.instanceId}`);
+      // console.log(`[ContainerRenderer] No children for container ${component.instanceId}`);
       return null;
     }
 
-    console.log(`[ContainerRenderer] Rendering ${component.children.length} children for container ${component.instanceId}:`,
-      component.children.map(c => ({ id: c.instanceId, componentId: c.componentId, pluginId: c.pluginId }))
-    );
+    // console.log(`[ContainerRenderer] Rendering ${component.children.length} children for container ${component.instanceId}:`,
+    //   component.children.map(c => ({ id: c.instanceId, componentId: c.componentId, pluginId: c.pluginId }))
+    // );
 
     return component.children.map((child: ComponentInstance) => {
       const childSizeStyles = getChildSizeStyles(child);

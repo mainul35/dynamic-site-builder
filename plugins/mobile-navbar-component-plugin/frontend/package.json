@@ -1,0 +1,21 @@
+{
+  "name": "@dynamic-site-builder/mobile-navbar-component-plugin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Frontend bundle for mobile-navbar-component-plugin - mobile-friendly navbar with breadcrumb and sidebar",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "build:watch": "vite build --watch",
+    "preview": "vite preview"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0"
+  }
+}

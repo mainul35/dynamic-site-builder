@@ -28,8 +28,8 @@ export const ResizableComponent: React.FC<ResizableComponentProps> = ({
   children,
   isSelected = false,
   isInGridLayout = false,
-  minWidth = 40,
-  minHeight = 40,
+  minWidth = 20,
+  minHeight = 20,
   maxWidth,
   maxHeight,
   maintainAspectRatio = false,
@@ -82,26 +82,10 @@ export const ResizableComponent: React.FC<ResizableComponentProps> = ({
       return { childMinWidth: minWidth, childMinHeight: minHeight };
     }
 
-    // If no children container and not a layout component, this is a leaf component
-    // (Label, Button, etc.) - measure actual content height to prevent clipping text
-    // Exception: Image components should be freely resizable - they don't have text content
-    const isImageComponent = component.componentId.startsWith('Image');
-    if (isImageComponent) {
-      // Images can be resized freely - use default minimums only
-      return { childMinWidth: minWidth, childMinHeight: minHeight };
-    }
-
-    const resizableContent = componentRef.current.querySelector('.resizable-content');
-    if (resizableContent) {
-      // Get the scroll height which represents the actual content size
-      const contentScrollHeight = resizableContent.scrollHeight;
-      const contentScrollWidth = resizableContent.scrollWidth;
-
-      return {
-        childMinWidth: Math.max(minWidth, contentScrollWidth),
-        childMinHeight: Math.max(minHeight, contentScrollHeight)
-      };
-    }
+    // Leaf components (Label, Button, Image, etc.) should be freely resizable
+    // Users should have full control over component dimensions
+    // Text can wrap or truncate based on the size the user chooses
+    // Only layout containers need content-based minimums (handled above)
     return { childMinWidth: minWidth, childMinHeight: minHeight };
   };
 

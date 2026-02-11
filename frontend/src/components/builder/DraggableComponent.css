@@ -2,7 +2,8 @@
   position: relative;
   /* Dark grab cursor for visibility on light backgrounds */
   cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%23222' d='M9 5a2 2 0 0 1 4 0v4h1V6a2 2 0 1 1 4 0v5h1V8a2 2 0 1 1 4 0v8a8 8 0 0 1-8 8h-2a8 8 0 0 1-8-8v-4a2 2 0 0 1 4 0v1h1V5z'/%3E%3C/svg%3E") 12 0, grab;
-  transition: box-shadow 0.2s, transform 0.1s;
+  /* CRITICAL: No transitions at all to prevent any visual flicker during selection */
+  transition: none !important;
   min-height: 40px;
   min-width: 40px;
   /* Use flex to allow content to expand and selection border to wrap properly */
@@ -15,6 +16,7 @@
 /* Only show hover effect when explicitly hovered (controlled by JS) */
 .draggable-component.hovered {
   box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.3);
+  transition: none !important;
 }
 
 .draggable-component.dragging {
@@ -30,6 +32,7 @@
 
 .draggable-component.selected {
   box-shadow: 0 0 0 2px #007bff;
+  transition: none !important;
 }
 
 .draggable-component.view-mode {
@@ -189,8 +192,10 @@
 
 /* Child components - allow resizing while fitting in grid/flex layout */
 .draggable-component.child-component {
-  min-height: 40px;
-  min-width: 40px; /* Reduced to allow smaller resizing */
+  /* Use small minimums to allow free resizing - ResizableComponent controls actual size */
+  /* Content will clip if resized smaller than content (handled by overflow on content) */
+  min-height: 20px;
+  min-width: 20px;
   box-sizing: border-box;
   /* Ensure child components don't have absolute positioning that breaks flex layout */
   position: relative;
@@ -202,6 +207,9 @@
   /* CRITICAL: Use flex-start to prevent stretch behavior from parent's align-items: stretch */
   /* This allows child components to have their own width from ResizableComponent */
   align-self: flex-start;
+  /* CRITICAL: Don't stretch children - let them size to their content */
+  /* This ensures component-content matches ResizableComponent exactly */
+  align-items: flex-start;
   /* CRITICAL: Use fit-content so the wrapper shrinks to match child's resized width */
   /* Without this, the draggable wrapper stays full width and prevents resize */
   width: fit-content;
@@ -210,19 +218,45 @@
   overflow: visible;
 }
 
+/* EXCEPTION: Inside PageLayout slots, child components should fill the slot width */
+/* This overrides width: fit-content above for proper responsive behavior */
+.page-layout-region .draggable-component.child-component {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  align-self: stretch;
+  flex-shrink: 1;
+}
+
+.page-layout-region .draggable-component.child-component .component-content {
+  width: 100%;
+  max-width: 100%;
+}
+
 .draggable-component.child-component .component-content {
-  /* CRITICAL: Use width: auto to allow child to be resized smaller than parent */
-  /* The ResizableComponent inside controls the actual width via inline styles */
-  width: auto;
+  /* CRITICAL: Use fit-content so component-content shrinks to match ResizableComponent */
+  /* This ensures the selection border (on DraggableComponent) aligns with resize handles */
+  width: fit-content;
   /* Don't force height: 100% - let inline styles from component.size control height */
   /* For 'auto' height components (like navbars), this allows content-based sizing */
-  min-height: 40px;
+  /* Use small minimum to allow free resizing */
+  min-height: 20px;
   /* Keep flex display for proper content flow */
   display: flex;
   flex-direction: column;
+  /* CRITICAL: Don't grow/shrink - size exactly to ResizableComponent inside */
+  /* This ensures selection border (on DraggableComponent) matches resize handles */
+  flex: 0 0 auto;
   /* Allow resize handles (inside ResizableComponent) to be visible */
   /* Actual content clipping happens in .resizable-content */
   overflow: visible;
+}
+
+/* EXCEPTION: Inside PageLayout slots, component-content should also fill width */
+.page-layout-region .draggable-component.child-component .component-content {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 /* Keep selection overlay contained within the component */

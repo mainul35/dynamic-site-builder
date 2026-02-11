@@ -1,4 +1,4 @@
-import React, { useMemo, useState, ReactNode } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 import type { RendererProps, PageLayoutProps, PageLayoutStyles, PageLayoutSlot, ComponentInstance, ResponsiveConfig, BreakpointSettings, MobileSidebarBehavior } from '../types';
 import { groupChildrenBySlot } from '../types';
 
@@ -205,6 +205,11 @@ const PageLayoutRenderer: React.FC<PageLayoutRendererProps> = ({
   // State for overlay sidebar toggle (mobile only)
   const [isOverlaySidebarOpen, setIsOverlaySidebarOpen] = useState(false);
 
+  // Container ref for ResizeObserver-based mobile detection
+  // This allows overlay mode to work in preview environments where viewport != container width
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isContainerMobile, setIsContainerMobile] = useState(false);
+
   // Fixed layout proportions for the wireframe view
   const headerHeight = '60px';
   const footerHeight = '50px';
@@ -222,6 +227,65 @@ const PageLayoutRenderer: React.FC<PageLayoutRendererProps> = ({
     sidebarRatio = '30-70',
     mobileSidebarBehavior = 'hidden' as MobileSidebarBehavior,
   } = props;
+
+  // Listen for mobile-navbar-toggle event from MobileNavbar component
+  // This allows MobileNavbar to control the sidebar overlay state
+  useEffect(() => {
+    const handleMobileNavbarToggle = (event: Event) => {
+      const customEvent = event as CustomEvent<{ isOpen: boolean; instanceId: string }>;
+      // Only handle if overlay mode is enabled
+      if (mobileSidebarBehavior === 'overlay') {
+        setIsOverlaySidebarOpen(customEvent.detail.isOpen);
+      }
+    };
+
+    document.addEventListener('mobile-navbar-toggle', handleMobileNavbarToggle);
+    return () => {
+      document.removeEventListener('mobile-navbar-toggle', handleMobileNavbarToggle);
+    };
+  }, [mobileSidebarBehavior]);
+
+  // ResizeObserver to detect container width for mobile overlay mode
+  // This is needed because CSS media queries check viewport width, but in preview mode
+  // the container may be smaller than the viewport (e.g., 375px container in 1400px viewport)
+  // Using a state to trigger re-attachment when ref becomes available
+  const [containerElement, setContainerElement] = useState<HTMLDivElement | null>(null);
+
+  // Callback ref to capture the container element
+  const containerCallbackRef = useCallback((node: HTMLDivElement | null) => {
+    if (node) {
+      setContainerElement(node);
+      // Also set the regular ref for other uses
+      (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!containerElement) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const width = entry.contentRect.width;
+        // Use mobile breakpoint threshold (575px)
+        setIsContainerMobile(width <= BREAKPOINTS.mobile.maxWidth);
+      }
+    });
+
+    observer.observe(containerElement);
+    return () => observer.disconnect();
+  }, [containerElement]);
+
+  // Close overlay sidebar when switching from mobile to desktop container width
+  useEffect(() => {
+    if (!isContainerMobile && isOverlaySidebarOpen) {
+      setIsOverlaySidebarOpen(false);
+    }
+  }, [isContainerMobile, isOverlaySidebarOpen]);
+
+  // Callback to close overlay sidebar (used by backdrop click)
+  const closeOverlaySidebar = useCallback(() => {
+    setIsOverlaySidebarOpen(false);
+  }, []);
 
   // Determine effective sticky mode (new props take precedence over legacy)
   // - 'none': scrolls with content
@@ -398,13 +462,27 @@ const PageLayoutRenderer: React.FC<PageLayoutRendererProps> = ({
       return slottedChildren[slot].map(child => child.componentId || 'Component');
     };
 
+    // Toggle overlay sidebar function for edit mode
+    const toggleOverlaySidebar = () => setIsOverlaySidebarOpen(!isOverlaySidebarOpen);
+
+    // In edit mode, always show overlay behavior when overlay mode is selected
+    // This gives the user a preview of how the layout will look on mobile
+    // Note: In edit mode, we show the wireframe even without content in the left slot,
+    // so we don't require hasLeft for the overlay to display - users should see how
+    // their layout will behave when they add content to the left panel
+    const showLeftPanelAsOverlay = mobileSidebarBehavior === 'overlay';
+
     return (
       <div
-        className="page-layout-container edit-mode"
+        ref={containerCallbackRef}
+        className={`page-layout-container edit-mode ${isOverlaySidebarOpen ? 'sidebar-open' : ''}`}
+        data-mobile-sidebar-behavior={mobileSidebarBehavior}
+        data-container-mobile={isContainerMobile}
         style={{
           display: 'grid',
           gridTemplateRows: `${headerHeight} 1fr ${footerHeight}`,
-          gridTemplateColumns: `${leftWidth} 1fr`,
+          // In mobile overlay mode, use single column (left panel becomes overlay)
+          gridTemplateColumns: showLeftPanelAsOverlay ? '1fr' : `${leftWidth} 1fr`,
           gap,
           backgroundColor,
           width: '100%',
@@ -412,9 +490,70 @@ const PageLayoutRenderer: React.FC<PageLayoutRendererProps> = ({
           border: '2px solid #dee2e6',
           borderRadius: '8px',
           overflow: 'hidden',
+          position: 'relative',
         }}
         data-component-type="PageLayout"
       >
+        {/* Hamburger menu button for overlay mode in edit mode */}
+        {/* Shown when at mobile container width and overlay mode is selected */}
+        {showLeftPanelAsOverlay && (
+          <button
+            className="hamburger-menu"
+            onClick={toggleOverlaySidebar}
+            aria-label={isOverlaySidebarOpen ? 'Close menu' : 'Open menu'}
+            title={isOverlaySidebarOpen ? 'Close sidebar overlay' : 'Open sidebar overlay'}
+            style={{
+              display: 'flex',
+              position: 'absolute',
+              top: '10px',
+              left: '10px',
+              zIndex: 101,
+              width: '36px',
+              height: '36px',
+              border: 'none',
+              borderRadius: '6px',
+              backgroundColor: '#6366f1',
+              color: 'white',
+              cursor: 'pointer',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'column',
+              gap: '3px',
+              padding: '8px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+            }}
+          >
+            {/* Hamburger icon lines */}
+            <span style={{
+              display: 'block',
+              width: '16px',
+              height: '2px',
+              backgroundColor: 'white',
+              borderRadius: '1px',
+              transition: 'transform 0.2s',
+              transform: isOverlaySidebarOpen ? 'rotate(45deg) translate(4px, 4px)' : 'none',
+            }} />
+            <span style={{
+              display: 'block',
+              width: '16px',
+              height: '2px',
+              backgroundColor: 'white',
+              borderRadius: '1px',
+              opacity: isOverlaySidebarOpen ? 0 : 1,
+              transition: 'opacity 0.2s',
+            }} />
+            <span style={{
+              display: 'block',
+              width: '16px',
+              height: '2px',
+              backgroundColor: 'white',
+              borderRadius: '1px',
+              transition: 'transform 0.2s',
+              transform: isOverlaySidebarOpen ? 'rotate(-45deg) translate(4px, -4px)' : 'none',
+            }} />
+          </button>
+        )}
+
         {/* Header - spans full width */}
         <div
           className="page-layout-region page-layout-header"
@@ -435,24 +574,64 @@ const PageLayoutRenderer: React.FC<PageLayoutRendererProps> = ({
           )}
         </div>
 
+        {/* Overlay backdrop for mobile sidebar in edit mode */}
+        {showLeftPanelAsOverlay && (
+          <div
+            className="sidebar-overlay"
+            onClick={toggleOverlaySidebar}
+            style={{
+              display: isOverlaySidebarOpen ? 'block' : 'none',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0,0,0,0.5)',
+              zIndex: 999,
+              cursor: 'pointer',
+            }}
+          />
+        )}
+
         {/* Left Side Panel */}
         <div
           className="page-layout-region page-layout-left"
-          style={{
-            ...regionStyle,
-            gridColumn: '1 / 2',
-            gridRow: '2 / 3',
-            // Visual distinction for overlay mode
-            ...(mobileSidebarBehavior === 'overlay' ? {
-              border: '2px dashed #6366f1',
-              backgroundColor: '#f5f3ff',
-            } : {}),
-            // Visual distinction for hidden mode
-            ...(mobileSidebarBehavior === 'hidden' ? {
-              border: '1px dashed #9ca3af',
-              backgroundColor: '#f9fafb',
-            } : {}),
-          }}
+          style={
+            showLeftPanelAsOverlay
+              ? {
+                  // Overlay mode: Position absolutely over the center panel
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  position: 'absolute',
+                  top: headerHeight,
+                  left: 0,
+                  width: '200px',
+                  height: `calc(100% - ${headerHeight} - ${footerHeight})`,
+                  zIndex: 1000,
+                  boxShadow: '4px 0 12px rgba(99, 102, 241, 0.3)',
+                  border: '3px solid #6366f1',
+                  backgroundColor: '#ede9fe',
+                }
+              : {
+                  // Normal grid mode
+                  ...regionStyle,
+                  gridColumn: '1 / 2',
+                  gridRow: '2 / 3',
+                  // Visual distinction for stacked mode
+                  ...(mobileSidebarBehavior === 'stacked' ? {
+                    border: '2px dashed #059669',
+                    backgroundColor: '#ecfdf5',
+                  } : {}),
+                  // Visual distinction for hidden mode
+                  ...(mobileSidebarBehavior === 'hidden' ? {
+                    border: '1px dashed #9ca3af',
+                    backgroundColor: '#f9fafb',
+                  } : {}),
+                }
+          }
           data-slot="left"
           data-droppable="true"
         >
@@ -499,7 +678,8 @@ const PageLayoutRenderer: React.FC<PageLayoutRendererProps> = ({
           className="page-layout-region page-layout-center"
           style={{
             ...regionStyle,
-            gridColumn: '2 / 3',
+            // In overlay mode at mobile width, center takes full width
+            gridColumn: showLeftPanelAsOverlay ? '1 / -1' : '2 / 3',
             gridRow: '2 / 3',
           }}
           data-slot="center"
@@ -704,6 +884,140 @@ const PageLayoutRenderer: React.FC<PageLayoutRendererProps> = ({
       }
     });
 
+    // Add overlay rules - these apply when overlay mode is selected
+    // We use both container-based AND viewport-based rules for maximum compatibility
+    if (hasLeft && mobileSidebarBehavior === 'overlay') {
+      // Container-based rules (when ResizeObserver detects mobile width)
+      const containerOverlayRules = [
+        `#${layoutId}[data-mobile-sidebar-behavior="overlay"][data-container-mobile="true"] {
+          display: flex !important;
+          flex-direction: column !important;
+        }`,
+        `#${layoutId}[data-mobile-sidebar-behavior="overlay"][data-container-mobile="true"] .page-layout-header {
+          width: 100% !important;
+          grid-column: 1 / -1 !important;
+        }`,
+        `#${layoutId}[data-mobile-sidebar-behavior="overlay"][data-container-mobile="true"] .page-layout-footer {
+          width: 100% !important;
+          grid-column: 1 / -1 !important;
+        }`,
+        `#${layoutId}[data-mobile-sidebar-behavior="overlay"][data-container-mobile="true"] .page-layout-middle {
+          position: relative !important;
+          display: flex !important;
+          flex-direction: column !important;
+          width: 100% !important;
+          flex: 1 !important;
+        }`,
+        `#${layoutId}[data-mobile-sidebar-behavior="overlay"][data-container-mobile="true"] .page-layout-left {
+          display: flex !important;
+          flex-direction: column !important;
+          position: absolute !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 280px !important;
+          max-width: 85% !important;
+          height: 100% !important;
+          z-index: 1000 !important;
+          transform: translateX(-100%) !important;
+          transition: transform 0.3s ease-in-out !important;
+          box-shadow: none !important;
+          overflow-y: auto !important;
+        }`,
+        `#${layoutId}[data-mobile-sidebar-behavior="overlay"][data-container-mobile="true"].sidebar-open .page-layout-left {
+          transform: translateX(0) !important;
+          box-shadow: 2px 0 8px rgba(0,0,0,0.15) !important;
+        }`,
+        `#${layoutId}[data-mobile-sidebar-behavior="overlay"][data-container-mobile="true"] .page-layout-center {
+          width: 100% !important;
+          flex: 1 !important;
+          grid-column: 1 / -1 !important;
+        }`,
+        `#${layoutId}[data-mobile-sidebar-behavior="overlay"][data-container-mobile="true"] .hamburger-menu {
+          display: none !important;
+        }`,
+        `#${layoutId}[data-mobile-sidebar-behavior="overlay"][data-container-mobile="true"] .sidebar-overlay {
+          display: none;
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0,0,0,0.5);
+          z-index: 999;
+        }`,
+        `#${layoutId}[data-mobile-sidebar-behavior="overlay"][data-container-mobile="true"].sidebar-open .sidebar-overlay {
+          display: block !important;
+        }`,
+      ];
+      cssRules.push(`/* Container-based overlay rules */\n${containerOverlayRules.join('\n')}`);
+
+      // Viewport-based media query rules (fallback when ResizeObserver doesn't work as expected)
+      // These apply when viewport is mobile-sized AND overlay mode is selected
+      const viewportOverlayRules = `
+@media (max-width: ${BREAKPOINTS.mobile.maxWidth}px) {
+  #${layoutId}[data-mobile-sidebar-behavior="overlay"] {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  #${layoutId}[data-mobile-sidebar-behavior="overlay"] .page-layout-header {
+    width: 100% !important;
+    grid-column: 1 / -1 !important;
+  }
+  #${layoutId}[data-mobile-sidebar-behavior="overlay"] .page-layout-footer {
+    width: 100% !important;
+    grid-column: 1 / -1 !important;
+  }
+  #${layoutId}[data-mobile-sidebar-behavior="overlay"] .page-layout-middle {
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    flex: 1 !important;
+  }
+  #${layoutId}[data-mobile-sidebar-behavior="overlay"] .page-layout-left {
+    display: flex !important;
+    flex-direction: column !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 280px !important;
+    max-width: 85% !important;
+    height: 100% !important;
+    z-index: 1000 !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.3s ease-in-out !important;
+    box-shadow: none !important;
+    overflow-y: auto !important;
+  }
+  #${layoutId}[data-mobile-sidebar-behavior="overlay"].sidebar-open .page-layout-left {
+    transform: translateX(0) !important;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.15) !important;
+  }
+  #${layoutId}[data-mobile-sidebar-behavior="overlay"] .page-layout-center {
+    width: 100% !important;
+    flex: 1 !important;
+    grid-column: 1 / -1 !important;
+  }
+  #${layoutId}[data-mobile-sidebar-behavior="overlay"] .hamburger-menu {
+    display: none !important;
+  }
+  #${layoutId}[data-mobile-sidebar-behavior="overlay"] .sidebar-overlay {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+  }
+  #${layoutId}[data-mobile-sidebar-behavior="overlay"].sidebar-open .sidebar-overlay {
+    display: block !important;
+  }
+}`;
+      cssRules.push(`/* Viewport-based overlay rules (fallback) */\n${viewportOverlayRules}`);
+    }
+
     return cssRules.join('\n\n');
   };
 
@@ -866,8 +1180,11 @@ const PageLayoutRenderer: React.FC<PageLayoutRendererProps> = ({
         )}
 
         <div
+          ref={containerCallbackRef}
           id={layoutId}
           className={`page-layout-container preview-mode ${isOverlaySidebarOpen ? 'sidebar-open' : ''}`}
+          data-mobile-sidebar-behavior={mobileSidebarBehavior}
+          data-container-mobile={isContainerMobile}
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -912,13 +1229,14 @@ const PageLayoutRenderer: React.FC<PageLayoutRendererProps> = ({
               data-slot="header"
             >
               {/* Hamburger menu button for overlay mode - positioned absolute within header */}
+              {/* Visibility controlled entirely by CSS container queries - no inline display */}
               {mobileSidebarBehavior === 'overlay' && hasLeft && (
                 <button
                   className="hamburger-menu"
                   onClick={toggleOverlaySidebar}
                   aria-label={isOverlaySidebarOpen ? 'Close menu' : 'Open menu'}
                   style={{
-                    display: 'none', // Hidden by default, shown via CSS on mobile
+                    // display controlled by CSS: hidden by default, shown on mobile via container query
                     position: 'absolute',
                     top: '50%',
                     left: '8px',
@@ -984,13 +1302,14 @@ const PageLayoutRenderer: React.FC<PageLayoutRendererProps> = ({
           )}
 
           {/* Hamburger menu button when no header exists - shown as floating button */}
+          {/* Visibility controlled entirely by CSS container queries - no inline display */}
           {mobileSidebarBehavior === 'overlay' && hasLeft && !hasHeader && (
             <button
               className="hamburger-menu"
               onClick={toggleOverlaySidebar}
               aria-label={isOverlaySidebarOpen ? 'Close menu' : 'Open menu'}
               style={{
-                display: 'none', // Hidden by default, shown via CSS on mobile
+                // display controlled by CSS: hidden by default, shown on mobile via container query
                 position: 'absolute',
                 top: '12px',
                 left: '12px',
@@ -1043,13 +1362,19 @@ const PageLayoutRenderer: React.FC<PageLayoutRendererProps> = ({
           {/* Middle content area with sidebar grid
               - Fixed mode: This is the scroll container (overflow: auto)
               - Sticky mode: No special overflow (outer container scrolls)
+              - When container is mobile width and overlay mode, use flex layout
           */}
           <div
             className="page-layout-middle"
             style={{
-              display: hasLeft || hasRight ? 'grid' : 'flex',
-              gridTemplateColumns: hasLeft || hasRight ? middleGridColumns : undefined,
-              flexDirection: hasLeft || hasRight ? undefined : 'column',
+              // In mobile overlay mode, don't use grid - center takes full width
+              display: (isContainerMobile && mobileSidebarBehavior === 'overlay')
+                ? 'flex'
+                : (hasLeft || hasRight ? 'grid' : 'flex'),
+              gridTemplateColumns: (isContainerMobile && mobileSidebarBehavior === 'overlay')
+                ? undefined
+                : (hasLeft || hasRight ? middleGridColumns : undefined),
+              flexDirection: 'column',
               // flex: 1 makes this fill the remaining space between header and footer
               // minHeight: 0 allows it to shrink and enables scrolling
               flex: anySlotHasWrapMode ? '1 0 auto' : 1,
@@ -1062,31 +1387,61 @@ const PageLayoutRenderer: React.FC<PageLayoutRendererProps> = ({
             }}
           >
             {/* Overlay backdrop for mobile sidebar - inside middle area */}
-            {mobileSidebarBehavior === 'overlay' && hasLeft && (
+            {mobileSidebarBehavior === 'overlay' && hasLeft && isContainerMobile && (
               <div
                 className="sidebar-overlay"
                 onClick={closeOverlaySidebar}
-                style={{ cursor: 'pointer' }}
+                style={{
+                  display: isOverlaySidebarOpen ? 'block' : 'none',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: 'rgba(0,0,0,0.5)',
+                  zIndex: 999,
+                  cursor: 'pointer',
+                }}
               />
             )}
 
             {hasLeft && (
               <div
                 className="page-layout-region page-layout-left"
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  width: '100%', // Fill the grid cell
-                  minWidth: 0, // Prevent overflow in grid
-                  // Height depends on child's heightMode:
-                  // - wrap: auto (slot expands with content)
-                  // - fill: 100% (slot fills grid cell so children can fill it)
-                  height: leftHasWrapMode ? 'auto' : '100%',
-                  // Overflow depends on child's heightMode:
-                  // - wrap: visible (slot expands with child, no scrollbar)
-                  // - fill/resizable: auto (scrollbar when content overflows)
-                  overflow: getSlotOverflow('left'),
-                }}
+                style={
+                  // Apply overlay styles when in mobile container width and overlay mode
+                  (isContainerMobile && mobileSidebarBehavior === 'overlay')
+                    ? {
+                        display: 'flex',
+                        flexDirection: 'column',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '280px',
+                        maxWidth: '85%',
+                        height: '100%',
+                        zIndex: 1000,
+                        transform: isOverlaySidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+                        transition: 'transform 0.3s ease-in-out',
+                        boxShadow: isOverlaySidebarOpen ? '2px 0 8px rgba(0,0,0,0.15)' : 'none',
+                        overflowY: 'auto',
+                        backgroundColor: backgroundColor || '#ffffff',
+                      }
+                    : {
+                        display: 'flex',
+                        flexDirection: 'column',
+                        width: '100%', // Fill the grid cell
+                        minWidth: 0, // Prevent overflow in grid
+                        // Height depends on child's heightMode:
+                        // - wrap: auto (slot expands with content)
+                        // - fill: 100% (slot fills grid cell so children can fill it)
+                        height: leftHasWrapMode ? 'auto' : '100%',
+                        // Overflow depends on child's heightMode:
+                        // - wrap: visible (slot expands with child, no scrollbar)
+                        // - fill/resizable: auto (scrollbar when content overflows)
+                        overflow: getSlotOverflow('left'),
+                      }
+                }
                 data-slot="left"
               >
                 {renderSlotChildren('left')}
@@ -1185,12 +1540,17 @@ const PageLayoutRenderer: React.FC<PageLayoutRendererProps> = ({
       )}
 
       <div
+        ref={containerCallbackRef}
         id={layoutId}
-        className="page-layout-container preview-mode"
+        className={`page-layout-container preview-mode ${isOverlaySidebarOpen ? 'sidebar-open' : ''}`}
+        data-mobile-sidebar-behavior={mobileSidebarBehavior}
+        data-container-mobile={isContainerMobile}
         style={{
-          display: 'grid',
-          gridTemplateRows,
-          gridTemplateColumns,
+          // In mobile overlay mode, use flex layout instead of grid
+          display: (isContainerMobile && mobileSidebarBehavior === 'overlay') ? 'flex' : 'grid',
+          flexDirection: (isContainerMobile && mobileSidebarBehavior === 'overlay') ? 'column' : undefined,
+          gridTemplateRows: (isContainerMobile && mobileSidebarBehavior === 'overlay') ? undefined : gridTemplateRows,
+          gridTemplateColumns: (isContainerMobile && mobileSidebarBehavior === 'overlay') ? undefined : gridTemplateColumns,
           gap: '0',
           backgroundColor,
           // When any slot has wrap mode, use auto height to allow natural page expansion
@@ -1199,6 +1559,7 @@ const PageLayoutRenderer: React.FC<PageLayoutRendererProps> = ({
           width: '100%',
           // When any slot has wrap mode, allow content to expand (browser handles scrolling)
           overflow: standardAnySlotHasWrapMode ? 'visible' : undefined,
+          position: 'relative',
         }}
         data-component-type="PageLayout"
       >
@@ -1212,10 +1573,49 @@ const PageLayoutRenderer: React.FC<PageLayoutRendererProps> = ({
           </div>
         )}
 
+        {/* Overlay backdrop for mobile sidebar */}
+        {mobileSidebarBehavior === 'overlay' && hasLeft && isContainerMobile && (
+          <div
+            className="sidebar-overlay"
+            onClick={closeOverlaySidebar}
+            style={{
+              display: isOverlaySidebarOpen ? 'block' : 'none',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0,0,0,0.5)',
+              zIndex: 999,
+              cursor: 'pointer',
+            }}
+          />
+        )}
+
         {hasLeft && (
           <div
             className="page-layout-region page-layout-left"
-            style={getPreviewRegionStyle('left')}
+            style={
+              // Apply overlay styles when in mobile container width and overlay mode
+              (isContainerMobile && mobileSidebarBehavior === 'overlay')
+                ? {
+                    display: 'flex',
+                    flexDirection: 'column',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '280px',
+                    maxWidth: '85%',
+                    height: '100%',
+                    zIndex: 1000,
+                    transform: isOverlaySidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+                    transition: 'transform 0.3s ease-in-out',
+                    boxShadow: isOverlaySidebarOpen ? '2px 0 8px rgba(0,0,0,0.15)' : 'none',
+                    overflowY: 'auto',
+                    backgroundColor: backgroundColor || '#ffffff',
+                  }
+                : getPreviewRegionStyle('left')
+            }
             data-slot="left"
           >
             {renderSlotChildren('left')}
@@ -1224,7 +1624,15 @@ const PageLayoutRenderer: React.FC<PageLayoutRendererProps> = ({
 
         <div
           className="page-layout-region page-layout-center"
-          style={getPreviewRegionStyle('center')}
+          style={{
+            ...getPreviewRegionStyle('center'),
+            // In mobile overlay mode, center takes full width
+            ...(isContainerMobile && mobileSidebarBehavior === 'overlay' ? {
+              gridColumn: undefined,
+              width: '100%',
+              flex: 1,
+            } : {}),
+          }}
           data-slot="center"
         >
           {renderSlotChildren('center')}

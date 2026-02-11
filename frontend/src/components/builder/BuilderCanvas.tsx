@@ -34,6 +34,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
   const canvasRef = useRef<HTMLDivElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [dragOverContainerId, setDragOverContainerId] = useState<string | null>(null);
+  const [dragInsertIndex, setDragInsertIndex] = useState<number | null>(null);
   const [canvasContextMenu, setCanvasContextMenu] = useState<CanvasContextMenuState>({
     isOpen: false,
     x: 0,
@@ -69,6 +70,12 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
     if (effectiveViewMode !== 'edit') return;
 
     const handleMouseMove = (e: MouseEvent) => {
+      // Don't update hover state when mouse button is pressed (during click/drag)
+      // This prevents hover flickering during selection operations
+      if (e.buttons !== 0) {
+        return;
+      }
+
       const target = e.target as HTMLElement;
 
       // Find the closest (innermost) draggable-component from the mouse target
@@ -320,6 +327,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
 
       // Clear drop zone highlight
       setDragOverContainerId(null);
+      setDragInsertIndex(null);
 
       // Calculate drop position in grid
       const rect = canvasRef.current?.getBoundingClientRect();
@@ -418,6 +426,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
     e.preventDefault();
     setIsDragOver(false);
     setDragOverContainerId(null);
+    setDragInsertIndex(null);
   };
 
   const handleCanvasClick = (e: React.MouseEvent) => {
@@ -710,11 +719,36 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
             }}
             // Handle clicks on the wrapper (including box-shadow border area)
             // This ensures the child gets selected even when clicking outside its DraggableComponent
+            // BUT: If click is on a nested DraggableComponent inside the child, let that handle selection
             onClick={(e) => {
+              // Check if click is on a nested DraggableComponent inside this slot child
+              const target = e.target as HTMLElement;
+              const closestDraggable = target.closest('.draggable-component');
+              const slotChildDraggable = (e.currentTarget as HTMLElement).querySelector(':scope > .draggable-component');
+
+              // If click is on a nested draggable (not the direct slot child), don't handle here
+              // The nested component's DraggableComponent already handled its own selection
+              if (closestDraggable && closestDraggable !== slotChildDraggable) {
+                return;
+              }
+
+              // Only stop propagation and select when we're handling this event
               e.stopPropagation();
               handleComponentSelect(child.instanceId);
             }}
             onMouseDown={(e) => {
+              // Check if mousedown is on a nested DraggableComponent inside this slot child
+              const target = e.target as HTMLElement;
+              const closestDraggable = target.closest('.draggable-component');
+              const slotChildDraggable = (e.currentTarget as HTMLElement).querySelector(':scope > .draggable-component');
+
+              // If mousedown is on a nested draggable (not the direct slot child), don't handle here
+              // The nested component's DraggableComponent already handled its own selection
+              if (closestDraggable && closestDraggable !== slotChildDraggable) {
+                return;
+              }
+
+              // Only stop propagation and select when we're handling this event
               e.stopPropagation();
               handleComponentSelect(child.instanceId);
             }}
@@ -751,6 +785,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
           e.preventDefault();
           e.stopPropagation();
           setDragOverContainerId(null);
+          setDragInsertIndex(null);
         },
         // Stop click/mousedown propagation in slots to prevent PageLayout from being selected
         // when clicking inside a slot (children handle their own selection via stopPropagation)
@@ -1248,37 +1283,80 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
               e.preventDefault();
               e.stopPropagation();
               setDragOverContainerId(component.instanceId);
+
+              // Calculate insertion index based on mouse Y position
+              const dropY = e.clientY;
+              const children = component.children || [];
+
+              if (children.length === 0) {
+                setDragInsertIndex(0);
+                return;
+              }
+
+              // Find the insertion index by comparing Y positions with child middle points
+              let insertIdx = children.length; // Default to end
+              for (let i = 0; i < children.length; i++) {
+                const childElement = document.querySelector(`[data-component-id="${children[i].instanceId}"]`);
+                if (childElement) {
+                  const rect = childElement.getBoundingClientRect();
+                  const childMiddleY = rect.top + rect.height / 2;
+                  if (dropY < childMiddleY) {
+                    insertIdx = i;
+                    break;
+                  }
+                }
+              }
+              setDragInsertIndex(insertIdx);
             }}
             onDragLeave={(e) => {
               e.preventDefault();
               e.stopPropagation();
               setDragOverContainerId(null);
+              setDragInsertIndex(null);
             }}
           >
             {hasChildren ? (
-              component.children!.map(child => (
-                <DraggableComponent
-                  key={child.instanceId}
-                  component={child}
-                  isSelected={selectedComponentId === child.instanceId}
-                  isInGridLayout={isGridLayout}
-                  isDropTarget={dragOverContainerId === child.instanceId}
-                  onSelect={handleComponentSelect}
-                  onDoubleClick={handleComponentDoubleClick}
-                >
-                  <ResizableComponent
-                    component={child}
-                    isSelected={selectedComponentId === child.instanceId}
-                    isInGridLayout={isGridLayout}
-                  >
-                    {renderComponent(child)}
-                  </ResizableComponent>
-                </DraggableComponent>
-              ))
+              <>
+                {/* Render children with drop position indicator */}
+                {component.children!.map((child, index) => (
+                  <React.Fragment key={child.instanceId}>
+                    {/* Drop indicator before this child */}
+                    {dragOverContainerId === component.instanceId && dragInsertIndex === index && (
+                      <div className="drop-position-indicator" />
+                    )}
+                    <DraggableComponent
+                      component={child}
+                      isSelected={selectedComponentId === child.instanceId}
+                      isInGridLayout={isGridLayout}
+                      isDropTarget={dragOverContainerId === child.instanceId}
+                      onSelect={handleComponentSelect}
+                      onDoubleClick={handleComponentDoubleClick}
+                    >
+                      <ResizableComponent
+                        component={child}
+                        isSelected={selectedComponentId === child.instanceId}
+                        isInGridLayout={isGridLayout}
+                      >
+                        {renderComponent(child)}
+                      </ResizableComponent>
+                    </DraggableComponent>
+                  </React.Fragment>
+                ))}
+                {/* Drop indicator at the end (after all children) */}
+                {dragOverContainerId === component.instanceId && dragInsertIndex === component.children!.length && (
+                  <div className="drop-position-indicator" />
+                )}
+              </>
             ) : (
-              <div className="no-children-placeholder">
-                {isScrollable ? 'Drop components here to make them scrollable' : 'Drop UI components here'}
-              </div>
+              <>
+                {/* Drop indicator for empty container */}
+                {dragOverContainerId === component.instanceId && (
+                  <div className="drop-position-indicator" />
+                )}
+                <div className="no-children-placeholder">
+                  {isScrollable ? 'Drop components here to make them scrollable' : 'Drop UI components here'}
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -1294,6 +1372,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
     e.preventDefault();
     e.stopPropagation();
     setDragOverContainerId(null);
+    setDragInsertIndex(null);
 
     console.log('Drop on container:', parentContainerId);
 
@@ -1439,6 +1518,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
     e.preventDefault();
     e.stopPropagation();
     setDragOverContainerId(null);
+    setDragInsertIndex(null);
 
     console.log('Drop on PageLayout slot:', pageLayoutId, slot);
 
@@ -1521,11 +1601,12 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
   // Get current breakpoint info for indicator
   const currentBreakpointDef = BREAKPOINTS[activeBreakpoint];
   const isWidthConstrained = canvasWidth !== null && effectiveViewMode === 'edit';
+  const isMobileWidth = canvasWidth !== null && canvasWidth <= 575;
 
   return (
     <>
     {/* Canvas outer container for responsive width simulation */}
-    <div className={`canvas-responsive-wrapper ${isWidthConstrained ? 'width-constrained' : ''}`}>
+    <div className={`canvas-responsive-wrapper ${isWidthConstrained ? 'width-constrained' : ''} ${isMobileWidth ? 'mobile-width' : ''}`}>
       {/* Breakpoint indicator */}
       {showBreakpointIndicator && effectiveViewMode === 'edit' && (
         <div className="breakpoint-indicator">

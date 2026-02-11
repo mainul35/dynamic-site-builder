@@ -131,6 +131,27 @@
   color: white;
 }
 
+/* Breakpoint Toggle in Preview Toolbar - dark theme override */
+.preview-toolbar .breakpoint-toggle {
+  margin-right: 12px;
+  background: #1a252f;
+}
+
+.preview-toolbar .breakpoint-toggle-btn {
+  color: #95a5a6;
+}
+
+.preview-toolbar .breakpoint-toggle-btn:hover {
+  background: #34495e;
+  color: #ecf0f1;
+}
+
+.preview-toolbar .breakpoint-toggle-btn.active {
+  background: #3498db;
+  color: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
 /* Exit Preview Button */
 .exit-preview-btn {
   display: flex;
@@ -160,7 +181,7 @@
   /* The scrollbar will NOT cover the toolbar or indicator */
   overflow-y: auto;
   overflow-x: hidden;
-  background: white;
+  background: #e5e5e5;
   /* Use block display instead of flex - flex can constrain child heights */
   display: block;
   /* Minimum height of 0 allows flex item to shrink and enable scrolling */
@@ -169,9 +190,40 @@
   position: relative;
 }
 
+/* Preview Responsive Wrapper - centers content and shows device simulation */
+.preview-responsive-wrapper {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  min-height: 100%;
+  background: #e5e5e5;
+}
+
+.preview-responsive-wrapper.width-constrained {
+  /* Add some visual padding around the constrained preview */
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+/* Preview Width Container - applies the device width constraint */
+.preview-width-container {
+  width: 100%;
+  min-height: 100%;
+  background: white;
+  /* Add subtle shadow when width-constrained to show device boundary */
+  box-shadow: none;
+}
+
+.preview-responsive-wrapper.width-constrained .preview-width-container {
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
 /* Override BuilderCanvas.css styles for preview content */
 /* Use !important to ensure these take effect over .builder-canvas.preview-mode */
-.preview-content .builder-canvas {
+.preview-content .builder-canvas,
+.preview-width-container .builder-canvas {
   /* Don't constrain height - allow content to expand to natural size */
   /* This lets the scroll container show the full content height */
   flex: none !important;
@@ -330,6 +382,340 @@
 
 .page-count {
   color: #7f8c8d;
+}
+
+/* ===== Width-Constrained Preview - All Content Must Fit Within ===== */
+/* Ensure all components within constrained preview respect width boundaries */
+/* This prevents content from being clipped by overflow: hidden on the container */
+
+/* Force all elements to respect container width */
+.preview-responsive-wrapper.width-constrained .preview-width-container * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* PageLayout container must fit within preview width */
+.preview-responsive-wrapper.width-constrained .page-layout-container {
+  width: 100%;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* PageLayout middle section (contains sidebars and center) */
+.preview-responsive-wrapper.width-constrained .page-layout-middle {
+  width: 100%;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* All PageLayout regions must shrink to fit */
+.preview-responsive-wrapper.width-constrained .page-layout-region {
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* Center region specifically needs to shrink with grid/flex */
+.preview-responsive-wrapper.width-constrained .page-layout-center {
+  min-width: 0 !important;
+  overflow-x: hidden;
+}
+
+/* Left and right sidebars should also shrink */
+.preview-responsive-wrapper.width-constrained .page-layout-left,
+.preview-responsive-wrapper.width-constrained .page-layout-right {
+  min-width: 0 !important;
+}
+
+/* BuilderCanvas inside preview */
+.preview-responsive-wrapper.width-constrained .builder-canvas {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* Preview component wrappers */
+.preview-responsive-wrapper.width-constrained .preview-component-wrapper {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* Layout preview containers */
+.preview-responsive-wrapper.width-constrained .layout-preview {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* Layout child wrappers */
+.preview-responsive-wrapper.width-constrained .layout-child-wrapper,
+.preview-responsive-wrapper.width-constrained .leaf-child-wrapper {
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* Component renderers (navbar, containers, etc.) */
+.preview-responsive-wrapper.width-constrained .navbar-container,
+.preview-responsive-wrapper.width-constrained .container-renderer {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* Children containers inside layouts */
+.preview-responsive-wrapper.width-constrained .children-preview {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* ===== Container Queries for Responsive Preview ===== */
+/* Use CSS Container Queries to apply breakpoint-specific styles based on container width */
+/* This works regardless of viewport size, enabling accurate device simulation */
+
+/* Define the preview width container as a container query context */
+.preview-width-container {
+  container-type: inline-size;
+  container-name: preview-device;
+}
+
+/* Default: Hide hamburger menu and sidebar overlay on all screen sizes */
+/* These are shown only via container queries at mobile width for overlay mode */
+.preview-width-container .hamburger-menu {
+  display: none;
+}
+
+.preview-width-container .sidebar-overlay {
+  display: none;
+}
+
+/* Show hamburger when in mobile width mode (<=575px) for overlay mode */
+/* Uses class-based approach for reliable cross-browser support */
+.preview-responsive-wrapper.mobile-width .page-layout-container[data-mobile-sidebar-behavior="overlay"] .hamburger-menu {
+  display: flex !important;
+}
+
+/* Mobile width overlay sidebar positioning */
+.preview-responsive-wrapper.mobile-width .page-layout-container[data-mobile-sidebar-behavior="overlay"] .page-layout-middle {
+  position: relative !important;
+}
+
+.preview-responsive-wrapper.mobile-width .page-layout-container[data-mobile-sidebar-behavior="overlay"] .page-layout-left {
+  display: flex !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 280px !important;
+  max-width: 85% !important;
+  height: 100% !important;
+  z-index: 1000 !important;
+  transform: translateX(-100%) !important;
+  transition: transform 0.3s ease-in-out !important;
+  box-shadow: 2px 0 8px rgba(0,0,0,0.15) !important;
+  background: white !important;
+}
+
+.preview-responsive-wrapper.mobile-width .page-layout-container[data-mobile-sidebar-behavior="overlay"].sidebar-open .page-layout-left {
+  transform: translateX(0) !important;
+}
+
+.preview-responsive-wrapper.mobile-width .page-layout-container[data-mobile-sidebar-behavior="overlay"] .page-layout-center {
+  width: 100% !important;
+}
+
+/* Show overlay backdrop when sidebar is open */
+.preview-responsive-wrapper.mobile-width .page-layout-container[data-mobile-sidebar-behavior="overlay"] .sidebar-overlay {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 999;
+}
+
+.preview-responsive-wrapper.mobile-width .page-layout-container[data-mobile-sidebar-behavior="overlay"].sidebar-open .sidebar-overlay {
+  display: block !important;
+}
+
+/* Mobile breakpoint (0-575px) - Behavior depends on mobileSidebarBehavior setting */
+@container preview-device (max-width: 575px) {
+  /* Common styles for all behaviors */
+  .page-layout-header,
+  .page-layout-footer {
+    width: 100% !important;
+  }
+
+  /* Hidden mode (default): Hide sidebars completely */
+  .page-layout-container:not([data-mobile-sidebar-behavior="overlay"]):not([data-mobile-sidebar-behavior="stacked"]) .page-layout-middle,
+  .page-layout-container[data-mobile-sidebar-behavior="hidden"] .page-layout-middle {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .page-layout-container:not([data-mobile-sidebar-behavior="overlay"]):not([data-mobile-sidebar-behavior="stacked"]) .page-layout-left,
+  .page-layout-container:not([data-mobile-sidebar-behavior="overlay"]):not([data-mobile-sidebar-behavior="stacked"]) .page-layout-right,
+  .page-layout-container[data-mobile-sidebar-behavior="hidden"] .page-layout-left,
+  .page-layout-container[data-mobile-sidebar-behavior="hidden"] .page-layout-right {
+    display: none !important;
+  }
+
+  .page-layout-container:not([data-mobile-sidebar-behavior="overlay"]):not([data-mobile-sidebar-behavior="stacked"]) .page-layout-center,
+  .page-layout-container[data-mobile-sidebar-behavior="hidden"] .page-layout-center {
+    width: 100% !important;
+    flex: 1 !important;
+  }
+
+  /* Stacked mode: Show sidebar stacked above center content */
+  .page-layout-container[data-mobile-sidebar-behavior="stacked"] .page-layout-middle {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .page-layout-container[data-mobile-sidebar-behavior="stacked"] .page-layout-left {
+    display: flex !important;
+    width: 100% !important;
+    order: -1 !important;
+  }
+
+  .page-layout-container[data-mobile-sidebar-behavior="stacked"] .page-layout-right {
+    display: none !important;
+  }
+
+  .page-layout-container[data-mobile-sidebar-behavior="stacked"] .page-layout-center {
+    width: 100% !important;
+    flex: 1 !important;
+  }
+
+  /* Overlay mode: Position sidebar as slide-in overlay */
+  .page-layout-container[data-mobile-sidebar-behavior="overlay"] .page-layout-middle {
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .page-layout-container[data-mobile-sidebar-behavior="overlay"] .page-layout-left {
+    display: flex !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 280px !important;
+    max-width: 85% !important;
+    height: 100% !important;
+    z-index: 1000 !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.3s ease-in-out !important;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.15) !important;
+    overflow-y: auto !important;
+    background: white !important;
+  }
+
+  .page-layout-container[data-mobile-sidebar-behavior="overlay"].sidebar-open .page-layout-left {
+    transform: translateX(0) !important;
+  }
+
+  .page-layout-container[data-mobile-sidebar-behavior="overlay"] .page-layout-right {
+    display: none !important;
+  }
+
+  .page-layout-container[data-mobile-sidebar-behavior="overlay"] .page-layout-center {
+    width: 100% !important;
+    flex: 1 !important;
+  }
+
+  /* Overlay backdrop - shown when sidebar is open */
+  .page-layout-container[data-mobile-sidebar-behavior="overlay"] .sidebar-overlay {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+  }
+
+  .page-layout-container[data-mobile-sidebar-behavior="overlay"].sidebar-open .sidebar-overlay {
+    display: block;
+    opacity: 1;
+  }
+
+  /* Show hamburger menu button in overlay mode */
+  .page-layout-container[data-mobile-sidebar-behavior="overlay"] .hamburger-menu {
+    display: flex !important;
+  }
+}
+
+/* Tablet breakpoint (576-991px) - Show left sidebar, hide right */
+/* Reset any mobile overlay/stacked positioning to normal grid layout */
+@container preview-device (min-width: 576px) and (max-width: 991px) {
+  .page-layout-middle {
+    display: grid !important;
+  }
+
+  .page-layout-left {
+    display: flex !important;
+    /* Reset overlay positioning from mobile */
+    position: static !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    z-index: auto !important;
+    box-shadow: none !important;
+  }
+
+  .page-layout-right {
+    display: none !important;
+  }
+
+  .page-layout-center {
+    width: 100% !important;
+  }
+
+  /* Hide hamburger menu on tablet */
+  .hamburger-menu {
+    display: none !important;
+  }
+
+  /* Hide overlay backdrop on tablet */
+  .sidebar-overlay {
+    display: none !important;
+  }
+}
+
+/* Desktop breakpoint (992px+) - Show both sidebars */
+/* Reset any mobile overlay/stacked positioning to normal grid layout */
+@container preview-device (min-width: 992px) {
+  .page-layout-middle {
+    display: grid !important;
+  }
+
+  .page-layout-left,
+  .page-layout-right {
+    display: flex !important;
+    /* Reset overlay positioning from mobile */
+    position: static !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    z-index: auto !important;
+    box-shadow: none !important;
+  }
+
+  /* Hide hamburger menu on desktop */
+  .hamburger-menu {
+    display: none !important;
+  }
+
+  /* Hide overlay backdrop on desktop */
+  .sidebar-overlay {
+    display: none !important;
+  }
 }
 
 /* Responsive */

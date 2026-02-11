@@ -1,0 +1,29 @@
+plugin-id: mobile-navbar-component-plugin
+plugin-name: Mobile Navbar Component
+version: 1.0.0
+author: Mainul35
+description: Mobile-friendly navigation bar with hamburger menu and breadcrumb
+main-class: dev.mainul35.plugins.ui.MobileNavbarComponentPlugin
+plugin-type: ui-component
+
+# UI Component Configuration
+ui-component:
+  component-id: MobileNavbar
+  display-name: Mobile Navbar
+  category: navbar
+  icon: "\uD83D\uDCF1"
+  description: Mobile-friendly navbar with hamburger menu and breadcrumb. Dispatches events to toggle PageLayout sidebar when menu is clicked.
+
+  # Default dimensions
+  default-width: 100%
+  default-height: 56px
+
+  # Size constraints
+  resizable: true
+  min-width: 100%
+  max-width: 100%
+  min-height: 40px
+  max-height: 80px
+
+  # React component path (relative to plugin resources)
+  react-component-path: /components/MobileNavbar.jsx
