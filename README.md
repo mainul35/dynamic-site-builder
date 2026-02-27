@@ -539,11 +539,13 @@ sequenceDiagram
 
     Note over PL: Plugin Initialization
     PL->>PL: onLoad(context)
-    PL->>PL: Build ComponentManifest
-    PL-->>PM: Return manifest
+    PL->>PL: Build ComponentManifest(s)
+    PL-->>PM: Return manifests via getComponentManifests()
 
-    PM->>CR: Register component
-    CR->>DB: Save to cms_component_registry
+    loop For each manifest
+        PM->>CR: Register component
+        CR->>DB: Save to cms_component_registry
+    end
 
     Note over PL: Plugin Activation
     PM->>PL: onActivate(context)
@@ -682,6 +684,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.List;
 
 @UIComponent(
     componentId = "myComponent",
@@ -764,6 +767,10 @@ public class MyComponentPlugin implements UIComponentPlugin {
                 .configurableStyles(buildConfigurableStyles())
                 .sizeConstraints(buildSizeConstraints())
                 .canHaveChildren(false)
+                .capabilities(ComponentCapabilities.builder()
+                        .isResizable(true)
+                        .supportsTemplateBindings(true)
+                        .build())
                 .build();
     }
 
@@ -1270,6 +1277,12 @@ public interface UIComponentPlugin extends Plugin {
     byte[] getComponentThumbnail();
     ValidationResult validateProps(Map<String, Object> props);
 
+    // Multi-component support (override for plugins with multiple variants)
+    default List<ComponentManifest> getComponentManifests() {
+        ComponentManifest manifest = getComponentManifest();
+        return manifest != null ? List.of(manifest) : List.of();
+    }
+
     // Optional hooks
     default String renderToHTML(Map<String, Object> props, Map<String, String> styles);
     default void onComponentAdded(PluginContext context, Long pageId, String instanceId);
@@ -1277,6 +1290,8 @@ public interface UIComponentPlugin extends Plugin {
     default void onPropsUpdated(PluginContext context, String instanceId, Map<String, Object> oldProps, Map<String, Object> newProps);
 }
 ```
+
+**Multi-component plugins** (e.g., navbar with 8 variants, auth with 5 forms) override `getComponentManifests()` to return all their component manifests. The `PluginManager` iterates over all returned manifests and registers each one in the component registry. Single-component plugins get the default behavior for free via `getComponentManifest()`.
 
 #### Plugin Lifecycle
 
@@ -1381,6 +1396,63 @@ ComponentManifest.builder()
     .configurableStyles(stylesList)
     .sizeConstraints(constraints)
     .canHaveChildren(false)
+    .capabilities(ComponentCapabilities.builder()
+        .isResizable(true)
+        .supportsTemplateBindings(true)
+        .build())
+    .build();
+```
+
+> **Note**: The `canHaveChildren` field on `ComponentManifest` is deprecated. Use `ComponentCapabilities.canHaveChildren` via the `capabilities` field instead. The legacy field is retained for backward compatibility.
+
+#### ComponentCapabilities
+
+Defines behavioral capabilities that drive how the frontend visual builder handles a component (drag-drop, container support, data binding, resizing):
+
+```java
+ComponentCapabilities.builder()
+    .canHaveChildren(false)          // Can contain child components
+    .isContainer(false)              // Acts as a layout container (accepts drops)
+    .hasDataSource(false)            // Supports data source bindings
+    .autoHeight(false)               // Auto-sizes height to fit content
+    .supportsIteration(false)        // Supports iteration over data collections
+    .isResizable(true)               // Can be resized by the user
+    .supportsTemplateBindings(true)  // Supports template data bindings (e.g., {{variable}})
+    .build();
+```
+
+**Capability Fields:**
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `canHaveChildren` | `false` | Whether child components can be nested inside this component |
+| `isContainer` | `false` | Whether the component acts as a layout container that accepts drag-and-drop |
+| `hasDataSource` | `false` | Whether the component supports data source configuration (shows Data Source Editor) |
+| `autoHeight` | `false` | Whether the component auto-sizes its height to fit content |
+| `supportsIteration` | `false` | Whether the component supports repeating over data collections |
+| `isResizable` | `true` | Whether the user can resize the component in the builder |
+| `supportsTemplateBindings` | `true` | Whether the component supports template bindings like `{{variable}}` |
+
+**Examples by component type:**
+
+```java
+// Layout container (e.g., PageLayout, Container)
+ComponentCapabilities.builder()
+    .canHaveChildren(true)
+    .isContainer(true)
+    .autoHeight(true)
+    .isResizable(true)
+    .build();
+
+// Simple UI component (e.g., Label, Button)
+ComponentCapabilities.builder()
+    .isResizable(true)
+    .supportsTemplateBindings(true)
+    .build();
+
+// Form component (e.g., Newsletter Form)
+ComponentCapabilities.builder()
+    .isResizable(true)
     .build();
 ```
 
@@ -1650,6 +1722,7 @@ graph TD
         SDK2[ComponentManifest]
         SDK3[PropDefinition]
         SDK4[StyleDefinition]
+        SDK5[ComponentCapabilities]
     end
 
     subgraph Plugins["🔌 Plugin JARs"]
@@ -1668,6 +1741,7 @@ graph TD
     SDK1 --> SDK2
     SDK2 --> SDK3
     SDK2 --> SDK4
+    SDK2 --> SDK5
 
     Plugins -.->|bundle.js| FE2
 ```
@@ -1689,6 +1763,7 @@ graph TD
         E[ComponentManifest Builder]
         F[PropDefinition]
         G[StyleDefinition]
+        G2[ComponentCapabilities]
     end
 
     subgraph CORE["🏗️ Core Platform"]
@@ -1702,6 +1777,7 @@ graph TD
     A -->|builds| E
     E -->|contains| F
     E -->|contains| G
+    E -->|contains| G2
 
     H -->|loads| A
     A -->|registers| I
@@ -1786,6 +1862,7 @@ classDiagram
     class UIComponentPlugin {
         <<interface>>
         +getComponentManifest() ComponentManifest
+        +getComponentManifests() List~ComponentManifest~
         +getReactComponentPath() String
         +validateProps(Map) ValidationResult
     }
@@ -1797,6 +1874,7 @@ classDiagram
         -defaultProps: Map
         -configurableProps: List~PropDefinition~
         -configurableStyles: List~StyleDefinition~
+        -capabilities: ComponentCapabilities
     }
 
     class PropDefinition {
@@ -1814,11 +1892,69 @@ classDiagram
         -category: String
     }
 
+    class ComponentCapabilities {
+        -canHaveChildren: boolean
+        -isContainer: boolean
+        -hasDataSource: boolean
+        -autoHeight: boolean
+        -supportsIteration: boolean
+        -isResizable: boolean
+        -supportsTemplateBindings: boolean
+    }
+
     Plugin <|-- UIComponentPlugin
     UIComponentPlugin --> ComponentManifest
     ComponentManifest --> PropDefinition
     ComponentManifest --> StyleDefinition
+    ComponentManifest --> ComponentCapabilities
 ```
+
+### Manifest Flow: Plugins as Single Source of Truth
+
+Plugins are the **single source of truth** for all component metadata. The manifest data (configurable props, capabilities, size constraints, default props/styles) is defined entirely in the Java plugin code and flows through the system as follows:
+
+```mermaid
+flowchart LR
+    subgraph Plugin["Plugin JAR"]
+        A["getComponentManifests()"]
+    end
+
+    subgraph Core["Core Backend"]
+        B[PluginManager]
+        C[ComponentRegistry]
+        D[(Database)]
+        E[REST API]
+    end
+
+    subgraph Frontend["Frontend"]
+        F[ComponentPalette]
+        G[manifestCache]
+        H[PropertiesPanel]
+        I[BuilderCanvas]
+        J[capabilityService]
+    end
+
+    A -->|registers| B
+    B --> C
+    C --> D
+    D --> E
+
+    E -->|GET /api/components| F
+    F -->|pre-populates| G
+    G --> H
+    G --> I
+    G --> J
+```
+
+**Key design decisions:**
+
+1. **No frontend-hardcoded manifests** — All component metadata (props, styles, capabilities, constraints) lives in the plugin's Java code, not in the core frontend. The previously used `builtInManifests.ts` has been eliminated.
+
+2. **Multi-component registration** — The `PluginManager` calls `getComponentManifests()` (plural) on each `UIComponentPlugin`, allowing a single plugin to register multiple component variants (e.g., navbar with 8 variants, auth with 5 forms).
+
+3. **Frontend manifest cache** — When the `ComponentPalette` fetches the component list from `GET /api/components`, it parses each entry's `componentManifest` JSON and pre-populates the `manifestCache` in the component store. The `PropertiesPanel`, `BuilderCanvas`, and `componentCapabilityService` all read from this cache.
+
+4. **Capability-driven behavior** — The `ComponentCapabilities` object in each manifest drives frontend behavior: which components accept children, which show the data source editor, which auto-size their height, etc. This is queried via the `componentCapabilityService` rather than hardcoding component IDs.
 
 ---
 
