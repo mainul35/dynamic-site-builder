@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useBuilderStore } from '../../stores/builderStore';
 import { useComponentStore } from '../../stores/componentStore';
 import { ComponentManifest, PropDefinition, PropType, ComponentEventConfig, ActionType, DataSourceConfig } from '../../types/builder';
-import { getBuiltInManifest, hasBuiltInManifest } from '../../data/builtInManifests';
 import { PageLinkSelector } from './PageLinkSelector';
 import { ImageRepositoryModal } from './ImageRepositoryModal';
 import { GradientPicker } from './GradientPicker';
@@ -452,59 +451,11 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedCompon
   const pluginId = selectedComponent?.pluginId;
   const componentId = selectedComponent?.componentId;
 
-  // Helper function to try multiple manifest lookups with fallbacks
-  const tryGetManifest = (pId: string | undefined, cId: string | undefined): ComponentManifest | null => {
-    if (!cId) return null;
-
-    // Normalize componentId - capitalize first letter if lowercase
-    const normalizedComponentId = cId.charAt(0).toUpperCase() + cId.slice(1);
-
-    // List of pluginId fallbacks to try
-    const pluginIdFallbacks: (string | undefined)[] = [
-      pId,
-      // Common plugin ID patterns for core components
-      `${normalizedComponentId.toLowerCase()}-component-plugin`,
-      `${normalizedComponentId.toLowerCase()}-layout-plugin`,
-      'core-ui',
-      'core-navbar',
-      'container-layout-plugin',
-      'page-layout-plugin',
-      'label-component-plugin',
-      'button-component-plugin',
-      'textbox-component-plugin',
-      'image-component-plugin',
-      'navbar-component-plugin',
-    ];
-
-    // List of componentId variations to try
-    const componentIdVariations = [cId, normalizedComponentId];
-
-    for (const tryPluginId of pluginIdFallbacks) {
-      if (!tryPluginId) continue;
-      for (const tryComponentId of componentIdVariations) {
-        if (hasBuiltInManifest(tryPluginId, tryComponentId)) {
-          return getBuiltInManifest(tryPluginId, tryComponentId);
-        }
-      }
-    }
-    return null;
-  };
-
   // Load component manifest when selection changes
+  // Manifests are provided by the backend (plugins are the source of truth)
   useEffect(() => {
     if (componentId) {
-      // PRIORITY 1: Try built-in manifests first (they are always authoritative)
-      // This ensures frontend-defined manifests take precedence over backend API responses
-      const builtIn = tryGetManifest(pluginId, componentId);
-      if (builtIn) {
-        // Cache the built-in manifest for future use
-        const cacheKey = `${pluginId || builtIn.pluginId}:${componentId}`;
-        cacheManifest(cacheKey, builtIn);
-        setManifest(builtIn);
-        return;
-      }
-
-      // PRIORITY 2: Check component store cache (for API-provided manifests)
+      // PRIORITY 1: Check component store cache (pre-populated from backend registry entries)
       if (pluginId) {
         const cachedManifest = getManifest(pluginId, componentId);
         if (cachedManifest) {
@@ -513,7 +464,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedCompon
         }
       }
 
-      // PRIORITY 3: Fallback - fetch from API for plugin-provided components
+      // PRIORITY 2: Fetch from backend API
       if (pluginId) {
         import('../../services/componentService').then(({ componentService }) => {
           componentService.getComponentManifest(pluginId, componentId)

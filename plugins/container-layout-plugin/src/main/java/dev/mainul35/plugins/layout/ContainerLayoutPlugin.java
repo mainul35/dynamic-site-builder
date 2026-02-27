@@ -4,6 +4,7 @@ import dev.mainul35.cms.sdk.PluginContext;
 import dev.mainul35.cms.sdk.UIComponentPlugin;
 import dev.mainul35.cms.sdk.annotation.UIComponent;
 import dev.mainul35.cms.sdk.component.*;
+import dev.mainul35.cms.sdk.component.ComponentCapabilities;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
@@ -131,6 +132,14 @@ public class ContainerLayoutPlugin implements UIComponentPlugin {
                 .configurableStyles(buildConfigurableStyles())
                 .sizeConstraints(buildSizeConstraints())
                 .canHaveChildren(true)
+                .capabilities(ComponentCapabilities.builder()
+                        .canHaveChildren(true)
+                        .isContainer(true)
+                        .hasDataSource(false)
+                        .autoHeight(true)
+                        .isResizable(true)
+                        .supportsTemplateBindings(true)
+                        .build())
                 .allowedChildTypes(null)
                 .build();
     }

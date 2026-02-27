@@ -67,9 +67,10 @@ public class AuthComponentPlugin implements UIComponentPlugin {
     }
 
     /**
-     * Get all component manifests provided by this plugin
+     * Get all component manifests provided by this plugin.
      */
-    public List<ComponentManifest> getAllComponentManifests() {
+    @Override
+    public List<ComponentManifest> getComponentManifests() {
         return manifests;
     }
 
@@ -118,6 +119,14 @@ public class AuthComponentPlugin implements UIComponentPlugin {
                 .configurableStyles(buildFormConfigurableStyles())
                 .sizeConstraints(buildFormSizeConstraints())
                 .canHaveChildren(false)
+                .capabilities(ComponentCapabilities.builder()
+                        .canHaveChildren(false)
+                        .isContainer(false)
+                        .hasDataSource(false)
+                        .autoHeight(false)
+                        .isResizable(true)
+                        .supportsTemplateBindings(false)
+                        .build())
                 .build();
     }
 
@@ -274,6 +283,14 @@ public class AuthComponentPlugin implements UIComponentPlugin {
                 .configurableStyles(buildFormConfigurableStyles())
                 .sizeConstraints(buildFormSizeConstraints())
                 .canHaveChildren(false)
+                .capabilities(ComponentCapabilities.builder()
+                        .canHaveChildren(false)
+                        .isContainer(false)
+                        .hasDataSource(false)
+                        .autoHeight(false)
+                        .isResizable(true)
+                        .supportsTemplateBindings(false)
+                        .build())
                 .build();
     }
 
@@ -442,6 +459,14 @@ public class AuthComponentPlugin implements UIComponentPlugin {
                 .configurableStyles(buildFormConfigurableStyles())
                 .sizeConstraints(buildButtonSizeConstraints())
                 .canHaveChildren(false)
+                .capabilities(ComponentCapabilities.builder()
+                        .canHaveChildren(false)
+                        .isContainer(false)
+                        .hasDataSource(false)
+                        .autoHeight(false)
+                        .isResizable(true)
+                        .supportsTemplateBindings(false)
+                        .build())
                 .build();
     }
 
@@ -601,6 +626,14 @@ public class AuthComponentPlugin implements UIComponentPlugin {
                 .configurableStyles(buildFormConfigurableStyles())
                 .sizeConstraints(buildFormSizeConstraints())
                 .canHaveChildren(false)
+                .capabilities(ComponentCapabilities.builder()
+                        .canHaveChildren(false)
+                        .isContainer(false)
+                        .hasDataSource(false)
+                        .autoHeight(false)
+                        .isResizable(true)
+                        .supportsTemplateBindings(false)
+                        .build())
                 .build();
     }
 
@@ -700,6 +733,14 @@ public class AuthComponentPlugin implements UIComponentPlugin {
                 .configurableStyles(buildButtonConfigurableStyles())
                 .sizeConstraints(buildButtonSizeConstraints())
                 .canHaveChildren(false)
+                .capabilities(ComponentCapabilities.builder()
+                        .canHaveChildren(false)
+                        .isContainer(false)
+                        .hasDataSource(false)
+                        .autoHeight(false)
+                        .isResizable(true)
+                        .supportsTemplateBindings(false)
+                        .build())
                 .build();
     }
 

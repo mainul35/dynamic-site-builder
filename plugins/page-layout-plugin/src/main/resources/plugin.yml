@@ -13,7 +13,7 @@ ui-component:
   icon: 📄
   description: Structured page layout with 5 regions - header, footer, left panel, right panel, and center content
   default-width: 100%
-  default-height: 100vh
+  default-height: 800px
   resizable: true
   min-width: 320px
   max-width: 100%

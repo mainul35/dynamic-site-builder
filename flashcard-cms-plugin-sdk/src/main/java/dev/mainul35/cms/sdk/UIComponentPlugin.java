@@ -3,6 +3,7 @@ package dev.mainul35.cms.sdk;
 import dev.mainul35.cms.sdk.component.ComponentManifest;
 import dev.mainul35.cms.sdk.component.ValidationResult;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -19,6 +20,19 @@ public interface UIComponentPlugin extends Plugin {
      * @return ComponentManifest with complete component configuration
      */
     ComponentManifest getComponentManifest();
+
+    /**
+     * Get all component manifests provided by this plugin.
+     * Override this for plugins that provide multiple component variants
+     * (e.g., navbar with 8 variants, auth with 5 forms).
+     * Default implementation returns a singleton list of {@link #getComponentManifest()}.
+     *
+     * @return List of all component manifests from this plugin
+     */
+    default List<ComponentManifest> getComponentManifests() {
+        ComponentManifest manifest = getComponentManifest();
+        return manifest != null ? List.of(manifest) : List.of();
+    }
 
     /**
      * Get the path to the React component bundle (JS/JSX file).

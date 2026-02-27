@@ -192,13 +192,13 @@ public class PluginManager {
             plugin.onLoad(context);
             plugin.onActivate(context);
 
-            // If it's a UI component plugin, register it
-            if (pluginInstance instanceof UIComponentPlugin) {
-                UIComponentPlugin uiPlugin = (UIComponentPlugin) pluginInstance;
-                ComponentManifest componentManifest = uiPlugin.getComponentManifest();
-                componentRegistryService.registerComponent(componentManifest);
-                log.info("Registered UI component: {} from plugin: {}",
-                        componentManifest.getComponentId(), pluginId);
+            // If it's a UI component plugin, register all its component manifests
+            if (pluginInstance instanceof UIComponentPlugin uiPlugin) {
+                for (ComponentManifest componentManifest : uiPlugin.getComponentManifests()) {
+                    componentRegistryService.registerComponent(componentManifest);
+                    log.info("Registered UI component: {} from plugin: {}",
+                            componentManifest.getComponentId(), pluginId);
+                }
             }
         }
 
@@ -683,13 +683,13 @@ public class PluginManager {
                 log.info("Called onActivate hook for plugin: {}", pluginId);
             }
 
-            // 11. Register UI component if applicable
-            if (pluginInstance instanceof UIComponentPlugin) {
-                UIComponentPlugin uiPlugin = (UIComponentPlugin) pluginInstance;
-                ComponentManifest componentManifest = uiPlugin.getComponentManifest();
-                componentRegistryService.registerComponent(componentManifest);
-                log.info("Registered UI component: {} from plugin: {}",
-                        componentManifest.getComponentId(), pluginId);
+            // 11. Register UI component(s) if applicable
+            if (pluginInstance instanceof UIComponentPlugin uiPlugin) {
+                for (ComponentManifest componentManifest : uiPlugin.getComponentManifests()) {
+                    componentRegistryService.registerComponent(componentManifest);
+                    log.info("Registered UI component: {} from plugin: {}",
+                            componentManifest.getComponentId(), pluginId);
+                }
             }
 
             // 12. Store loaded plugin and update status

@@ -44,6 +44,21 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({ onComponentD
       const data = await componentService.getAllComponents();
       setComponents(data);
 
+      // Pre-populate manifest cache from registry entries (backend-provided manifests)
+      const { cacheManifest } = useComponentStore.getState();
+      data.forEach(entry => {
+        if (entry.componentManifest) {
+          try {
+            const manifest = typeof entry.componentManifest === 'string'
+              ? JSON.parse(entry.componentManifest)
+              : entry.componentManifest;
+            cacheManifest(`${entry.pluginId}:${entry.componentId}`, manifest);
+          } catch (e) {
+            console.warn(`Failed to parse manifest for ${entry.pluginId}:${entry.componentId}`, e);
+          }
+        }
+      });
+
       // Expand all categories by default
       const categories = new Set<string>();
       data.forEach(comp => {

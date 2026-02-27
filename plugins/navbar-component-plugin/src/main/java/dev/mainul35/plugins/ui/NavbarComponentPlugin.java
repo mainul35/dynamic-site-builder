@@ -78,9 +78,10 @@ public class NavbarComponentPlugin implements UIComponentPlugin {
     }
 
     /**
-     * Returns all navbar variant manifests for registration
+     * Returns all navbar variant manifests for registration.
      */
-    public List<ComponentManifest> getAllComponentManifests() {
+    @Override
+    public List<ComponentManifest> getComponentManifests() {
         return manifests;
     }
 
@@ -177,6 +178,14 @@ public class NavbarComponentPlugin implements UIComponentPlugin {
                 .configurableStyles(buildNavbarConfigurableStyles())
                 .sizeConstraints(buildNavbarSizeConstraints())
                 .canHaveChildren(false)
+                .capabilities(ComponentCapabilities.builder()
+                        .canHaveChildren(false)
+                        .isContainer(false)
+                        .hasDataSource(false)
+                        .autoHeight(false)
+                        .isResizable(true)
+                        .supportsTemplateBindings(false)
+                        .build())
                 .build();
     }
 
@@ -222,6 +231,14 @@ public class NavbarComponentPlugin implements UIComponentPlugin {
                 .configurableStyles(buildNavbarConfigurableStyles())
                 .sizeConstraints(buildNavbarSizeConstraints())
                 .canHaveChildren(false)
+                .capabilities(ComponentCapabilities.builder()
+                        .canHaveChildren(false)
+                        .isContainer(false)
+                        .hasDataSource(false)
+                        .autoHeight(false)
+                        .isResizable(true)
+                        .supportsTemplateBindings(false)
+                        .build())
                 .build();
     }
 
@@ -267,6 +284,14 @@ public class NavbarComponentPlugin implements UIComponentPlugin {
                 .configurableStyles(buildNavbarConfigurableStyles())
                 .sizeConstraints(buildNavbarSizeConstraints())
                 .canHaveChildren(false)
+                .capabilities(ComponentCapabilities.builder()
+                        .canHaveChildren(false)
+                        .isContainer(false)
+                        .hasDataSource(false)
+                        .autoHeight(false)
+                        .isResizable(true)
+                        .supportsTemplateBindings(false)
+                        .build())
                 .build();
     }
 
@@ -314,6 +339,14 @@ public class NavbarComponentPlugin implements UIComponentPlugin {
                 .configurableStyles(buildNavbarConfigurableStyles())
                 .sizeConstraints(buildNavbarSizeConstraints())
                 .canHaveChildren(false)
+                .capabilities(ComponentCapabilities.builder()
+                        .canHaveChildren(false)
+                        .isContainer(false)
+                        .hasDataSource(false)
+                        .autoHeight(false)
+                        .isResizable(true)
+                        .supportsTemplateBindings(false)
+                        .build())
                 .build();
     }
 
@@ -361,6 +394,14 @@ public class NavbarComponentPlugin implements UIComponentPlugin {
                 .configurableStyles(buildNavbarConfigurableStyles())
                 .sizeConstraints(buildNavbarSizeConstraints())
                 .canHaveChildren(false)
+                .capabilities(ComponentCapabilities.builder()
+                        .canHaveChildren(false)
+                        .isContainer(false)
+                        .hasDataSource(false)
+                        .autoHeight(false)
+                        .isResizable(true)
+                        .supportsTemplateBindings(false)
+                        .build())
                 .build();
     }
 
@@ -406,6 +447,14 @@ public class NavbarComponentPlugin implements UIComponentPlugin {
                 .configurableStyles(buildNavbarConfigurableStyles())
                 .sizeConstraints(buildNavbarSizeConstraints())
                 .canHaveChildren(false)
+                .capabilities(ComponentCapabilities.builder()
+                        .canHaveChildren(false)
+                        .isContainer(false)
+                        .hasDataSource(false)
+                        .autoHeight(false)
+                        .isResizable(true)
+                        .supportsTemplateBindings(false)
+                        .build())
                 .build();
     }
 
@@ -449,6 +498,14 @@ public class NavbarComponentPlugin implements UIComponentPlugin {
                 .configurableStyles(buildSidebarConfigurableStyles())
                 .sizeConstraints(buildSidebarSizeConstraints())
                 .canHaveChildren(false)
+                .capabilities(ComponentCapabilities.builder()
+                        .canHaveChildren(false)
+                        .isContainer(false)
+                        .hasDataSource(false)
+                        .autoHeight(false)
+                        .isResizable(true)
+                        .supportsTemplateBindings(false)
+                        .build())
                 .build();
     }
 
@@ -487,6 +544,14 @@ public class NavbarComponentPlugin implements UIComponentPlugin {
                 .configurableStyles(buildTopHeaderConfigurableStyles())
                 .sizeConstraints(buildTopHeaderSizeConstraints())
                 .canHaveChildren(false)
+                .capabilities(ComponentCapabilities.builder()
+                        .canHaveChildren(false)
+                        .isContainer(false)
+                        .hasDataSource(false)
+                        .autoHeight(false)
+                        .isResizable(true)
+                        .supportsTemplateBindings(false)
+                        .build())
                 .build();
     }
 

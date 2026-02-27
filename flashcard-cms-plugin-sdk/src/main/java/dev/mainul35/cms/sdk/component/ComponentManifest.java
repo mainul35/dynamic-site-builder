@@ -89,7 +89,8 @@ public class ComponentManifest {
     private String pluginVersion;
 
     /**
-     * Whether component can have child components
+     * Whether component can have child components.
+     * @deprecated Use {@link ComponentCapabilities#isCanHaveChildren()} via {@link #capabilities} instead.
      */
     private boolean canHaveChildren;
 
@@ -97,6 +98,12 @@ public class ComponentManifest {
      * Allowed child component types (empty means all)
      */
     private List<String> allowedChildTypes;
+
+    /**
+     * Component capabilities that drive behavior in the visual builder.
+     * Defines container support, data binding, resizing, and more.
+     */
+    private ComponentCapabilities capabilities;
 
     // ===== Export Template Fields =====
 

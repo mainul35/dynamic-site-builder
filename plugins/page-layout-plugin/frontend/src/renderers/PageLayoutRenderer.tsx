@@ -1555,7 +1555,7 @@ const PageLayoutRenderer: React.FC<PageLayoutRendererProps> = ({
           backgroundColor,
           // When any slot has wrap mode, use auto height to allow natural page expansion
           // Otherwise use minHeight for full viewport behavior
-          minHeight: standardAnySlotHasWrapMode ? undefined : (fullHeight ? '100vh' : undefined),
+          minHeight: standardAnySlotHasWrapMode ? undefined : (fullHeight ? 'none' : undefined),
           width: '100%',
           // When any slot has wrap mode, allow content to expand (browser handles scrolling)
           overflow: standardAnySlotHasWrapMode ? 'visible' : undefined,

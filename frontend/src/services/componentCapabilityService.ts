@@ -15,7 +15,7 @@
  */
 
 import { ComponentManifest, ComponentCapabilities, ComponentInstance } from '../types/builder';
-import { getBuiltInManifest, builtInManifests } from '../data/builtInManifests';
+import { useComponentStore } from '../stores/componentStore';
 
 /**
  * Default capabilities based on component category
@@ -84,25 +84,26 @@ class ComponentCapabilityService {
   private manifestCache = new Map<string, ComponentManifest | null>();
 
   /**
-   * Get the manifest for a component
-   * Checks built-in manifests first, then could be extended to fetch from registry
+   * Get the manifest for a component.
+   * Looks up from the componentStore cache (populated from backend registry entries).
    */
   getManifest(pluginId: string, componentId: string): ComponentManifest | null {
     const key = `${pluginId}:${componentId}`;
 
-    // Check cache first
+    // Check local cache first
     if (this.manifestCache.has(key)) {
       return this.manifestCache.get(key) || null;
     }
 
-    // Try to get from built-in manifests
-    let manifest = getBuiltInManifest(pluginId, componentId);
+    // Look up from componentStore (backend-provided manifests)
+    const storeState = useComponentStore.getState();
+    let manifest = storeState.getManifest(pluginId, componentId);
 
-    // Also try with just componentId for virtual plugins
+    // Try matching by componentId alone for virtual plugin compatibility
     if (!manifest) {
-      // Search through all manifests for matching componentId
-      for (const [manifestKey, m] of Object.entries(builtInManifests)) {
-        if (m.componentId === componentId || manifestKey.endsWith(`:${componentId}`)) {
+      const allCached = storeState.manifestCache;
+      for (const [cacheKey, m] of allCached) {
+        if (m.componentId === componentId || cacheKey.endsWith(`:${componentId}`)) {
           manifest = m;
           break;
         }
