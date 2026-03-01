@@ -789,12 +789,12 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
         },
         // Stop click/mousedown propagation in slots to prevent PageLayout from being selected
         // when clicking inside a slot (children handle their own selection via stopPropagation)
-        onClick: (e: React.MouseEvent) => {
-          e.stopPropagation();
-        },
-        onMouseDown: (e: React.MouseEvent) => {
-          e.stopPropagation();
-        },
+        // onClick: (e: React.MouseEvent) => {
+        //   e.stopPropagation();
+        // },
+        // onMouseDown: (e: React.MouseEvent) => {
+        //   e.stopPropagation();
+        // },
       });
 
       const isSlotDragOver = (slot: string) => dragOverContainerId === `${component.instanceId}-${slot}`;
