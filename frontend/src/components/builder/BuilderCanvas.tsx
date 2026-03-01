@@ -1592,11 +1592,11 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
     }
   };
 
-  const gridStyles: React.CSSProperties = {
-    gridTemplateColumns: `repeat(${gridConfig.columns}, 1fr)`,
-    gridAutoRows: gridConfig.minRowHeight,
-    gap: gridConfig.gap
-  };
+  // const gridStyles: React.CSSProperties = {
+  //   gridTemplateColumns: `repeat(${gridConfig.columns}, 1fr)`,
+  //   gridAutoRows: gridConfig.minRowHeight,
+  //   gap: gridConfig.gap
+  // };
 
   // Get current breakpoint info for indicator
   const currentBreakpointDef = BREAKPOINTS[activeBreakpoint];
@@ -1629,7 +1629,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
         <div
           ref={canvasRef}
           className={`builder-canvas ${isDragOver ? 'drag-over' : ''} ${effectiveViewMode === 'preview' ? 'preview-mode' : 'edit-mode'}`}
-          style={gridStyles}
+          // style={gridStyles}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -1639,7 +1639,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ onComponentSelect,
           tabIndex={0}
         >
       {/* Grid Background - only show when enabled */}
-      {showGrid && <div className="grid-background" style={gridStyles}></div>}
+      {showGrid && <div className="grid-background"></div>}
 
       {/* Empty State */}
       {(!currentPage || currentPage.components.filter(c => !c.parentId).length === 0) && (

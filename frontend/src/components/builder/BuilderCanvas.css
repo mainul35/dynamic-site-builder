@@ -3,10 +3,8 @@
   flex: 1;
   background: var(--bg-tertiary, #f8f9fa);
   overflow: auto;
-  display: grid;
   padding: 20px;
   min-height: 600px;
-  outline: none;
   transition: background-color var(--transition-normal, 200ms ease);
   box-sizing: border-box;
   width: 100%;
@@ -968,7 +966,7 @@
   width: 100% !important;
   max-width: 100% !important;
   /* Remove padding in constrained mode to give full width to content */
-  padding: 0 !important;
+  /*padding: 0 !important;*/
 }
 
 /* Root-level draggable components must not overflow */
@@ -1197,7 +1195,7 @@
 .canvas-responsive-wrapper.width-constrained .builder-canvas {
   width: 100% !important;
   max-width: 100% !important;
-  padding: 0 !important;
+  /*padding: 0 !important;*/
   /* Only hide horizontal overflow - preserve vertical scrolling */
   overflow-x: hidden !important;
   overflow-y: visible !important;

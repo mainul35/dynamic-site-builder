@@ -173,7 +173,7 @@ public class PageLayoutPlugin implements UIComponentPlugin {
 
     private Map<String, String> buildDefaultStyles() {
         Map<String, String> styles = new HashMap<>();
-        styles.put("display", "grid");
+        // styles.put("display", "grid");
         styles.put("backgroundColor", "#f8f9fa");
         return styles;
     }
